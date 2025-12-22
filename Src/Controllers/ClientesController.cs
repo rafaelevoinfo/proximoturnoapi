@@ -1,68 +1,71 @@
 using Microsoft.AspNetCore.Mvc;
 using ProximoTurnoApi.Models;
 using ProximoTurnoApi.Repositories;
-using System.Collections.Generic;
 
 namespace ProximoTurnoApi.Controllers;
 
-[ApiController]
 [Route("api/[controller]")]
-public class ClientesController : ControllerBase{
-    private readonly IClienteRepository _clienteRepository;
+[ApiController]
+public class ClientesController : ControllerBase
+{
+    private readonly IClienteRepository _repository;
 
-    public ClientesController(IClienteRepository clienteRepository){
-        _clienteRepository = clienteRepository;
+    public ClientesController(IClienteRepository repository)
+    {
+        _repository = repository;
     }
 
-    // GET: api/clientes
     [HttpGet]
-    public ActionResult<IEnumerable<Cliente>> GetClientes(){
-        return Ok(_clienteRepository.GetAll());
+    public async Task<ActionResult<IEnumerable<Cliente>>> GetClientes()
+    {
+        return await _repository.GetAllAsync();
     }
 
-    // GET: api/clientes/5
     [HttpGet("{id}")]
-    public ActionResult<Cliente> GetCliente(int id){
-        var cliente = _clienteRepository.GetById(id);
-        if (cliente == null){
+    public async Task<ActionResult<Cliente>> GetCliente(int id)
+    {
+        var cliente = await _repository.GetByIdAsync(id);
+
+        if (cliente == null)
+        {
             return NotFound();
         }
-        return Ok(cliente);
+
+        return cliente;
     }
 
-    // POST: api/clientes
-    [HttpPost]
-    public ActionResult<Cliente> PostCliente(Cliente cliente){
-        var createdCliente = _clienteRepository.Add(cliente);
-        return CreatedAtAction(nameof(GetCliente), new { id = createdCliente.Id }, createdCliente.Id);
-    }
-
-    // PUT: api/clientes/5
     [HttpPut("{id}")]
-    public IActionResult PutCliente(int id, Cliente cliente){
-        if (id != cliente.Id){
+    public async Task<IActionResult> PutCliente(int id, Cliente cliente)
+    {
+        if (id != cliente.Id)
+        {
             return BadRequest();
         }
 
-        var existingCliente = _clienteRepository.GetById(id);
-        if (existingCliente == null){
-            return NotFound();
-        }
-
-        _clienteRepository.Update(cliente);
+        await _repository.UpdateAsync(cliente);
 
         return NoContent();
     }
 
-    // DELETE: api/clientes/5
+    [HttpPost]
+    public async Task<ActionResult<Cliente>> PostCliente(Cliente cliente)
+    {
+        await _repository.AddAsync(cliente);
+
+        return CreatedAtAction("GetCliente", new { id = cliente.Id }, cliente);
+    }
+
     [HttpDelete("{id}")]
-    public IActionResult DeleteCliente(int id){
-        var cliente = _clienteRepository.GetById(id);
-        if (cliente == null){
+    public async Task<IActionResult> DeleteCliente(int id)
+    {
+        var cliente = await _repository.GetByIdAsync(id);
+        if (cliente == null)
+        {
             return NotFound();
         }
 
-        _clienteRepository.Delete(id);
+        await _repository.DeleteAsync(id);
+
         return NoContent();
     }
 }

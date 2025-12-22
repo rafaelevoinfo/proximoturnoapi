@@ -4,50 +4,68 @@ using ProximoTurnoApi.Repositories;
 
 namespace ProximoTurnoApi.Controllers;
 
+[Route("api/[controller]")]
 [ApiController]
-[Route("[controller]")]
-public class JogosController : ControllerBase{
-    private readonly IJogoRepository _jogoRepository;
+public class JogosController : ControllerBase
+{
+    private readonly IJogoRepository _repository;
 
-    public JogosController(IJogoRepository jogoRepository){
-        _jogoRepository = jogoRepository;
+    public JogosController(IJogoRepository repository)
+    {
+        _repository = repository;
     }
 
     [HttpGet]
-    public IEnumerable<Jogo> Get(){
-        return _jogoRepository.GetAll();
+    public async Task<ActionResult<IEnumerable<Jogo>>> GetJogos()
+    {
+        return await _repository.GetAllAsync();
     }
 
     [HttpGet("{id}")]
-    public ActionResult<Jogo> Get(int id){
-        var jogo = _jogoRepository.GetById(id);
-        if (jogo == null){
+    public async Task<ActionResult<Jogo>> GetJogo(int id)
+    {
+        var jogo = await _repository.GetByIdAsync(id);
+
+        if (jogo == null)
+        {
             return NotFound();
         }
+
         return jogo;
     }
 
-    [HttpPost]
-    public Jogo Post([FromBody] Jogo jogo){
-        return _jogoRepository.Add(jogo);
-    }
-
     [HttpPut("{id}")]
-    public IActionResult Put(int id, [FromBody] Jogo jogo){
-        if (id != jogo.Id){
+    public async Task<IActionResult> PutJogo(int id, Jogo jogo)
+    {
+        if (id != jogo.Id)
+        {
             return BadRequest();
         }
-        _jogoRepository.Update(jogo);
+
+        await _repository.UpdateAsync(jogo);
+
         return NoContent();
     }
 
+    [HttpPost]
+    public async Task<ActionResult<Jogo>> PostJogo(Jogo jogo)
+    {
+        await _repository.AddAsync(jogo);
+
+        return CreatedAtAction("GetJogo", new { id = jogo.Id }, jogo);
+    }
+
     [HttpDelete("{id}")]
-    public IActionResult Delete(int id){
-        var jogo = _jogoRepository.GetById(id);
-        if (jogo == null){
+    public async Task<IActionResult> DeleteJogo(int id)
+    {
+        var jogo = await _repository.GetByIdAsync(id);
+        if (jogo == null)
+        {
             return NotFound();
         }
-        _jogoRepository.Delete(id);
+
+        await _repository.DeleteAsync(id);
+
         return NoContent();
     }
 }

@@ -96,7 +96,7 @@ Esta será uma API para um web app de aluguel de jogos de tabuleiro. Nessa API a
 
 # Padrões a serem adotados:  
 ## Tecnologias utilizadas
-- .Net8 
+- .Net10
 - Asp.Net Core
 - Banco de Dados MySQL
 - Docker

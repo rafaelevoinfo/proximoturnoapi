@@ -1,16 +1,18 @@
 using Microsoft.EntityFrameworkCore;
-using ProximoTurnoApi.Data;
 using ProximoTurnoApi.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddDbContext<ProximoTurnoDbContext>(options =>
+builder.Services.AddDbContext<DatabaseContext>(options =>
     options.UseMySql(builder.Configuration.GetConnectionString("DefaultConnection"),
         new MySqlServerVersion(new Version(9, 4, 0))));
 builder.Services.AddControllers();
 builder.Services.AddScoped<IClienteRepository, ClienteRepository>();
 builder.Services.AddScoped<IJogoRepository, JogoRepository>();
+builder.Services.AddScoped<ICategoriaRepository, CategoriaRepository>();
+builder.Services.AddScoped<IPrecoCategoriaRepository, PrecoCategoriaRepository>();
+builder.Services.AddScoped<IPedidoAluguelRepository, PedidoAluguelRepository>();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
