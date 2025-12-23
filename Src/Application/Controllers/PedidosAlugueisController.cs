@@ -1,8 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using ProximoTurnoApi.Models;
-using ProximoTurnoApi.Repositories;
 
-namespace ProximoTurnoApi.Controllers;
+namespace ProximoTurnoApi.Application.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]

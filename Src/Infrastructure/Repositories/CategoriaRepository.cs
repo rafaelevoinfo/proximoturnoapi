@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using ProximoTurnoApi.Models;
 
-namespace ProximoTurnoApi.Repositories;
+namespace ProximoTurnoApi.Infrastructure.Repositories;
 
 public interface ICategoriaRepository {
     Task<List<Categoria>> GetAllAsync();

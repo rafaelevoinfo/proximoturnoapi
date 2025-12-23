@@ -11,8 +11,8 @@ using ProximoTurnoApi.Infrastructure.Repositories;
 
 namespace ProximoTurnoApi.Migrations {
     [DbContext(typeof(DatabaseContext))]
-    [Migration("20251222143825_EstruturaBasica")]
-    partial class EstruturaBasica {
+    [Migration("20251223121014_UniqueConstrainstCliente")]
+    partial class UniqueConstrainstCliente {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder) {
 #pragma warning disable 612, 618
@@ -115,7 +115,7 @@ namespace ProximoTurnoApi.Migrations {
                     .HasColumnType("varchar(400)")
                     .HasColumnName("ENDERECO");
 
-                b.Property<string>("NomeCompleto")
+                b.Property<string>("Nome")
                     .IsRequired()
                     .HasMaxLength(100)
                     .HasColumnType("varchar(100)")
@@ -128,6 +128,12 @@ namespace ProximoTurnoApi.Migrations {
                     .HasColumnName("TELEFONE");
 
                 b.HasKey("Id");
+
+                b.HasIndex("Email")
+                    .IsUnique();
+
+                b.HasIndex("Telefone")
+                    .IsUnique();
 
                 b.ToTable("CLIENTE");
             });

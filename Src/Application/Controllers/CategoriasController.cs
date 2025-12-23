@@ -1,33 +1,28 @@
 using Microsoft.AspNetCore.Mvc;
 using ProximoTurnoApi.Models;
-using ProximoTurnoApi.Repositories;
+using ProximoTurnoApi.Infrastructure.Repositories;
 
-namespace ProximoTurnoApi.Controllers;
+namespace ProximoTurnoApi.Application.Controllers;
 
-[Route("api/[controller]")]
+[Route("api/categorias")]
 [ApiController]
-public class CategoriasController : ControllerBase
-{
+public class CategoriasController : ControllerBase {
     private readonly ICategoriaRepository _repository;
 
-    public CategoriasController(ICategoriaRepository repository)
-    {
+    public CategoriasController(ICategoriaRepository repository) {
         _repository = repository;
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Categoria>>> GetCategorias()
-    {
+    public async Task<ActionResult<IEnumerable<Categoria>>> GetCategorias() {
         return await _repository.GetAllAsync();
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<Categoria>> GetCategoria(int id)
-    {
+    public async Task<ActionResult<Categoria>> GetCategoria(int id) {
         var categoria = await _repository.GetByIdAsync(id);
 
-        if (categoria == null)
-        {
+        if (categoria == null) {
             return NotFound();
         }
 
@@ -35,10 +30,8 @@ public class CategoriasController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> PutCategoria(int id, Categoria categoria)
-    {
-        if (id != categoria.Id)
-        {
+    public async Task<IActionResult> PutCategoria(int id, Categoria categoria) {
+        if (id != categoria.Id) {
             return BadRequest();
         }
 
@@ -48,19 +41,16 @@ public class CategoriasController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<Categoria>> PostCategoria(Categoria categoria)
-    {
+    public async Task<ActionResult<Categoria>> PostCategoria(Categoria categoria) {
         await _repository.AddAsync(categoria);
 
         return CreatedAtAction("GetCategoria", new { id = categoria.Id }, categoria);
     }
 
     [HttpDelete("{id}")]
-    public async Task<IActionResult> DeleteCategoria(int id)
-    {
+    public async Task<IActionResult> DeleteCategoria(int id) {
         var categoria = await _repository.GetByIdAsync(id);
-        if (categoria == null)
-        {
+        if (categoria == null) {
             return NotFound();
         }
 

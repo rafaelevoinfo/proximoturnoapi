@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using ProximoTurnoApi.Models;
 
-namespace ProximoTurnoApi.Repositories;
+namespace ProximoTurnoApi.Infrastructure.Repositories;
 
 public class DatabaseContext(DbContextOptions<DatabaseContext> options) : DbContext(options) {
     protected override void OnModelCreating(ModelBuilder modelBuilder) {
@@ -15,6 +15,11 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : DbCont
             .WithMany()
             .HasForeignKey(cp => cp.IdCategoria)
             .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<Cliente>(b => {
+            b.HasIndex(c => c.Email).IsUnique();
+            b.HasIndex(c => c.Telefone).IsUnique();
+        });
 
     }
 

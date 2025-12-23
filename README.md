@@ -1,2 +1,2 @@
-# Próximo Turno
-Sistema para gerenciamento de aluguel de jogos de tabuleiro
+# Próximo Turno API
+API para sistema de gerenciamento de aluguel de jogos de tabuleiro da Próximo Turno.

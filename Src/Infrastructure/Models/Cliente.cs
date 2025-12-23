@@ -9,7 +9,9 @@ public class Cliente {
     [Column("ID")]
     public int Id { get; set; }
     [Column("NOME"), MaxLength(100)]
-    public required string NomeCompleto { get; set; }
+    public required string Nome {
+        get; set => field = value.ToLowerInvariant();
+    }
 
     [Column("TELEFONE"), MaxLength(15)]
     public required string Telefone { get; set; }
@@ -18,7 +20,7 @@ public class Cliente {
     public required string Endereco { get; set; }
 
     [Column("EMAIL"), MaxLength(100)]
-    public required string Email { get; set; }
+    public required string Email { get; set => field = value.ToLowerInvariant(); }
 
     [Column("DATA_NASCIMENTO")]
     public DateOnly? DataNascimento { get; set; }

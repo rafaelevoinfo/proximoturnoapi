@@ -1,7 +1,13 @@
 using Microsoft.EntityFrameworkCore;
-using ProximoTurnoApi.Repositories;
+using ProximoTurnoApi.Infrastructure.Repositories;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+
+if (builder.Environment.IsDevelopment()) {
+    DotNetEnv.Env.Load();
+    builder.Configuration.AddEnvironmentVariables();
+}
 
 // Add services to the container.
 builder.Services.AddDbContext<DatabaseContext>(options =>
@@ -16,6 +22,9 @@ builder.Services.AddScoped<IPedidoAluguelRepository, PedidoAluguelRepository>();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+builder.Host.UseSerilog((hostingContext, loggerConfiguration) => loggerConfiguration.ReadFrom.Configuration(hostingContext.Configuration));
+
 
 var app = builder.Build();
 
