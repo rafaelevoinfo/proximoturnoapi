@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using ProximoTurnoApi.Infrastructure.Repositories;
 
@@ -11,9 +12,11 @@ using ProximoTurnoApi.Infrastructure.Repositories;
 namespace ProximoTurnoApi.Migrations
 {
     [DbContext(typeof(DatabaseContext))]
-    partial class DatabaseContextModelSnapshot : ModelSnapshot
+    [Migration("20251223193704_TagTable")]
+    partial class TagTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -21,21 +24,6 @@ namespace ProximoTurnoApi.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 64);
 
             MySqlModelBuilderExtensions.AutoIncrementColumns(modelBuilder);
-
-            modelBuilder.Entity("CATEGORIA_FAIXA_PRECO", b =>
-                {
-                    b.Property<int>("ID_CATEGORIA")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ID_FAIXA_PRECO")
-                        .HasColumnType("int");
-
-                    b.HasKey("ID_CATEGORIA", "ID_FAIXA_PRECO");
-
-                    b.HasIndex("ID_FAIXA_PRECO");
-
-                    b.ToTable("CATEGORIA_FAIXA_PRECO");
-                });
 
             modelBuilder.Entity("JOGO_TAG", b =>
                 {
@@ -52,7 +40,7 @@ namespace ProximoTurnoApi.Migrations
                     b.ToTable("JOGO_TAG");
                 });
 
-            modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.Categoria", b =>
+            modelBuilder.Entity("ProximoTurnoApi.Models.Categoria", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -75,7 +63,35 @@ namespace ProximoTurnoApi.Migrations
                     b.ToTable("CATEGORIA");
                 });
 
-            modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.Cliente", b =>
+            modelBuilder.Entity("ProximoTurnoApi.Models.CategoriaPreco", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("ID");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("IdCategoria")
+                        .HasColumnType("int")
+                        .HasColumnName("ID_CATEGORIA");
+
+                    b.Property<int>("QuantidadeDias")
+                        .HasColumnType("int")
+                        .HasColumnName("QUANTIDADE_DIAS");
+
+                    b.Property<decimal>("Valor")
+                        .HasColumnType("decimal(65,30)")
+                        .HasColumnName("VALOR");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IdCategoria");
+
+                    b.ToTable("CATEGORIA_PRECO");
+                });
+
+            modelBuilder.Entity("ProximoTurnoApi.Models.Cliente", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -132,29 +148,7 @@ namespace ProximoTurnoApi.Migrations
                     b.ToTable("CLIENTE");
                 });
 
-            modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.FaixaPreco", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("ID");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("QuantidadeDias")
-                        .HasColumnType("int")
-                        .HasColumnName("QUANTIDADE_DIAS");
-
-                    b.Property<decimal>("Valor")
-                        .HasColumnType("decimal(65,30)")
-                        .HasColumnName("VALOR");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("FAIXA_PRECO");
-                });
-
-            modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.Jogo", b =>
+            modelBuilder.Entity("ProximoTurnoApi.Models.Jogo", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -218,7 +212,7 @@ namespace ProximoTurnoApi.Migrations
                     b.ToTable("JOGO");
                 });
 
-            modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.Link", b =>
+            modelBuilder.Entity("ProximoTurnoApi.Models.Link", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -250,7 +244,7 @@ namespace ProximoTurnoApi.Migrations
                     b.ToTable("LINK");
                 });
 
-            modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.Pedido", b =>
+            modelBuilder.Entity("ProximoTurnoApi.Models.Pedido", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -279,7 +273,7 @@ namespace ProximoTurnoApi.Migrations
                     b.ToTable("PEDIDO");
                 });
 
-            modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.PedidoJogo", b =>
+            modelBuilder.Entity("ProximoTurnoApi.Models.PedidoJogo", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -317,7 +311,7 @@ namespace ProximoTurnoApi.Migrations
                     b.ToTable("PEDIDO_JOGO");
                 });
 
-            modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.Tag", b =>
+            modelBuilder.Entity("ProximoTurnoApi.Models.Tag", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -340,39 +334,24 @@ namespace ProximoTurnoApi.Migrations
                     b.ToTable("TAG");
                 });
 
-            modelBuilder.Entity("CATEGORIA_FAIXA_PRECO", b =>
-                {
-                    b.HasOne("ProximoTurnoApi.Infrastructure.Models.Categoria", null)
-                        .WithMany()
-                        .HasForeignKey("ID_CATEGORIA")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("ProximoTurnoApi.Infrastructure.Models.FaixaPreco", null)
-                        .WithMany()
-                        .HasForeignKey("ID_FAIXA_PRECO")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("JOGO_TAG", b =>
                 {
-                    b.HasOne("ProximoTurnoApi.Infrastructure.Models.Jogo", null)
+                    b.HasOne("ProximoTurnoApi.Models.Jogo", null)
                         .WithMany()
                         .HasForeignKey("ID_JOGO")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("ProximoTurnoApi.Infrastructure.Models.Tag", null)
+                    b.HasOne("ProximoTurnoApi.Models.Tag", null)
                         .WithMany()
                         .HasForeignKey("ID_TAG")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.Jogo", b =>
+            modelBuilder.Entity("ProximoTurnoApi.Models.CategoriaPreco", b =>
                 {
-                    b.HasOne("ProximoTurnoApi.Infrastructure.Models.Categoria", "Categoria")
+                    b.HasOne("ProximoTurnoApi.Models.Categoria", "Categoria")
                         .WithMany()
                         .HasForeignKey("IdCategoria")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -381,36 +360,47 @@ namespace ProximoTurnoApi.Migrations
                     b.Navigation("Categoria");
                 });
 
-            modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.Link", b =>
+            modelBuilder.Entity("ProximoTurnoApi.Models.Jogo", b =>
                 {
-                    b.HasOne("ProximoTurnoApi.Infrastructure.Models.Jogo", null)
+                    b.HasOne("ProximoTurnoApi.Models.Categoria", "Categoria")
+                        .WithMany()
+                        .HasForeignKey("IdCategoria")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Categoria");
+                });
+
+            modelBuilder.Entity("ProximoTurnoApi.Models.Link", b =>
+                {
+                    b.HasOne("ProximoTurnoApi.Models.Jogo", null)
                         .WithMany("Links")
                         .HasForeignKey("IdJogo")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.Pedido", b =>
+            modelBuilder.Entity("ProximoTurnoApi.Models.Pedido", b =>
                 {
-                    b.HasOne("ProximoTurnoApi.Infrastructure.Models.Cliente", "Cliente")
+                    b.HasOne("ProximoTurnoApi.Models.Cliente", "Cliente")
                         .WithOne()
-                        .HasForeignKey("ProximoTurnoApi.Infrastructure.Models.Pedido", "IdCliente")
+                        .HasForeignKey("ProximoTurnoApi.Models.Pedido", "IdCliente")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Cliente");
                 });
 
-            modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.PedidoJogo", b =>
+            modelBuilder.Entity("ProximoTurnoApi.Models.PedidoJogo", b =>
                 {
-                    b.HasOne("ProximoTurnoApi.Infrastructure.Models.Jogo", "Jogo")
+                    b.HasOne("ProximoTurnoApi.Models.Jogo", "Jogo")
                         .WithMany()
                         .HasForeignKey("IdJogo")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("ProximoTurnoApi.Infrastructure.Models.Pedido", null)
-                        .WithMany("Items")
+                    b.HasOne("ProximoTurnoApi.Models.Pedido", null)
+                        .WithMany("Jogos")
                         .HasForeignKey("IdPedido")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -418,14 +408,14 @@ namespace ProximoTurnoApi.Migrations
                     b.Navigation("Jogo");
                 });
 
-            modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.Jogo", b =>
+            modelBuilder.Entity("ProximoTurnoApi.Models.Jogo", b =>
                 {
                     b.Navigation("Links");
                 });
 
-            modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.Pedido", b =>
+            modelBuilder.Entity("ProximoTurnoApi.Models.Pedido", b =>
                 {
-                    b.Navigation("Items");
+                    b.Navigation("Jogos");
                 });
 #pragma warning restore 612, 618
         }

@@ -1,13 +1,17 @@
 using Microsoft.AspNetCore.Mvc;
 using ProximoTurnoApi.Application.DTOs;
-using ProximoTurnoApi.Application.UseCases.Jogo;
+using ProximoTurnoApi.Application.UseCases;
 using ProximoTurnoApi.Infrastructure.Repositories;
 
 namespace ProximoTurnoApi.Application.Controllers;
 
 [Route("api/jogos")]
 [ApiController]
-public class JogosController(ILogger<ControllerBasico> logger, IJogoRepository _repository) : ControllerBasico(logger) {
+public class JogosController(ILogger<ControllerBasico> logger,
+                             ILogger<CadastroJogo> _cadastroJogoLogger,
+                             ILogger<AtualizarJogo> _atualizaJogologger,
+                             IJogoRepository _repository,
+                             ITagRepository _tagRepository) : ControllerBasico(logger) {
 
     [HttpGet]
     public async Task<IActionResult> GetJogos([FromQuery] FiltroJogoDTO filtro) {
@@ -36,7 +40,7 @@ public class JogosController(ILogger<ControllerBasico> logger, IJogoRepository _
                 return BadRequest(ApiResultDTO<object>.CreateFailureResult("ID do jogo na URL não corresponde ao ID no corpo da requisição."));
             }
 
-            var atualizarJogo = new AtualizarJogo(_repository);
+            var atualizarJogo = new AtualizarJogo(_repository, _tagRepository, _atualizaJogologger);
             var result = await atualizarJogo.ExecuteAsync(jogoDto);
             if (!result) {
                 return BadRequest(ApiResultDTO<JogoDTO>.CreateFailureResult(atualizarJogo.AggregateErrors()));
@@ -48,7 +52,7 @@ public class JogosController(ILogger<ControllerBasico> logger, IJogoRepository _
     [HttpPost]
     public async Task<IActionResult> PostJogo(JogoDTO jogoDto) {
         return await EncapsulateRequestAsync(async () => {
-            var cadastroJogo = new CadastroJogo(_repository);
+            var cadastroJogo = new CadastroJogo(_repository, _tagRepository, _cadastroJogoLogger);
             var idJogo = await cadastroJogo.ExecuteAsync(jogoDto);
             if (idJogo == 0) {
                 return BadRequest(ApiResultDTO<JogoDTO>.CreateFailureResult(cadastroJogo.AggregateErrors()));

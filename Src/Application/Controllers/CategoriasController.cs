@@ -7,7 +7,7 @@ namespace ProximoTurnoApi.Application.Controllers;
 
 [Route("api/categorias")]
 [ApiController]
-public class CategoriasController(ILogger<ControllerBasico> logger, ICategoriaRepository _repository) : ControllerBasico(logger) {
+public class CategoriasController(ILogger<ControllerBasico> logger, ICategoriaRepository _repository, IFaixaPrecoRepository _faixaPrecoRepository) : ControllerBasico(logger) {
 
     [HttpGet]
     public async Task<IActionResult> GetCategorias(FiltroCategoriaDTO filtro) {
@@ -35,7 +35,7 @@ public class CategoriasController(ILogger<ControllerBasico> logger, ICategoriaRe
             if (id != categoria.Id) {
                 return BadRequest(ApiResultDTO<CategoriaDTO>.CreateFailureResult("ID da categoria na URL não corresponde ao ID no corpo da requisição."));
             }
-            var atualizarCategoria = new AtualizarCategoria(_repository);
+            var atualizarCategoria = new AtualizarCategoria(_repository, _faixaPrecoRepository);
             var result = await atualizarCategoria.ExecuteAsync(categoria);
             if (!result) {
                 return BadRequest(ApiResultDTO<CategoriaDTO>.CreateFailureResult(atualizarCategoria.AggregateErrors()));
@@ -47,7 +47,7 @@ public class CategoriasController(ILogger<ControllerBasico> logger, ICategoriaRe
     [HttpPost]
     public async Task<IActionResult> PostCategoria(CategoriaDTO categoriaDto) {
         return await EncapsulateRequestAsync(async () => {
-            var cadastroCategoriaUseCase = new CadastroCategoria(_repository);
+            var cadastroCategoriaUseCase = new CadastroCategoria(_repository, _faixaPrecoRepository);
             var idCategoria = await cadastroCategoriaUseCase.ExecuteAsync(categoriaDto);
             if (idCategoria == 0) {
                 return BadRequest(ApiResultDTO<CategoriaDTO>.CreateFailureResult(cadastroCategoriaUseCase.AggregateErrors()));

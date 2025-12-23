@@ -1,4 +1,4 @@
-using ProximoTurnoApi.Models;
+using ProximoTurnoApi.Infrastructure.Models;
 
 namespace ProximoTurnoApi.Application.DTOs;
 

@@ -1,6 +1,6 @@
 namespace ProximoTurnoApi.Application.DTOs;
 
-public class ApiResultDTO<T> {
+public record ApiResultDTO<T> {
     public bool Success { get; set; }
     public string? Message { get; set; }
     public T? Data { get; set; }

@@ -1,15 +1,16 @@
 using Microsoft.EntityFrameworkCore;
 using ProximoTurnoApi.Application.DTOs;
-using ProximoTurnoApi.Models;
+using ProximoTurnoApi.Infrastructure.Models;
 
 namespace ProximoTurnoApi.Infrastructure.Repositories;
 
 public interface IJogoRepository {
     Task<List<Jogo>> GetAllAsync(FiltroJogoDTO filtro);
+    Task<List<Jogo>> GetAllByIdsAsync(List<int> ids);
     Task<Jogo?> GetByIdAsync(int id);
-    Task AddAsync(Jogo jogo);
-    Task UpdateAsync(Jogo jogo);
+    Task SaveAsync(Jogo jogo);
     Task<bool> DeleteAsync(int id);
+    Task<bool> ExistsAsync(int id);
 }
 
 public class JogoRepository : BaseRepository, IJogoRepository {
@@ -19,7 +20,7 @@ public class JogoRepository : BaseRepository, IJogoRepository {
     }
 
     public async Task<List<Jogo>> GetAllAsync(FiltroJogoDTO filtro) {
-        var query = _dbContext.Jogos.Include(j => j.Categoria).AsQueryable();
+        var query = _dbContext.Jogos.AsQueryable();
 
         if (!string.IsNullOrEmpty(filtro.Nome)) {
             query = query.Where(j => j.Nome.Contains(filtro.Nome.ToLowerInvariant()));
@@ -45,20 +46,27 @@ public class JogoRepository : BaseRepository, IJogoRepository {
             query = query.Where(j => j.MinimoDeJogadores <= filtro.NumeroDeJogadores.Value && j.MaximoDeJogadores >= filtro.NumeroDeJogadores.Value);
         }
 
-        return await query.ToListAsync();
+        return await query
+            .Include(j => j.Categoria)
+            .Include(j => j.Tags)
+            .Include(j => j.Links)
+            .AsNoTracking()
+            .ToListAsync();
     }
 
     public async Task<Jogo?> GetByIdAsync(int id) {
-        return await _dbContext.Jogos.Include(j => j.Categoria).FirstOrDefaultAsync(j => j.Id == id);
+        return await _dbContext.Jogos
+            .Include(j => j.Tags)
+            .Include(j => j.Links)
+            .FirstOrDefaultAsync(j => j.Id == id);
     }
 
-    public async Task AddAsync(Jogo jogo) {
-        _dbContext.Jogos.Add(jogo);
-        await _dbContext.SaveChangesAsync();
-    }
-
-    public async Task UpdateAsync(Jogo jogo) {
-        _dbContext.Entry(jogo).State = EntityState.Modified;
+    public async Task SaveAsync(Jogo jogo) {
+        if (jogo.Id == 0) {
+            _dbContext.Jogos.Add(jogo);
+        } else {
+            _dbContext.Jogos.Update(jogo);
+        }
         await _dbContext.SaveChangesAsync();
     }
 
@@ -66,5 +74,15 @@ public class JogoRepository : BaseRepository, IJogoRepository {
         return await _dbContext.Jogos
             .Where(j => j.Id == id)
             .ExecuteDeleteAsync() > 0;
+    }
+
+    public Task<bool> ExistsAsync(int id) {
+        return _dbContext.Jogos.AnyAsync(j => j.Id == id);
+    }
+
+    public Task<List<Jogo>> GetAllByIdsAsync(List<int> ids) {
+        return _dbContext.Jogos
+            .Where(j => ids.Contains(j.Id))
+            .ToListAsync();
     }
 }

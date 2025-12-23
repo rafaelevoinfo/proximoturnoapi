@@ -1,9 +1,9 @@
 using System.ComponentModel.DataAnnotations;
-using ProximoTurnoApi.Models;
+using ProximoTurnoApi.Infrastructure.Models;
 
 namespace ProximoTurnoApi.Application.DTOs;
 
-public class ClienteDTO {
+public record ClienteDTO {
     public int? Id { get; set; }
 
     [Required, MaxLength(100)]

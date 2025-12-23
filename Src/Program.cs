@@ -10,15 +10,17 @@ if (builder.Environment.IsDevelopment()) {
 }
 
 // Add services to the container.
-builder.Services.AddDbContext<DatabaseContext>(options =>
+builder.Services.AddDbContext<DatabaseContext>(options => {
     options.UseMySql(builder.Configuration.GetConnectionString("DefaultConnection"),
-        new MySqlServerVersion(new Version(9, 4, 0))));
+        new MySqlServerVersion(new Version(9, 4, 0)));
+});
 builder.Services.AddControllers();
 builder.Services.AddScoped<IClienteRepository, ClienteRepository>();
 builder.Services.AddScoped<IJogoRepository, JogoRepository>();
 builder.Services.AddScoped<ICategoriaRepository, CategoriaRepository>();
-builder.Services.AddScoped<IPrecoCategoriaRepository, PrecoCategoriaRepository>();
-builder.Services.AddScoped<IPedidoAluguelRepository, PedidoAluguelRepository>();
+builder.Services.AddScoped<IFaixaPrecoRepository, FaixaPrecoRepository>();
+builder.Services.AddScoped<IPedidoRepository, PedidoRepository>();
+builder.Services.AddScoped<ITagRepository, TagRepository>();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();

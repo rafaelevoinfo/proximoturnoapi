@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace ProximoTurnoApi.Models;
+namespace ProximoTurnoApi.Infrastructure.Models;
 
 [Table("TAG")]
 public class Tag {
@@ -9,7 +9,7 @@ public class Tag {
     public int Id { get; set; }
 
     [Column("DESCRICAO"), MaxLength(100)]
-    public string Nome { get; set; } = null!;
+    public string Nome { get; set => field = value.ToLowerInvariant(); } = null!;
 
     public List<Jogo>? Jogos { get; set; }
 }

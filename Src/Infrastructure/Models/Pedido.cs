@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace ProximoTurnoApi.Models;
+namespace ProximoTurnoApi.Infrastructure.Models;
 
 [Table("PEDIDO")]
 public class Pedido {
@@ -13,5 +13,5 @@ public class Pedido {
     public DateTime DataHora { get; set; }
     [Column("VALOR_TOTAL")]
     public decimal ValorTotal { get; set; }
-    public List<PedidoJogo> Jogos { get; set; } = [];
+    public List<PedidoJogo> Items { get; set; } = [];
 }

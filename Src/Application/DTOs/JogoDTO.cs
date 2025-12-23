@@ -1,22 +1,31 @@
-using ProximoTurnoApi.Models;
+using System.ComponentModel.DataAnnotations;
+using ProximoTurnoApi.Infrastructure.Models;
 
 namespace ProximoTurnoApi.Application.DTOs;
 
-public class JogoDTO {
+public record JogoDTO {
     public int Id { get; set; }
+    [Required]
     public int IdCategoria { get; set; }
+    [Required]
     public string Nome { get; set => field = StringUtils.Capitalize(value); } = string.Empty;
+    [Required]
     public string Descricao { get; set; } = string.Empty;
+    [Required]
     public short IdadeMinima { get; set; }
+    [Required]
     public byte[] Foto { get; set; } = null!;
+    [Required]
     public short MinimoDeJogadores { get; set; }
+    [Required]
     public short MaximoDeJogadores { get; set; }
+    [Required]
     public JogoStatus Status { get; set; }
     public TimeOnly? TempoEstimadoDeJogo { get; set; }
     public decimal? ValorDeCompra { get; set; }
     public DateOnly? DataCompra { get; set; }
-    public List<string>? Tags { get; set; }
-    public List<string>? Links { get; set; }
+    public List<TagDTO>? Tags { get; set; }
+    public List<LinkDTO>? Links { get; set; }
 
     public static JogoDTO FromModel(Jogo jogo) {
         return new JogoDTO {
@@ -31,7 +40,9 @@ public class JogoDTO {
             Status = jogo.Status,
             TempoEstimadoDeJogo = jogo.TempoEstimadoDeJogo,
             ValorDeCompra = jogo.ValorDeCompra,
-            DataCompra = jogo.DataCompra
+            DataCompra = jogo.DataCompra,
+            Links = jogo.Links?.Select(LinkDTO.FromModel).ToList(),
+            Tags = jogo.Tags?.Select(tag => TagDTO.FromModel(tag)).ToList()
         };
     }
 
@@ -47,6 +58,30 @@ public class JogoDTO {
         jogo.TempoEstimadoDeJogo = TempoEstimadoDeJogo;
         jogo.ValorDeCompra = ValorDeCompra;
         jogo.DataCompra = DataCompra;
+        jogo.Tags = Tags?.Select(tag => tag.ToModel()).ToList();
+        if (Links is not null) {
+            jogo.Links ??= [];
+            foreach (var link in jogo.Links) {
+                var linkDto = Links.FirstOrDefault(l => l.Id == link.Id);
+                if (linkDto is null) {
+                    // Remover links que não estão mais no DTO
+                    jogo.Links?.Remove(link);
+                } else {
+                    // Atualizar links existentes
+                    link.Titulo = linkDto.Titulo;
+                    link.Url = linkDto.Url;
+                }
+            }
+
+            foreach (var linkDto in Links) {
+                if (!jogo.Links!.Any(l => l.Id == linkDto.Id)) {
+                    // Adicionar novos links
+                    jogo.Links!.Add(linkDto.ToModel());
+                }
+            }
+
+        }
+
     }
 
     public Jogo ToModel() {
@@ -62,7 +97,9 @@ public class JogoDTO {
             Status = Status,
             TempoEstimadoDeJogo = TempoEstimadoDeJogo,
             ValorDeCompra = ValorDeCompra,
-            DataCompra = DataCompra
+            DataCompra = DataCompra,
+            Links = Links?.Select(link => link.ToModel()).ToList(),
+            Tags = Tags?.Select(tag => tag.ToModel()).ToList()
         };
     }
 }

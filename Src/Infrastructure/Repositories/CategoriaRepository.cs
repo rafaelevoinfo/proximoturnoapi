@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using ProximoTurnoApi.Application.DTOs;
-using ProximoTurnoApi.Models;
+using ProximoTurnoApi.Infrastructure.Models;
 
 namespace ProximoTurnoApi.Infrastructure.Repositories;
 
@@ -24,11 +24,16 @@ public class CategoriaRepository : BaseRepository, ICategoriaRepository {
             query = query.Where(c => c.Descricao.Contains(filtro.Descricao.ToLowerInvariant()));
         }
 
-        return await query.ToListAsync();
+        return await query
+            .Include(c => c.FaixasPreco)
+            .AsNoTracking()
+            .ToListAsync();
     }
 
     public async Task<Categoria?> GetByIdAsync(int id) {
-        return await _dbContext.Categorias.FindAsync(id);
+        return await _dbContext.Categorias
+            .Include(c => c.FaixasPreco)
+            .FirstOrDefaultAsync(c => c.Id == id);
     }
 
     public async Task AddAsync(Categoria categoria) {

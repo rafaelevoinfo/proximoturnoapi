@@ -2,19 +2,18 @@ using ProximoTurnoApi.Application.DTOs;
 using ProximoTurnoApi.Application.UseCases;
 using ProximoTurnoApi.Infrastructure.Repositories;
 
-namespace ProximoTurnoApi.Application.UseCases.Jogo;
+namespace ProximoTurnoApi.Application.UseCases;
 
-public class AtualizarJogo(IJogoRepository repository) : UseCaseBasico {
-    private readonly IJogoRepository _repository = repository;
+public class AtualizarJogo(IJogoRepository jogoRepository, ITagRepository tagRepository, ILogger<AtualizarJogo> _logger) : JogoUseCaseBasico(jogoRepository, tagRepository) {
 
     public async Task<bool> ExecuteAsync(JogoDTO jogoDto) {
-        var jogo = await _repository.GetByIdAsync(jogoDto.Id);
+        var jogo = await _jogoRepository.GetByIdAsync(jogoDto.Id);
         if (jogo is null) {
             AddNotification(UseCaseNotification.Create(UseCaseNotificationType.Error, $"Jogo de id {jogoDto.Id} não encontrado."));
             return false;
         }
 
-        var jogosExistentes = await _repository.GetAllAsync(new FiltroJogoDTO { Nome = jogoDto.Nome });
+        var jogosExistentes = await _jogoRepository.GetAllAsync(new FiltroJogoDTO { Nome = jogoDto.Nome });
         if (jogosExistentes.Any(j => j.Id != jogoDto.Id)) {
             AddNotification(UseCaseNotification.Create(UseCaseNotificationType.Error, "Já existe um jogo com o mesmo nome."));
         }
@@ -23,7 +22,8 @@ public class AtualizarJogo(IJogoRepository repository) : UseCaseBasico {
             return false;
 
         jogoDto.UpdateModel(jogo);
-        await _repository.UpdateAsync(jogo);
+        await AtualizarTags(jogo, _logger);
+        await _jogoRepository.SaveAsync(jogo);
         return IsValid;
     }
 }

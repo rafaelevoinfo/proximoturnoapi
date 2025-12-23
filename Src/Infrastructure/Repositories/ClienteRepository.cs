@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using ProximoTurnoApi.Application.DTOs;
-using ProximoTurnoApi.Models;
+using ProximoTurnoApi.Infrastructure.Models;
 
 namespace ProximoTurnoApi.Infrastructure.Repositories;
 
@@ -10,6 +10,7 @@ public interface IClienteRepository {
     Task AddAsync(Cliente cliente);
     Task UpdateAsync(Cliente cliente);
     Task<bool> DeleteAsync(int id);
+    Task<bool> ExistsAsync(int id);
 
 }
 
@@ -33,7 +34,9 @@ public class ClienteRepository : BaseRepository, IClienteRepository {
             query = query.Where(c => c.Telefone == filtro.Telefone);
         }
 
-        return await query.ToListAsync();
+        return await query
+            .AsNoTracking()
+            .ToListAsync();
     }
 
     public async Task<Cliente?> GetByIdAsync(int id) {
@@ -54,5 +57,9 @@ public class ClienteRepository : BaseRepository, IClienteRepository {
         return await _dbContext.Clientes
             .Where(c => c.Id == id)
             .ExecuteDeleteAsync() > 0;
+    }
+
+    public Task<bool> ExistsAsync(int id) {
+        return _dbContext.Clientes.AnyAsync(c => c.Id == id);
     }
 }

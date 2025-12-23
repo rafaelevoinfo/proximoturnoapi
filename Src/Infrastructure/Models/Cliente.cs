@@ -2,7 +2,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace ProximoTurnoApi.Models;
+namespace ProximoTurnoApi.Infrastructure.Models;
 
 [Table("CLIENTE")]
 public class Cliente {

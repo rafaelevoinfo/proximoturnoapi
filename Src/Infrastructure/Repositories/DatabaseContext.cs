@@ -1,20 +1,14 @@
 using Microsoft.EntityFrameworkCore;
-using ProximoTurnoApi.Models;
-
+using ProximoTurnoApi.Infrastructure.Models;
 namespace ProximoTurnoApi.Infrastructure.Repositories;
 
 public class DatabaseContext(DbContextOptions<DatabaseContext> options) : DbContext(options) {
+
     protected override void OnModelCreating(ModelBuilder modelBuilder) {
         base.OnModelCreating(modelBuilder);
 
         ConfigurePedido(modelBuilder);
         ConfigureJogo(modelBuilder);
-
-        modelBuilder.Entity<CategoriaPreco>()
-            .HasOne(cp => cp.Categoria)
-            .WithMany()
-            .HasForeignKey(cp => cp.IdCategoria)
-            .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<Cliente>(b => {
             b.HasIndex(c => c.Email).IsUnique();
@@ -23,6 +17,19 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : DbCont
 
         modelBuilder.Entity<Categoria>(b => {
             b.HasIndex(c => c.Descricao).IsUnique();
+
+            b.HasMany(c => c.FaixasPreco)
+             .WithMany(f => f.Categorias)
+             .UsingEntity<Dictionary<string, object>>(
+                 "CATEGORIA_FAIXA_PRECO",
+                 j => j.HasOne<FaixaPreco>().WithMany().HasForeignKey("ID_FAIXA_PRECO").OnDelete(DeleteBehavior.Cascade),
+                 t => t.HasOne<Categoria>().WithMany().HasForeignKey("ID_CATEGORIA").OnDelete(DeleteBehavior.Cascade),
+                 je => je.HasKey("ID_CATEGORIA", "ID_FAIXA_PRECO")
+             );
+        });
+
+        modelBuilder.Entity<Tag>(b => {
+            b.HasIndex(t => t.Nome).IsUnique();
         });
 
     }
@@ -52,7 +59,7 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : DbCont
 
     private static void ConfigurePedido(ModelBuilder modelBuilder) {
         modelBuilder.Entity<Pedido>()
-                    .HasMany(p => p.Jogos)
+                    .HasMany(p => p.Items)
                     .WithOne()
                     .HasForeignKey(pj => pj.IdPedido)
                     .OnDelete(DeleteBehavior.Cascade);
@@ -73,7 +80,8 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : DbCont
     public DbSet<Cliente> Clientes { get; set; }
     public DbSet<Jogo> Jogos { get; set; }
     public DbSet<Categoria> Categorias { get; set; }
-    public DbSet<CategoriaPreco> CategoriaPrecos { get; set; }
+    public DbSet<FaixaPreco> FaixasPreco { get; set; }
     public DbSet<Pedido> Pedidos { get; set; }
+    public DbSet<Tag> Tags { get; set; }
 
 }
