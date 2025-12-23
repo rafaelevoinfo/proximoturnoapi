@@ -7,15 +7,15 @@ public class ClienteDTO {
     public int? Id { get; set; }
 
     [Required, MaxLength(100)]
-    public required string Nome { get; set; }
+    public string Nome { get; set => field = StringUtils.Capitalize(value); } = string.Empty;
     [Required, MaxLength(15)]
-    public required string Telefone { get; set; }
+    public string Telefone { get; set; } = string.Empty;
 
     [Required, MaxLength(400)]
-    public required string Endereco { get; set; }
+    public string Endereco { get; set; } = string.Empty;
 
     [Required, MaxLength(100)]
-    public required string Email { get; set; }
+    public string Email { get; set; } = string.Empty;
 
     public DateOnly? DataNascimento { get; set; }
 
@@ -35,7 +35,7 @@ public class ClienteDTO {
         };
     }
 
-    public Cliente ToModel(Cliente cliente) {
+    public void UpdateModel(Cliente cliente) {
         cliente.Nome = Nome;
         cliente.Telefone = Telefone;
         cliente.Endereco = Endereco;
@@ -43,13 +43,12 @@ public class ClienteDTO {
         cliente.DataNascimento = DataNascimento;
         cliente.ComoNosConheceu = ComoNosConheceu;
         cliente.AceitaReceberOfertas = AceitaReceberOfertas;
-        return cliente;
     }
 
     public static ClienteDTO FromModel(Cliente cliente) {
         return new ClienteDTO {
             Id = cliente.Id,
-            Nome = Thread.CurrentThread.CurrentCulture.TextInfo.ToTitleCase(cliente.Nome),
+            Nome = cliente.Nome,
             Telefone = cliente.Telefone,
             Endereco = cliente.Endereco,
             Email = cliente.Email,

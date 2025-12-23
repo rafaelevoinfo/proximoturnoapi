@@ -32,6 +32,9 @@ public class ClientesController(ILogger<ControllerBasico> logger, IClienteReposi
     [HttpPut("{id}")]
     public async Task<IActionResult> PutCliente(int id, ClienteDTO cliente) {
         return await EncapsulateRequestAsync(async () => {
+            if (id != cliente.Id) {
+                return BadRequest(ApiResultDTO<ClienteDTO>.CreateFailureResult("ID do cliente na URL não corresponde ao ID no corpo da requisição."));
+            }
             var atualizarCliente = new AtualizarCliente(_repository);
             var result = await atualizarCliente.ExecuteAsync(cliente);
             if (!result) {
@@ -45,11 +48,11 @@ public class ClientesController(ILogger<ControllerBasico> logger, IClienteReposi
     public async Task<IActionResult> PostCliente(ClienteDTO clienteDto) {
         return await EncapsulateRequestAsync(async () => {
             var cadastroClienteUseCase = new CadastroCliente(_repository);
-            var result = await cadastroClienteUseCase.ExecuteAsync(clienteDto);
-            if (!result) {
+            var idCliente = await cadastroClienteUseCase.ExecuteAsync(clienteDto);
+            if (idCliente == 0) {
                 return BadRequest(ApiResultDTO<ClienteDTO>.CreateFailureResult(cadastroClienteUseCase.AggregateErrors()));
             }
-            return Ok(ApiResultDTO<ClienteDTO>.CreateSuccessResult(null, "Cliente criado com sucesso."));
+            return Ok(ApiResultDTO<ClienteDTO>.CreateSuccessResult(new ClienteDTO() { Id = idCliente }, "Cliente criado com sucesso."));
         });
     }
 

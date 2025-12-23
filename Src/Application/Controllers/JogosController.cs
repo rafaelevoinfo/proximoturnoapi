@@ -1,61 +1,71 @@
 using Microsoft.AspNetCore.Mvc;
-using ProximoTurnoApi.Models;
+using ProximoTurnoApi.Application.DTOs;
+using ProximoTurnoApi.Application.UseCases.Jogo;
 using ProximoTurnoApi.Infrastructure.Repositories;
 
 namespace ProximoTurnoApi.Application.Controllers;
 
 [Route("api/jogos")]
 [ApiController]
-public class JogosController : ControllerBase {
-    private readonly IJogoRepository _repository;
-
-    public JogosController(IJogoRepository repository) {
-        _repository = repository;
-    }
+public class JogosController(ILogger<ControllerBasico> logger, IJogoRepository _repository) : ControllerBasico(logger) {
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Jogo>>> GetJogos() {
-        return await _repository.GetAllAsync();
+    public async Task<IActionResult> GetJogos([FromQuery] FiltroJogoDTO filtro) {
+        _logger.LogInformation("Recuperando jogos.");
+        return await EncapsulateRequestAsync(async () => {
+            var jogos = await _repository.GetAllAsync(filtro);
+            return Ok(ApiResultDTO<List<JogoDTO>>.CreateSuccessResult(jogos.Select(JogoDTO.FromModel).ToList(), "Jogos recuperados com sucesso."));
+        });
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<Jogo>> GetJogo(int id) {
-        var jogo = await _repository.GetByIdAsync(id);
-
-        if (jogo == null) {
-            return NotFound();
-        }
-
-        return jogo;
+    public async Task<IActionResult> GetJogo(int id) {
+        return await EncapsulateRequestAsync(async () => {
+            var jogo = await _repository.GetByIdAsync(id);
+            if (jogo == null) {
+                return NotFound(ApiResultDTO<JogoDTO>.CreateFailureResult($"Jogo de id {id} não encontrado."));
+            }
+            return Ok(ApiResultDTO<JogoDTO>.CreateSuccessResult(JogoDTO.FromModel(jogo), "Jogo recuperado com sucesso."));
+        });
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> PutJogo(int id, Jogo jogo) {
-        if (id != jogo.Id) {
-            return BadRequest();
-        }
+    public async Task<IActionResult> PutJogo(int id, JogoDTO jogoDto) {
+        return await EncapsulateRequestAsync(async () => {
+            if (id != jogoDto.Id) {
+                return BadRequest(ApiResultDTO<object>.CreateFailureResult("ID do jogo na URL não corresponde ao ID no corpo da requisição."));
+            }
 
-        await _repository.UpdateAsync(jogo);
-
-        return NoContent();
+            var atualizarJogo = new AtualizarJogo(_repository);
+            var result = await atualizarJogo.ExecuteAsync(jogoDto);
+            if (!result) {
+                return BadRequest(ApiResultDTO<JogoDTO>.CreateFailureResult(atualizarJogo.AggregateErrors()));
+            }
+            return Ok(ApiResultDTO<JogoDTO>.CreateSuccessResult(null, "Jogo atualizado com sucesso."));
+        });
     }
 
     [HttpPost]
-    public async Task<ActionResult<Jogo>> PostJogo(Jogo jogo) {
-        await _repository.AddAsync(jogo);
-
-        return CreatedAtAction("GetJogo", new { id = jogo.Id }, jogo);
+    public async Task<IActionResult> PostJogo(JogoDTO jogoDto) {
+        return await EncapsulateRequestAsync(async () => {
+            var cadastroJogo = new CadastroJogo(_repository);
+            var idJogo = await cadastroJogo.ExecuteAsync(jogoDto);
+            if (idJogo == 0) {
+                return BadRequest(ApiResultDTO<JogoDTO>.CreateFailureResult(cadastroJogo.AggregateErrors()));
+            }
+            return Ok(ApiResultDTO<JogoDTO>.CreateSuccessResult(new JogoDTO() { Id = idJogo }, "Jogo criado com sucesso."));
+        });
     }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteJogo(int id) {
-        var jogo = await _repository.GetByIdAsync(id);
-        if (jogo == null) {
-            return NotFound();
-        }
-
-        await _repository.DeleteAsync(id);
-
-        return NoContent();
+        return await EncapsulateRequestAsync(async () => {
+            var jogo = await _repository.GetByIdAsync(id);
+            if (jogo == null) {
+                return NotFound(ApiResultDTO<object>.CreateFailureResult($"Jogo de id {id} não encontrado."));
+            }
+            await _repository.DeleteAsync(id);
+            return Ok(ApiResultDTO<object>.CreateSuccessResult(null, "Jogo excluído com sucesso."));
+        });
     }
 }

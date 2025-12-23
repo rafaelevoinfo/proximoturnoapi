@@ -7,39 +7,34 @@ public interface IPrecoCategoriaRepository {
     Task<CategoriaPreco?> GetByIdAsync(int id);
     Task AddAsync(CategoriaPreco precoCategoria);
     Task UpdateAsync(CategoriaPreco precoCategoria);
-    Task DeleteAsync(int id);
+    Task<bool> DeleteAsync(int id);
 }
 
-public class PrecoCategoriaRepository : IPrecoCategoriaRepository {
-    private readonly DatabaseContext _context;
-
-    public PrecoCategoriaRepository(DatabaseContext context) {
-        _context = context;
+public class PrecoCategoriaRepository : BaseRepository, IPrecoCategoriaRepository {
+    public PrecoCategoriaRepository(DatabaseContext context) : base(context) {
     }
 
     public async Task<List<CategoriaPreco>> GetAllAsync() {
-        return await _context.CategoriaPrecos.Include(p => p.Categoria).ToListAsync();
+        return await _dbContext.CategoriaPrecos.Include(p => p.Categoria).ToListAsync();
     }
 
     public async Task<CategoriaPreco?> GetByIdAsync(int id) {
-        return await _context.CategoriaPrecos.Include(p => p.Categoria).FirstOrDefaultAsync(p => p.Id == id);
+        return await _dbContext.CategoriaPrecos.Include(p => p.Categoria).FirstOrDefaultAsync(p => p.Id == id);
     }
 
     public async Task AddAsync(CategoriaPreco precoCategoria) {
-        _context.CategoriaPrecos.Add(precoCategoria);
-        await _context.SaveChangesAsync();
+        _dbContext.CategoriaPrecos.Add(precoCategoria);
+        await _dbContext.SaveChangesAsync();
     }
 
     public async Task UpdateAsync(CategoriaPreco precoCategoria) {
-        _context.Entry(precoCategoria).State = EntityState.Modified;
-        await _context.SaveChangesAsync();
+        _dbContext.Entry(precoCategoria).State = EntityState.Modified;
+        await _dbContext.SaveChangesAsync();
     }
 
-    public async Task DeleteAsync(int id) {
-        var precoCategoria = await _context.CategoriaPrecos.FindAsync(id);
-        if (precoCategoria != null) {
-            _context.CategoriaPrecos.Remove(precoCategoria);
-            await _context.SaveChangesAsync();
-        }
+    public async Task<bool> DeleteAsync(int id) {
+        return await _dbContext.CategoriaPrecos
+            .Where(p => p.Id == id)
+            .ExecuteDeleteAsync() > 0;
     }
 }

@@ -35,7 +35,7 @@ public class AtualizarCliente(IClienteRepository repository) : UseCaseBasico {
         if (!IsValid)
             return false;
 
-        clienteDto.ToModel(cliente);
+        clienteDto.UpdateModel(cliente);
         await _repository.UpdateAsync(cliente);
         return IsValid;
     }

@@ -13,11 +13,9 @@ public interface IClienteRepository {
 
 }
 
-public class ClienteRepository : IClienteRepository {
-    private readonly DatabaseContext _dbContext;
+public class ClienteRepository : BaseRepository, IClienteRepository {
 
-    public ClienteRepository(DatabaseContext context) {
-        _dbContext = context;
+    public ClienteRepository(DatabaseContext context) : base(context) {
     }
 
     public async Task<List<Cliente>> GetAllAsync(FiltroClienteDTO filtro) {

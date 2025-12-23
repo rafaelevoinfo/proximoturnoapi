@@ -21,6 +21,10 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : DbCont
             b.HasIndex(c => c.Telefone).IsUnique();
         });
 
+        modelBuilder.Entity<Categoria>(b => {
+            b.HasIndex(c => c.Descricao).IsUnique();
+        });
+
     }
 
     private static void ConfigureJogo(ModelBuilder modelBuilder) {

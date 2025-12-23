@@ -1,46 +1,49 @@
 using Microsoft.EntityFrameworkCore;
+using ProximoTurnoApi.Application.DTOs;
 using ProximoTurnoApi.Models;
 
 namespace ProximoTurnoApi.Infrastructure.Repositories;
 
 public interface ICategoriaRepository {
-    Task<List<Categoria>> GetAllAsync();
+    Task<List<Categoria>> GetAllAsync(FiltroCategoriaDTO filtro);
     Task<Categoria?> GetByIdAsync(int id);
     Task AddAsync(Categoria categoria);
     Task UpdateAsync(Categoria categoria);
-    Task DeleteAsync(int id);
+    Task<bool> DeleteAsync(int id);
 }
 
-public class CategoriaRepository : ICategoriaRepository {
-    private readonly DatabaseContext _context;
+public class CategoriaRepository : BaseRepository, ICategoriaRepository {
 
-    public CategoriaRepository(DatabaseContext context) {
-        _context = context;
+    public CategoriaRepository(DatabaseContext context) : base(context) {
     }
 
-    public async Task<List<Categoria>> GetAllAsync() {
-        return await _context.Categorias.ToListAsync();
+    public async Task<List<Categoria>> GetAllAsync(FiltroCategoriaDTO filtro) {
+        var query = _dbContext.Categorias.AsQueryable();
+
+        if (!string.IsNullOrEmpty(filtro.Descricao)) {
+            query = query.Where(c => c.Descricao.Contains(filtro.Descricao.ToLowerInvariant()));
+        }
+
+        return await query.ToListAsync();
     }
 
     public async Task<Categoria?> GetByIdAsync(int id) {
-        return await _context.Categorias.FindAsync(id);
+        return await _dbContext.Categorias.FindAsync(id);
     }
 
     public async Task AddAsync(Categoria categoria) {
-        _context.Categorias.Add(categoria);
-        await _context.SaveChangesAsync();
+        _dbContext.Categorias.Add(categoria);
+        await _dbContext.SaveChangesAsync();
     }
 
     public async Task UpdateAsync(Categoria categoria) {
-        _context.Entry(categoria).State = EntityState.Modified;
-        await _context.SaveChangesAsync();
+        _dbContext.Entry(categoria).State = EntityState.Modified;
+        await _dbContext.SaveChangesAsync();
     }
 
-    public async Task DeleteAsync(int id) {
-        var categoria = await _context.Categorias.FindAsync(id);
-        if (categoria != null) {
-            _context.Categorias.Remove(categoria);
-            await _context.SaveChangesAsync();
-        }
+    public async Task<bool> DeleteAsync(int id) {
+        return await _dbContext.Categorias
+            .Where(c => c.Id == id)
+            .ExecuteDeleteAsync() > 0;
     }
 }

@@ -7,7 +7,7 @@ namespace ProximoTurnoApi.Application.UseCases;
 public class CadastroCliente(IClienteRepository repository) : UseCaseBasico {
     private readonly IClienteRepository _repository = repository;
 
-    public async Task<bool> ExecuteAsync(ClienteDTO clienteDto) {
+    public async Task<int> ExecuteAsync(ClienteDTO clienteDto) {
         var filtro = new FiltroClienteDTO {
             Email = clienteDto.Email
         };
@@ -27,10 +27,10 @@ public class CadastroCliente(IClienteRepository repository) : UseCaseBasico {
         }
 
         if (!IsValid)
-            return false;
+            return 0;
 
         var cliente = clienteDto.ToModel();
         await _repository.AddAsync(cliente);
-        return IsValid;
+        return cliente.Id;
     }
 }
