@@ -32,13 +32,18 @@ public class PedidoUseCaseBasico(IPedidoRepository pedidoRepository, IJogoReposi
         return IsValid;
     }
 
-    protected async Task AtualizarStatusJogos(List<PedidoJogo> itensPedido) {
-        var jogos = await _jogoRepository.GetAllByIdsAsync(itensPedido.Select(i => i.IdJogo).ToList());
+    protected async Task AtualizarStatusJogos(List<ItemPedido> itensPedido, StatusJogo statusJogo) {
         foreach (var item in itensPedido) {
-            var jogo = jogos.FirstOrDefault(j => j.Id == item.IdJogo);
-            if (jogo != null) {
-                jogo.Status = item.Status.ToJogoStatus();
+            var jogo = item.Jogo;
+            if (jogo is null) {
+                jogo = await _jogoRepository.GetByIdAsync(item.IdJogo);
             }
+            if (jogo is null) {
+                AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest, $"Jogo {item.IdJogo} não encontrado para atualização de status."));
+                continue;
+            }
+            jogo.Status = statusJogo;
+            await _jogoRepository.SaveAsync(jogo, false);
         }
     }
 }

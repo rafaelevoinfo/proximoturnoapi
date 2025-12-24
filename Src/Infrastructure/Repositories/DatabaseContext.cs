@@ -66,11 +66,11 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : DbCont
 
         modelBuilder.Entity<Pedido>()
             .HasOne(p => p.Cliente)
-            .WithOne()
-            .HasForeignKey<Pedido>(p => p.IdCliente)
+            .WithMany()
+            .HasForeignKey(p => p.IdCliente)
             .OnDelete(DeleteBehavior.Cascade);
 
-        modelBuilder.Entity<PedidoJogo>()
+        modelBuilder.Entity<ItemPedido>()
             .HasOne(pj => pj.Jogo)
             .WithMany()
             .HasForeignKey(pj => pj.IdJogo)

@@ -3,8 +3,9 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ProximoTurnoApi.Infrastructure.Models;
 
-public enum JogoStatus : short {
+public enum StatusJogo : short {
     Disponivel,
+    Reservado,
     Alugado,
     Indisponivel
 }
@@ -18,16 +19,16 @@ public class Jogo {
     public int IdCategoria { get; set; }
 
     [Column("NOME"), MaxLength(100)]
-    public required string Nome { get; set; }
+    public string Nome { get; set; } = null!;
 
     [Column("DESCRICAO")]
-    public required string Descricao { get; set; }
+    public string Descricao { get; set; } = null!;
 
     [Column("IDADE_MINIMA")]
     public short IdadeMinima { get; set; }
 
     [Column("FOTO")]
-    public required byte[] Foto { get; set; }
+    public byte[] Foto { get; set; } = null!;
 
     [Column("MINIMO_JOGADORES")]
     public short MinimoDeJogadores { get; set; }
@@ -36,7 +37,7 @@ public class Jogo {
     public short MaximoDeJogadores { get; set; }
 
     [Column("STATUS")]
-    public JogoStatus Status { get; set; }
+    public StatusJogo Status { get; set; }
 
     [Column("TEMPO_ESTIMADO_JOGO")]
     public TimeOnly? TempoEstimadoDeJogo { get; set; }

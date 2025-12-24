@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using ProximoTurnoApi.Infrastructure.Repositories;
 
@@ -11,9 +12,11 @@ using ProximoTurnoApi.Infrastructure.Repositories;
 namespace ProximoTurnoApi.Migrations
 {
     [DbContext(typeof(DatabaseContext))]
-    partial class DatabaseContextModelSnapshot : ModelSnapshot
+    [Migration("20251224124506_StatusPedido")]
+    partial class StatusPedido
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -315,7 +318,8 @@ namespace ProximoTurnoApi.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("IdCliente");
+                    b.HasIndex("IdCliente")
+                        .IsUnique();
 
                     b.ToTable("PEDIDO");
                 });
@@ -413,8 +417,8 @@ namespace ProximoTurnoApi.Migrations
             modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.Pedido", b =>
                 {
                     b.HasOne("ProximoTurnoApi.Infrastructure.Models.Cliente", "Cliente")
-                        .WithMany()
-                        .HasForeignKey("IdCliente")
+                        .WithOne()
+                        .HasForeignKey("ProximoTurnoApi.Infrastructure.Models.Pedido", "IdCliente")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 

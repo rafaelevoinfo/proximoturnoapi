@@ -3,6 +3,18 @@ using ProximoTurnoApi.Infrastructure.Models;
 
 namespace ProximoTurnoApi.Application.DTOs;
 
+
+public record JogoResumoDTO {
+    public int Id { get; set; }
+    public string Nome { get; set; } = string.Empty;
+
+    public static JogoResumoDTO FromModel(Jogo jogo) {
+        return new JogoResumoDTO {
+            Id = jogo.Id,
+            Nome = jogo.Nome,
+        };
+    }
+}
 public record JogoDTO {
     public int Id { get; set; }
     [Required]
@@ -20,7 +32,7 @@ public record JogoDTO {
     [Required]
     public short MaximoDeJogadores { get; set; }
     [Required]
-    public JogoStatus Status { get; set; }
+    public StatusJogo Status { get; set; }
     public TimeOnly? TempoEstimadoDeJogo { get; set; }
     public decimal? ValorDeCompra { get; set; }
     public DateOnly? DataCompra { get; set; }

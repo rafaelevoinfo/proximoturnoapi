@@ -4,11 +4,11 @@ using ProximoTurnoApi.Infrastructure.Models;
 
 namespace ProximoTurnoApi.Infrastructure.Repositories;
 
-public interface IJogoRepository {
+public interface IJogoRepository : IBaseRepository {
     Task<List<Jogo>> GetAllAsync(FiltroJogoDTO filtro);
     Task<List<Jogo>> GetAllByIdsAsync(List<int> ids);
     Task<Jogo?> GetByIdAsync(int id);
-    Task SaveAsync(Jogo jogo);
+    Task SaveAsync(Jogo jogo, bool saveChanges = true);
     Task<bool> DeleteAsync(int id);
     Task<bool> ExistsAsync(int id);
 }
@@ -61,12 +61,14 @@ public class JogoRepository : BaseRepository, IJogoRepository {
             .FirstOrDefaultAsync(j => j.Id == id);
     }
 
-    public async Task SaveAsync(Jogo jogo) {
+    public async Task SaveAsync(Jogo jogo, bool saveChanges = true) {
         if (jogo.Id == 0) {
             _dbContext.Jogos.Add(jogo);
         } else {
             _dbContext.Jogos.Update(jogo);
         }
+        if (!saveChanges)
+            return;
         await _dbContext.SaveChangesAsync();
     }
 
@@ -83,6 +85,12 @@ public class JogoRepository : BaseRepository, IJogoRepository {
     public Task<List<Jogo>> GetAllByIdsAsync(List<int> ids) {
         return _dbContext.Jogos
             .Where(j => ids.Contains(j.Id))
+            //Nao quero carregar todos os dados do jogo
+            .Select(j => new Jogo {
+                Id = j.Id,
+                Nome = j.Nome,
+                Status = j.Status
+            })
             .ToListAsync();
     }
 }

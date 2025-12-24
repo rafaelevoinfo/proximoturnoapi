@@ -8,7 +8,7 @@ public class AtualizarPedido(IPedidoRepository _pedidoRepository, IClienteReposi
 
     public async Task ExecuteAsync(NovoPedidoDTO novoPedidoDto) {
 
-        if (!await ValidarDados(novoPedidoDto.IdCliente, novoPedidoDto.Items!.Select(i => i.IdJogo).ToList())) {
+        if (!await ValidarDados(novoPedidoDto.IdCliente, novoPedidoDto.Items!.Select(i => i.Jogo!.Id).ToList())) {
             return;
         }
 
@@ -27,23 +27,18 @@ public class AtualizarPedido(IPedidoRepository _pedidoRepository, IClienteReposi
         foreach (var item in novoPedidoDto.Items!) {
             var itemExistente = pedidoExistente.Items.FirstOrDefault(pi => pi.Id == item.Id);
             if (itemExistente != null) {
-                itemExistente.Valor = item.Valor;
-                itemExistente.DataDevolucao = item.DataDevolucao;
-                itemExistente.Status = item.Status;
+                itemExistente.Valor = item.Valor.GetValueOrDefault();
+                itemExistente.DataDevolucao = item.DataDevolucao.GetValueOrDefault();
             } else {
-                pedidoExistente.Items.Add(new PedidoJogo {
-                    IdJogo = item.IdJogo,
-                    Valor = item.Valor,
-                    DataDevolucao = item.DataDevolucao,
-                    Status = item.Status
+                pedidoExistente.Items.Add(new ItemPedido {
+                    IdJogo = item.Jogo!.Id,
+                    Valor = item.Valor.GetValueOrDefault(),
+                    DataDevolucao = item.DataDevolucao.GetValueOrDefault(),
                 });
             }
         }
 
-        pedidoExistente.ValorTotal = novoPedidoDto.Items!.Sum(i => i.Valor);
-
-        await _pedidoRepository.SaveAsync(pedidoExistente, false);
-        await AtualizarStatusJogos(pedidoExistente.Items);
-        await _pedidoRepository.SaveChangesAsync();
+        pedidoExistente.ValorTotal = novoPedidoDto.Items!.Sum(i => i.Valor.GetValueOrDefault());
+        await _pedidoRepository.SaveAsync(pedidoExistente, true);
     }
 }

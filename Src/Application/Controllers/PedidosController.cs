@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using ProximoTurnoApi.Application.DTOs;
 using ProximoTurnoApi.Application.UseCases;
+using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Infrastructure.Repositories;
-using ProximoTurnoApi.Models;
 
 namespace ProximoTurnoApi.Application.Controllers;
 
@@ -13,22 +13,28 @@ public class PedidosController(ILogger<ControllerBasico> logger,
     IClienteRepository _clienteRepository,
     IJogoRepository _jogoRepository) : ControllerBasico(logger) {
 
-    // [HttpGet]
-    // public async Task<ActionResult<IEnumerable<PedidoDTO>>> GetPedidosAlugueis() {
-    //     //return await _repository.GetAllAsync();
-    // }
 
-    // [HttpGet("{id}")]
-    // public async Task<IActionResult> GetPedido(int id) {
-    //     return await EncapsulateRequestAsync(async () => {
-    //         var pedido = await _repository.GetByIdAsync(id);
-    //         if (pedido == null) {
-    //             return NotFound(ApiResultDTO<PedidoDTO>.CreateFailure("Pedido não encontrado"));
-    //         }
+    [HttpGet()]
+    public async Task<IActionResult> GetAll(FiltroPedidoDTO filtro) {
+        return await EncapsulateRequestAsync(async () => {
+            var pedidos = (await _pedidoRepository.GetAllAsync(filtro))
+                .Select(PedidoDTO.FromModel)
+                .ToList();
+            return Ok(ApiResultDTO<List<PedidoDTO>>.CreateSuccessResult(pedidos, "Pedidos encontrados com sucesso"));
+        });
+    }
 
-    //         return pedido;
-    //     });
-    // }
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetPedido(int id) {
+        return await EncapsulateRequestAsync(async () => {
+            var pedido = await _pedidoRepository.GetByIdAsync(id);
+            if (pedido == null) {
+                return NotFound(ApiResultDTO<PedidoDTO>.CreateFailureResult("Pedido não encontrado"));
+            }
+
+            return Ok(ApiResultDTO<PedidoDTO>.CreateSuccessResult(PedidoDTO.FromModel(pedido), "Pedido encontrado com sucesso"));
+        });
+    }
 
     [HttpPut("{id}")]
     public async Task<IActionResult> AtualizarPedido(int id, NovoPedidoDTO novoPedido) {
@@ -45,6 +51,42 @@ public class PedidosController(ILogger<ControllerBasico> logger,
         });
     }
 
+    [HttpPut("{id}/status")]
+    public async Task<IActionResult> AtualizarStatusPedido(int id, StatusPedido novoStatus) {
+        return await EncapsulateRequestAsync(async () => {
+            var atualizarStatusPedidoUseCase = new AtualizarStatusPedido(_pedidoRepository, _jogoRepository, _clienteRepository);
+            await atualizarStatusPedidoUseCase.ExecuteAsync(id, novoStatus);
+            if (!atualizarStatusPedidoUseCase.IsValid) {
+                return BadRequest(ApiResultDTO<PedidoDTO>.CreateFailureResult(atualizarStatusPedidoUseCase.AggregateErrors()));
+            }
+            return Ok(ApiResultDTO<PedidoDTO>.CreateSuccessResult(null, "Status do pedido atualizado com sucesso"));
+        });
+    }
+
+    [HttpPut("{id}/renovar")]
+    public async Task<IActionResult> RenovarPedido(int id, List<ItemPedidoDTO> itensRenovacao) {
+        return await EncapsulateRequestAsync(async () => {
+            var renovarPedidoUseCase = new RenovarPedido(_pedidoRepository, _jogoRepository, _clienteRepository);
+            await renovarPedidoUseCase.ExecuteAsync(id, itensRenovacao);
+            if (!renovarPedidoUseCase.IsValid) {
+                return BadRequest(ApiResultDTO<PedidoDTO>.CreateFailureResult(renovarPedidoUseCase.AggregateErrors()));
+            }
+            return Ok(ApiResultDTO<PedidoDTO>.CreateSuccessResult(null, "Pedido renovado com sucesso"));
+        });
+    }
+
+    [HttpPut("{id}/devolver")]
+    public async Task<IActionResult> DevolverItemsPedido(int id, List<int> idsItensDevolvidos) {
+        return await EncapsulateRequestAsync(async () => {
+            var renovarPedidoUseCase = new DevolverItensPedido(_jogoRepository, _pedidoRepository);
+            await renovarPedidoUseCase.ExecuteAsync(id, idsItensDevolvidos);
+            if (!renovarPedidoUseCase.IsValid) {
+                return BadRequest(ApiResultDTO<PedidoDTO>.CreateFailureResult(renovarPedidoUseCase.AggregateErrors()));
+            }
+            return Ok(ApiResultDTO<PedidoDTO>.CreateSuccessResult(null, "Items devolvidos com sucesso"));
+        });
+    }
+
     [HttpPost]
     public async Task<IActionResult> NovoPedido(NovoPedidoDTO novoPedido) {
         return await EncapsulateRequestAsync(async () => {
@@ -57,17 +99,17 @@ public class PedidosController(ILogger<ControllerBasico> logger,
         });
     }
 
-    // [HttpDelete("{id}")]
-    // public async Task<IActionResult> DeletePedidoAluguel(int id) {
-    //     var pedidoAluguel = await _repository.GetByIdAsync(id);
-    //     if (pedidoAluguel == null) {
-    //         return NotFound();
-    //     }
-
-    //     await _repository.DeleteAsync(id);
-
-    //     return NoContent();
-    // }
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> CancelarPedido(int id) {
+        return await EncapsulateRequestAsync(async () => {
+            var atualizarStatusPedidoUseCase = new AtualizarStatusPedido(_pedidoRepository, _jogoRepository, _clienteRepository);
+            await atualizarStatusPedidoUseCase.ExecuteAsync(id, StatusPedido.Cancelado);
+            if (!atualizarStatusPedidoUseCase.IsValid) {
+                return BadRequest(ApiResultDTO<PedidoDTO>.CreateFailureResult(atualizarStatusPedidoUseCase.AggregateErrors()));
+            }
+            return Ok(ApiResultDTO<PedidoDTO>.CreateSuccessResult(null, "Pedido cancelado com sucesso"));
+        });
+    }
 
     // [HttpPost("{pedidoId}/devolver")]
     // public async Task<IActionResult> DevolverJogosPedido(int pedidoId) {
@@ -81,30 +123,5 @@ public class PedidosController(ILogger<ControllerBasico> logger,
     //     return NoContent();
     // }
 
-    // [HttpPost("{pedidoId}/devolver/{jogoId}")]
-    // public async Task<IActionResult> DevolverJogoAvulso(int pedidoId, int jogoId) {
-    //     var pedido = await _repository.GetByIdAsync(pedidoId);
-    //     if (pedido == null || pedido.Jogos == null) {
-    //         return NotFound();
-    //     }
 
-    //     var jogo = pedido.Jogos.FirstOrDefault(j => j.IdJogo == jogoId);
-    //     if (jogo == null) {
-    //         return NotFound();
-    //     }
-
-    //     await _repository.DevolverJogoAvulsoAsync(pedidoId, jogoId);
-
-    //     return NoContent();
-    // }
-
-    // [HttpPost("renovar")]
-    // public async Task<ActionResult<Pedido>> RenovarPedido(RenovarPedidoRequest request) {
-    //     var novoPedido = await _repository.RenovarPedidoAsync(request);
-    //     if (novoPedido == null) {
-    //         return NotFound();
-    //     }
-
-    //     return CreatedAtAction("GetPedidoAluguel", new { id = novoPedido.Id }, novoPedido);
-    // }
 }

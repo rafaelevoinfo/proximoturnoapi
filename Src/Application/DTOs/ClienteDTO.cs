@@ -3,6 +3,18 @@ using ProximoTurnoApi.Infrastructure.Models;
 
 namespace ProximoTurnoApi.Application.DTOs;
 
+public record ClienteResumoDTO {
+    public int Id { get; set; }
+    public string Nome { get; set; } = string.Empty;
+
+    public static ClienteResumoDTO FromModel(Cliente cliente) {
+        return new ClienteResumoDTO {
+            Id = cliente.Id,
+            Nome = cliente.Nome,
+        };
+    }
+}
+
 public record ClienteDTO {
     public int? Id { get; set; }
 

@@ -2,6 +2,12 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ProximoTurnoApi.Infrastructure.Models;
 
+public enum StatusPedido : short {
+    Criado,
+    Entregue,
+    Cancelado
+}
+
 [Table("PEDIDO")]
 public class Pedido {
     [Column("ID")]
@@ -13,5 +19,7 @@ public class Pedido {
     public DateTime DataHora { get; set; }
     [Column("VALOR_TOTAL")]
     public decimal ValorTotal { get; set; }
-    public List<PedidoJogo> Items { get; set; } = [];
+    [Column("STATUS")]
+    public StatusPedido Status { get; set; }
+    public List<ItemPedido> Items { get; set; } = [];
 }
