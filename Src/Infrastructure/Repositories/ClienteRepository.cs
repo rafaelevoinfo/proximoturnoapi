@@ -7,6 +7,7 @@ namespace ProximoTurnoApi.Infrastructure.Repositories;
 public interface IClienteRepository {
     Task<List<Cliente>> GetAllAsync(FiltroClienteDTO filtro);
     Task<Cliente?> GetByIdAsync(int id);
+    Task<Cliente?> GetByEmailAsync(string email);
     Task AddAsync(Cliente cliente);
     Task UpdateAsync(Cliente cliente);
     Task<bool> DeleteAsync(int id);
@@ -41,6 +42,10 @@ public class ClienteRepository : BaseRepository, IClienteRepository {
 
     public async Task<Cliente?> GetByIdAsync(int id) {
         return await _dbContext.Clientes.FirstOrDefaultAsync(c => c.Id == id);
+    }
+
+    public async Task<Cliente?> GetByEmailAsync(string email) {
+        return await _dbContext.Clientes.FirstOrDefaultAsync(c => c.Email == email);
     }
 
     public async Task AddAsync(Cliente cliente) {

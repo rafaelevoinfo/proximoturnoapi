@@ -1,4 +1,8 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi.Models;
+using ProximoTurnoApi.Application.Swagger;
+using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Infrastructure.Repositories;
 using Serilog;
 
@@ -21,9 +25,12 @@ builder.Services.AddScoped<ICategoriaRepository, CategoriaRepository>();
 builder.Services.AddScoped<IFaixaPrecoRepository, FaixaPrecoRepository>();
 builder.Services.AddScoped<IPedidoRepository, PedidoRepository>();
 builder.Services.AddScoped<ITagRepository, TagRepository>();
+
+builder.Services.AddIdentityUser();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddDocumentation();
+// builder.Services.AddEndpointsApiExplorer();
+// builder.Services.AddSwaggerGen();
 
 builder.Host.UseSerilog((hostingContext, loggerConfiguration) => loggerConfiguration.ReadFrom.Configuration(hostingContext.Configuration));
 
@@ -37,7 +44,71 @@ if (app.Environment.IsDevelopment()) {
 }
 
 app.UseHttpsRedirection();
+app.MapGroup("/api")
+   .MapIdentityApi<Usuario>();
 
 app.MapControllers();
 
+if (app.Environment.IsDevelopment()) {
+    using var scope = app.Services.CreateScope();
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+
+    if (!await roleManager.RoleExistsAsync(Roles.Admin)) {
+        await roleManager.CreateAsync(new IdentityRole(Roles.Admin));
+    }
+
+    if (!await roleManager.RoleExistsAsync(Roles.Member)) {
+        await roleManager.CreateAsync(new IdentityRole(Roles.Member));
+    }
+
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<Usuario>>();
+    var admin = await userManager.FindByEmailAsync("rafaelevoinfo@gmail.com");
+    if (admin is null) {
+        admin = new Usuario();
+        await userManager.CreateAsync(admin);
+    }
+    if (!await userManager.IsInRoleAsync(admin, Roles.Admin)) {
+        await userManager.AddToRoleAsync(admin, Roles.Admin);
+    }
+}
+
 app.Run();
+
+
+static class Extensions {
+    public static void AddIdentityUser(this IServiceCollection services) {
+        services.AddAuthorization()
+                .AddAuthentication()
+                //In case you are working with cookies
+                //.AddCookie(IdentityConstants.ApplicationScheme);
+                .AddBearerToken(IdentityConstants.BearerScheme);
+
+
+        // services.AddIdentity<Usuario, IdentityRole>(op => {
+        //     op.User.RequireUniqueEmail = true;
+        // })
+        services.AddIdentityCore<Usuario>()
+            .AddRoles<IdentityRole>()
+            .AddApiEndpoints()
+            .AddEntityFrameworkStores<DatabaseContext>();
+    }
+
+    public static void AddDocumentation(this IServiceCollection services) {
+        // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+        services.AddEndpointsApiExplorer();
+        services.AddSwaggerGen(c => {
+            // Define o esquema de segurança (Bearer Token)
+            c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme {
+                Description = "Autenticação JWT usando o esquema Bearer. Exemplo: \"Authorization: Bearer {token}\"",
+                Name = "Authorization",
+                In = ParameterLocation.Header,
+                Type = SecuritySchemeType.Http,
+                Scheme = "bearer",
+                BearerFormat = "JWT"
+            });
+
+            // Adiciona o filtro de operação que aplica o requisito de segurança dinamicamente
+            c.OperationFilter<SecurityRequirementsOperationFilter>();
+        });
+    }
+}

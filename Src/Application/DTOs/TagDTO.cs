@@ -4,9 +4,10 @@ using ProximoTurnoApi.Infrastructure.Models;
 namespace ProximoTurnoApi.Application.DTOs;
 
 public record TagDTO {
+    private string _nome = null!;
     public int? Id { get; set; }
     [Required(AllowEmptyStrings = false)]
-    public string Nome { get; set => field = StringUtils.Capitalize(value); } = string.Empty;
+    public string Nome { get => _nome; set => _nome = StringUtils.Capitalize(value); }
 
     public static TagDTO FromModel(Tag tag) {
         return new TagDTO {

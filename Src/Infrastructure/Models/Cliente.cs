@@ -6,11 +6,13 @@ namespace ProximoTurnoApi.Infrastructure.Models;
 
 [Table("CLIENTE")]
 public class Cliente {
+    private string _nome = null!;
+    private string _email = null!;
     [Column("ID")]
     public int Id { get; set; }
     [Column("NOME"), MaxLength(100)]
     public required string Nome {
-        get; set => field = value.ToLowerInvariant();
+        get => _nome; set => _nome = value.ToLowerInvariant();
     }
 
     [Column("TELEFONE"), MaxLength(15)]
@@ -20,7 +22,7 @@ public class Cliente {
     public required string Endereco { get; set; }
 
     [Column("EMAIL"), MaxLength(100)]
-    public required string Email { get; set => field = value.ToLowerInvariant(); }
+    public required string Email { get => _email; set => _email = value.ToLowerInvariant(); }
 
     [Column("DATA_NASCIMENTO")]
     public DateOnly? DataNascimento { get; set; }

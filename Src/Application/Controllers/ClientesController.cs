@@ -1,12 +1,15 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ProximoTurnoApi.Application.DTOs;
 using ProximoTurnoApi.Application.UseCases;
+using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Infrastructure.Repositories;
 
 namespace ProximoTurnoApi.Application.Controllers;
 
 [Route("api/clientes")]
 [ApiController]
+[Authorize(Roles = Roles.Admin)]
 public class ClientesController(ILogger<ControllerBasico> logger, IClienteRepository _repository) : ControllerBasico(logger) {
 
     [HttpGet]

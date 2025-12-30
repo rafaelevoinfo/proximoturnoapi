@@ -1,8 +1,9 @@
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using ProximoTurnoApi.Infrastructure.Models;
 namespace ProximoTurnoApi.Infrastructure.Repositories;
 
-public class DatabaseContext(DbContextOptions<DatabaseContext> options) : DbContext(options) {
+public class DatabaseContext(DbContextOptions<DatabaseContext> options) : IdentityDbContext<Usuario>(options) {
 
     protected override void OnModelCreating(ModelBuilder modelBuilder) {
         base.OnModelCreating(modelBuilder);
@@ -83,5 +84,7 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : DbCont
     public DbSet<FaixaPreco> FaixasPreco { get; set; }
     public DbSet<Pedido> Pedidos { get; set; }
     public DbSet<Tag> Tags { get; set; }
+
+    // public DbSet<Usuario> Usuarios { get; set; }
 
 }

@@ -5,10 +5,11 @@ using ProximoTurnoApi.Infrastructure.Models;
 namespace ProximoTurnoApi.Application.DTOs;
 
 public record CategoriaDTO {
+    private string _descricao = null!;
     public int? Id { get; set; }
 
     [Required, MaxLength(100)]
-    public string Descricao { get; set => field = StringUtils.Capitalize(value); } = string.Empty;
+    public string Descricao { get => _descricao; set => _descricao = StringUtils.Capitalize(value); }
 
     public List<int> FaixasPrecoIds { get; set; } = [];
 

@@ -16,11 +16,12 @@ public record JogoResumoDTO {
     }
 }
 public record JogoDTO {
+    private string _nome = null!;
     public int Id { get; set; }
     [Required]
     public int IdCategoria { get; set; }
     [Required]
-    public string Nome { get; set => field = StringUtils.Capitalize(value); } = string.Empty;
+    public string Nome { get => _nome; set => _nome = StringUtils.Capitalize(value); }
     [Required]
     public string Descricao { get; set; } = string.Empty;
     [Required]

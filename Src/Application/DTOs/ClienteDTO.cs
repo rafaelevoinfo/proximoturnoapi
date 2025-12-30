@@ -16,10 +16,11 @@ public record ClienteResumoDTO {
 }
 
 public record ClienteDTO {
+    private string _nome = null!;
     public int? Id { get; set; }
 
     [Required, MaxLength(100)]
-    public string Nome { get; set => field = StringUtils.Capitalize(value); } = string.Empty;
+    public string Nome { get => _nome; set => _nome = StringUtils.Capitalize(value); }
     [Required, MaxLength(15)]
     public string Telefone { get; set; } = string.Empty;
 

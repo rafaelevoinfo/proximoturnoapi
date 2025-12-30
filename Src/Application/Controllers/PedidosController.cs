@@ -1,3 +1,6 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using ProximoTurnoApi.Application.DTOs;
 using ProximoTurnoApi.Application.UseCases;
@@ -8,6 +11,7 @@ namespace ProximoTurnoApi.Application.Controllers;
 
 [Route("api/pedidos")]
 [ApiController]
+[Authorize]
 public class PedidosController(ILogger<ControllerBasico> logger,
     IPedidoRepository _pedidoRepository,
     IClienteRepository _clienteRepository,
@@ -15,8 +19,11 @@ public class PedidosController(ILogger<ControllerBasico> logger,
 
 
     [HttpGet()]
-    public async Task<IActionResult> GetAll(FiltroPedidoDTO filtro) {
+    public async Task<IActionResult> GetAll(FiltroPedidoDTO filtro, [FromServices] IClienteRepository clienteRepository) {
         return await EncapsulateRequestAsync(async () => {
+            if ((await FiltrarPedidoPorUsuarioLogado(clienteRepository, filtro)) is not null) {
+                return Forbid();
+            }
             var pedidos = (await _pedidoRepository.GetAllAsync(filtro))
                 .Select(PedidoDTO.FromModel)
                 .ToList();
@@ -25,11 +32,15 @@ public class PedidosController(ILogger<ControllerBasico> logger,
     }
 
     [HttpGet("{id}")]
-    public async Task<IActionResult> GetPedido(int id) {
+    public async Task<IActionResult> GetPedido(int id, ClienteRepository clienteRepository) {
         return await EncapsulateRequestAsync(async () => {
             var pedido = await _pedidoRepository.GetByIdAsync(id);
             if (pedido == null) {
                 return NotFound(ApiResultDTO<PedidoDTO>.CreateFailureResult("Pedido não encontrado"));
+            }
+            var cliente = clienteRepository.GetByEmailAsync(User.Identity?.Name ?? "");
+            if (cliente is null || cliente.Id != pedido.Cliente?.Id) {
+                return Forbid();
             }
 
             return Ok(ApiResultDTO<PedidoDTO>.CreateSuccessResult(PedidoDTO.FromModel(pedido), "Pedido encontrado com sucesso"));
@@ -109,6 +120,18 @@ public class PedidosController(ILogger<ControllerBasico> logger,
             }
             return Ok(ApiResultDTO<PedidoDTO>.CreateSuccessResult(null, "Pedido cancelado com sucesso"));
         });
+    }
+
+    private async Task<IActionResult?> FiltrarPedidoPorUsuarioLogado(IClienteRepository clienteRepository, FiltroPedidoDTO filtro) {
+        if (!User.IsInRole(Roles.Admin)) {
+            var cliente = await clienteRepository.GetByEmailAsync(User.Identity?.Name ?? "");
+            if (cliente is null) {
+                return Forbid();
+            }
+            filtro.IdCliente = cliente.Id;
+        }
+        return null;
+
     }
 
     // [HttpPost("{pedidoId}/devolver")]

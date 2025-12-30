@@ -1,6 +1,8 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ProximoTurnoApi.Application.DTOs;
 using ProximoTurnoApi.Application.UseCases;
+using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Infrastructure.Repositories;
 
 namespace ProximoTurnoApi.Application.Controllers;
@@ -34,6 +36,7 @@ public class JogosController(ILogger<ControllerBasico> logger,
     }
 
     [HttpPut("{id}")]
+    [Authorize(Roles = Roles.Admin)]
     public async Task<IActionResult> PutJogo(int id, JogoDTO jogoDto) {
         return await EncapsulateRequestAsync(async () => {
             if (id != jogoDto.Id) {
@@ -50,6 +53,7 @@ public class JogosController(ILogger<ControllerBasico> logger,
     }
 
     [HttpPost]
+    [Authorize(Roles = Roles.Admin)]
     public async Task<IActionResult> PostJogo(JogoDTO jogoDto) {
         return await EncapsulateRequestAsync(async () => {
             var cadastroJogo = new CadastroJogo(_repository, _tagRepository, _cadastroJogoLogger);
@@ -62,6 +66,7 @@ public class JogosController(ILogger<ControllerBasico> logger,
     }
 
     [HttpDelete("{id}")]
+    [Authorize(Roles = Roles.Admin)]
     public async Task<IActionResult> DeleteJogo(int id) {
         return await EncapsulateRequestAsync(async () => {
             var jogo = await _repository.GetByIdAsync(id);

@@ -1,6 +1,8 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ProximoTurnoApi.Application.DTOs;
 using ProximoTurnoApi.Application.UseCases.Categoria;
+using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Infrastructure.Repositories;
 
 namespace ProximoTurnoApi.Application.Controllers;
@@ -30,6 +32,7 @@ public class CategoriasController(ILogger<ControllerBasico> logger, ICategoriaRe
     }
 
     [HttpPut("{id}")]
+    [Authorize(Roles = Roles.Admin)]
     public async Task<IActionResult> PutCategoria(int id, CategoriaDTO categoria) {
         return await EncapsulateRequestAsync(async () => {
             if (id != categoria.Id) {
@@ -45,6 +48,7 @@ public class CategoriasController(ILogger<ControllerBasico> logger, ICategoriaRe
     }
 
     [HttpPost]
+    [Authorize(Roles = Roles.Admin)]
     public async Task<IActionResult> PostCategoria(CategoriaDTO categoriaDto) {
         return await EncapsulateRequestAsync(async () => {
             var cadastroCategoriaUseCase = new CadastroCategoria(_repository, _faixaPrecoRepository);
@@ -57,6 +61,7 @@ public class CategoriasController(ILogger<ControllerBasico> logger, ICategoriaRe
     }
 
     [HttpDelete("{id}")]
+    [Authorize(Roles = Roles.Admin)]
     public async Task<IActionResult> DeleteCategoria(int id) {
         return await EncapsulateRequestAsync(async () => {
             if (!await _repository.DeleteAsync(id)) {
