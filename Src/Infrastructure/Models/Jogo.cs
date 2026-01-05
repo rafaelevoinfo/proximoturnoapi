@@ -3,11 +3,18 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ProximoTurnoApi.Infrastructure.Models;
 
-public enum StatusJogo : short {
-    Disponivel,
-    Reservado,
-    Alugado,
-    Indisponivel
+
+
+
+public class JogoMaisAlugado {
+    [Column("ID")]
+    public int Id { get; set; }
+    [Column("NOME")]
+    public string Nome { get; set; } = null!;
+    [Column("FOTO")]
+    public byte[] Foto { get; set; } = null!;
+    [Column("QTDE")]
+    public int Qtde { get; set; }
 }
 
 [Table("JOGO")]
@@ -36,9 +43,6 @@ public class Jogo {
     [Column("MAXIMO_JOGADORES")]
     public short MaximoDeJogadores { get; set; }
 
-    [Column("STATUS")]
-    public StatusJogo Status { get; set; }
-
     [Column("TEMPO_ESTIMADO_JOGO")]
     public TimeOnly? TempoEstimadoDeJogo { get; set; }
 
@@ -51,4 +55,9 @@ public class Jogo {
     public Categoria? Categoria { get; set; }
     public List<Tag>? Tags { get; set; }
     public List<Link>? Links { get; set; }
+    public List<JogoCopia>? Copias { get; set; }
+
+    //Representa o status geral de todas as copias. Ex. se todas estao alugados sera alugado, se pelo menos uma estiver disponivel será disponivel
+    // [NotMapped]
+    // public StatusJogo Status { get; }
 }

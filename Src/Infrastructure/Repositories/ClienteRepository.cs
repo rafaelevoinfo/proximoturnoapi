@@ -4,9 +4,10 @@ using ProximoTurnoApi.Infrastructure.Models;
 
 namespace ProximoTurnoApi.Infrastructure.Repositories;
 
-public interface IClienteRepository {
+public interface IClienteRepository : IBaseRepository {
     Task<List<Cliente>> GetAllAsync(FiltroClienteDTO filtro);
     Task<Cliente?> GetByIdAsync(int id);
+    Task<int?> GetIdByEmailAsync(string email);
     Task<Cliente?> GetByEmailAsync(string email);
     Task AddAsync(Cliente cliente);
     Task UpdateAsync(Cliente cliente);
@@ -41,11 +42,21 @@ public class ClienteRepository : BaseRepository, IClienteRepository {
     }
 
     public async Task<Cliente?> GetByIdAsync(int id) {
-        return await _dbContext.Clientes.FirstOrDefaultAsync(c => c.Id == id);
+        return await _dbContext.Clientes
+            .AsTracking()
+            .FirstOrDefaultAsync(c => c.Id == id);
+    }
+
+    public async Task<int?> GetIdByEmailAsync(string email) {
+        return await _dbContext.Clientes
+            .Where(c => c.Email == email.ToLowerInvariant())
+            .Select(c => c.Id)
+            .FirstOrDefaultAsync();
     }
 
     public async Task<Cliente?> GetByEmailAsync(string email) {
-        return await _dbContext.Clientes.FirstOrDefaultAsync(c => c.Email == email);
+        return await _dbContext.Clientes
+            .FirstOrDefaultAsync(c => c.Email == email.ToLowerInvariant());
     }
 
     public async Task AddAsync(Cliente cliente) {

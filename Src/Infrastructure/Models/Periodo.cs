@@ -3,9 +3,8 @@ using ProximoTurnoApi.Infrastructure.Models;
 
 namespace ProximoTurnoApi.Infrastructure.Models;
 
-[Table("FAIXA_PRECO")]
-public class FaixaPreco
-{
+[Table("PERIODO")]
+public class Periodo {
     [Column("ID")]
     public int Id { get; set; }
 

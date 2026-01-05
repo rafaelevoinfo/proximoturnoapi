@@ -1,10 +1,13 @@
+using System.Transactions;
 using Flunt.Notifications;
+using Microsoft.AspNetCore.Identity;
 using ProximoTurnoApi.Application.DTOs;
+using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Infrastructure.Repositories;
 
 namespace ProximoTurnoApi.Application.UseCases;
 
-public class CadastroCliente(IClienteRepository repository) : UseCaseBasico {
+public class CadastroCliente(IClienteRepository repository, UserManager<Usuario> _userManager) : UseCaseBasico {
     private readonly IClienteRepository _repository = repository;
 
     public async Task<int> ExecuteAsync(ClienteDTO clienteDto) {
@@ -30,7 +33,17 @@ public class CadastroCliente(IClienteRepository repository) : UseCaseBasico {
             return 0;
 
         var cliente = clienteDto.ToModel();
-        await _repository.AddAsync(cliente);
+        await _repository.StartTransactionAsync();
+        try {
+            await _repository.AddAsync(cliente);
+            var usuario = new Usuario() { Email = cliente.Email };
+            await _userManager.CreateAsync(usuario, clienteDto.Senha);
+            await _userManager.AddToRoleAsync(usuario, Roles.Member);
+            await _repository.CommitTransactionAsync();
+        } catch {
+            await _repository.RollbackTransactionAsync();
+            throw;
+        }
         return cliente.Id;
     }
 }

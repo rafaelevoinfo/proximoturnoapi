@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using ProximoTurnoApi.Infrastructure.Models;
+using ProximoTurnoApi.Domain;
 
 namespace ProximoTurnoApi.Application.DTOs;
 

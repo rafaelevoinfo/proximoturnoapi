@@ -25,14 +25,14 @@ public class CategoriaRepository : BaseRepository, ICategoriaRepository {
         }
 
         return await query
-            .Include(c => c.FaixasPreco)
-            .AsNoTracking()
+            .Include(c => c.Periodos)
             .ToListAsync();
     }
 
     public async Task<Categoria?> GetByIdAsync(int id) {
         return await _dbContext.Categorias
-            .Include(c => c.FaixasPreco)
+            .Include(c => c.Periodos)
+            .AsTracking()
             .FirstOrDefaultAsync(c => c.Id == id);
     }
 

@@ -12,5 +12,5 @@ public class Categoria {
     [Column("DESCRICAO"), MaxLength(100)]
     public string Descricao { get => _descricao; set => _descricao = value.ToLowerInvariant(); }
 
-    public ICollection<FaixaPreco> FaixasPreco { get; set; } = new List<FaixaPreco>();
+    public ICollection<Periodo> Periodos { get; set; } = [];
 }

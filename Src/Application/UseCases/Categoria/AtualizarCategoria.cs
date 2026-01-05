@@ -3,9 +3,9 @@ using ProximoTurnoApi.Infrastructure.Repositories;
 
 namespace ProximoTurnoApi.Application.UseCases.Categoria;
 
-public class AtualizarCategoria(ICategoriaRepository repository, IFaixaPrecoRepository faixaPrecoRepository) : UseCaseBasico {
+public class AtualizarCategoria(ICategoriaRepository repository, IPeriodoRepository faixaPrecoRepository) : UseCaseBasico {
     private readonly ICategoriaRepository _repository = repository;
-    private readonly IFaixaPrecoRepository _faixaPrecoRepository = faixaPrecoRepository;
+    private readonly IPeriodoRepository _faixaPrecoRepository = faixaPrecoRepository;
 
     public async Task<bool> ExecuteAsync(CategoriaDTO categoriaDto) {
         var categoria = await _repository.GetByIdAsync(categoriaDto.Id ?? 0);
@@ -29,15 +29,12 @@ public class AtualizarCategoria(ICategoriaRepository repository, IFaixaPrecoRepo
 
         categoriaDto.UpdateModel(categoria);
 
-        categoria.FaixasPreco.Clear();
-        if (categoriaDto.FaixasPrecoIds.Count > 0)
-        {
-            foreach (var faixaId in categoriaDto.FaixasPrecoIds)
-            {
+        categoria.Periodos.Clear();
+        if (categoriaDto.FaixasPrecoIds.Count > 0) {
+            foreach (var faixaId in categoriaDto.FaixasPrecoIds) {
                 var faixa = await _faixaPrecoRepository.GetByIdAsync(faixaId);
-                if (faixa != null)
-                {
-                    categoria.FaixasPreco.Add(faixa);
+                if (faixa != null) {
+                    categoria.Periodos.Add(faixa);
                 }
             }
         }

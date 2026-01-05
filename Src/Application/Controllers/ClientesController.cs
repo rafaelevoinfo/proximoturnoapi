@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using ProximoTurnoApi.Application.DTOs;
 using ProximoTurnoApi.Application.UseCases;
@@ -48,9 +49,9 @@ public class ClientesController(ILogger<ControllerBasico> logger, IClienteReposi
     }
 
     [HttpPost]
-    public async Task<IActionResult> PostCliente(ClienteDTO clienteDto) {
+    public async Task<IActionResult> PostCliente(ClienteDTO clienteDto, UserManager<Usuario> userManager) {
         return await EncapsulateRequestAsync(async () => {
-            var cadastroClienteUseCase = new CadastroCliente(_repository);
+            var cadastroClienteUseCase = new CadastroCliente(_repository, userManager);
             var idCliente = await cadastroClienteUseCase.ExecuteAsync(clienteDto);
             if (idCliente == 0) {
                 return BadRequest(ApiResultDTO<ClienteDTO>.CreateFailureResult(cadastroClienteUseCase.AggregateErrors()));

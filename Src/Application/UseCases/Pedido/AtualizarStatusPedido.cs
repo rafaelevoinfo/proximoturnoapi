@@ -1,10 +1,12 @@
+using Flunt.Notifications;
 using ProximoTurnoApi.Application.DTOs;
+using ProximoTurnoApi.Domain;
 using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Infrastructure.Repositories;
 
 namespace ProximoTurnoApi.Application.UseCases;
 
-public class AtualizarStatusPedido(IPedidoRepository _pedidoRepository, IJogoRepository jogoRepository, IClienteRepository clienteRepository) : PedidoUseCaseBasico(_pedidoRepository, jogoRepository, clienteRepository) {
+public class AtualizarStatusPedido(IPedidoRepository pedidoRepository) : PedidoUseCaseBasico(pedidoRepository) {
 
     public async Task ExecuteAsync(int idPedido, StatusPedido novoStatus) {
         var pedidoExistente = await _pedidoRepository.GetByIdAsync(idPedido);
@@ -13,22 +15,18 @@ public class AtualizarStatusPedido(IPedidoRepository _pedidoRepository, IJogoRep
             return;
         }
 
-        if (novoStatus < pedidoExistente.Status) {
-            AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest, "Não é permitido regredir o status do pedido."));
-            return;
+        if (novoStatus == StatusPedido.Entregue) {
+            if (!pedidoExistente.Entregar()) {
+                AddNotifications((IList<UseCaseNotification>)pedidoExistente.Notifications.Select(n => UseCaseNotification.Create(UseCaseNotificationType.BadRequest, n.Message)).ToList());
+                return;
+            }
+        } else if (novoStatus == StatusPedido.Cancelado) {
+            if (!pedidoExistente.Cancelar()) {
+                AddNotifications((IList<UseCaseNotification>)pedidoExistente.Notifications.Select(n => UseCaseNotification.Create(UseCaseNotificationType.BadRequest, n.Message)).ToList());
+                return;
+            }
         }
-        pedidoExistente.Status = novoStatus;
-
-        await _pedidoRepository.SaveAsync(pedidoExistente, false);
-        var novoStatusJogo = novoStatus switch {
-            StatusPedido.Criado => StatusJogo.Reservado,
-            StatusPedido.Entregue => StatusJogo.Alugado,
-            StatusPedido.Cancelado => StatusJogo.Disponivel,
-            _ => throw new ArgumentOutOfRangeException(nameof(novoStatus), $"Status de pedido '{novoStatus}' não mapeado para status de jogo."),
-        };
-        await AtualizarStatusJogos(pedidoExistente.Items, novoStatusJogo);
-
-        await _pedidoRepository.SaveChangesAsync();
+        await _pedidoRepository.SaveAsync(pedidoExistente);
     }
 
 }

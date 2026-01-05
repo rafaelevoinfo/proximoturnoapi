@@ -15,6 +15,36 @@ public record JogoResumoDTO {
         };
     }
 }
+
+public record JogoMaisAlugadoDTO {
+    private string _nome = null!;
+    public int Qtde { get; set; }
+    public int Id { get; set; }
+    public string Nome { get => _nome; set => _nome = StringUtils.Capitalize(value); }
+    public byte[] Foto { get; set; } = null!;
+
+    public static JogoMaisAlugadoDTO FromModel(JogoMaisAlugado jogo) {
+        return new JogoMaisAlugadoDTO {
+            Id = jogo.Id,
+            Nome = jogo.Nome,
+            Foto = jogo.Foto ?? []
+        };
+    }
+
+}
+
+public record CopiaJogoDTO {
+    public int Id { get; set; }
+    public StatusJogo Status { get; set; }
+
+    public static CopiaJogoDTO FromModel(JogoCopia copia) {
+        return new CopiaJogoDTO() {
+            Id = copia.Id,
+            Status = copia.Status
+        };
+    }
+}
+
 public record JogoDTO {
     private string _nome = null!;
     public int Id { get; set; }
@@ -39,9 +69,10 @@ public record JogoDTO {
     public DateOnly? DataCompra { get; set; }
     public List<TagDTO>? Tags { get; set; }
     public List<LinkDTO>? Links { get; set; }
+    public List<CopiaJogoDTO>? Copias { get; set; } = [];
 
     public static JogoDTO FromModel(Jogo jogo) {
-        return new JogoDTO {
+        var result = new JogoDTO {
             Id = jogo.Id,
             IdCategoria = jogo.IdCategoria,
             Nome = jogo.Nome,
@@ -50,13 +81,25 @@ public record JogoDTO {
             Foto = jogo.Foto ?? [],
             MinimoDeJogadores = jogo.MinimoDeJogadores,
             MaximoDeJogadores = jogo.MaximoDeJogadores,
-            Status = jogo.Status,
             TempoEstimadoDeJogo = jogo.TempoEstimadoDeJogo,
             ValorDeCompra = jogo.ValorDeCompra,
             DataCompra = jogo.DataCompra,
+            Status = StatusJogo.Disponivel,
             Links = jogo.Links?.Select(LinkDTO.FromModel).ToList(),
-            Tags = jogo.Tags?.Select(tag => TagDTO.FromModel(tag)).ToList()
+            Tags = jogo.Tags?.Select(TagDTO.FromModel).ToList(),
+            Copias = jogo.Copias?.Select(CopiaJogoDTO.FromModel).ToList()
         };
+        if (jogo.Copias is not null) {
+            foreach (var copia in jogo.Copias) {
+                if (copia.Status == StatusJogo.Disponivel) {
+                    result.Status = copia.Status;
+                    break;
+                } else if (copia.Status > result.Status) {
+                    result.Status = copia.Status;
+                }
+            }
+        }
+        return result;
     }
 
     public void UpdateModel(Jogo jogo) {
@@ -67,7 +110,6 @@ public record JogoDTO {
         jogo.Foto = Foto ?? jogo.Foto;
         jogo.MinimoDeJogadores = MinimoDeJogadores;
         jogo.MaximoDeJogadores = MaximoDeJogadores;
-        jogo.Status = Status;
         jogo.TempoEstimadoDeJogo = TempoEstimadoDeJogo;
         jogo.ValorDeCompra = ValorDeCompra;
         jogo.DataCompra = DataCompra;
@@ -107,7 +149,6 @@ public record JogoDTO {
             Foto = Foto ?? [],
             MinimoDeJogadores = MinimoDeJogadores,
             MaximoDeJogadores = MaximoDeJogadores,
-            Status = Status,
             TempoEstimadoDeJogo = TempoEstimadoDeJogo,
             ValorDeCompra = ValorDeCompra,
             DataCompra = DataCompra,

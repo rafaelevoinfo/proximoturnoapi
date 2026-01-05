@@ -3,14 +3,11 @@ using ProximoTurnoApi.Infrastructure.Repositories;
 
 namespace ProximoTurnoApi.Application.UseCases.FaixaPreco;
 
-public class AtualizarFaixaPreco(IFaixaPrecoRepository repository) : FaixaPrecoUseCaseBasico(repository)
-{
-    public async Task<bool> ExecuteAsync(FaixaPrecoDTO faixaPrecoDto)
-    {
+public class AtualizarFaixaPreco(IPeriodoRepository repository) : FaixaPrecoUseCaseBasico(repository) {
+    public async Task<bool> ExecuteAsync(FaixaPrecoDTO faixaPrecoDto) {
         var faixaPreco = await _repository.GetByIdAsync(faixaPrecoDto.Id);
 
-        if (faixaPreco == null)
-        {
+        if (faixaPreco == null) {
             AddNotification(UseCaseNotification.Create(UseCaseNotificationType.Error, "Faixa de preço não encontrada."));
             return false;
         }

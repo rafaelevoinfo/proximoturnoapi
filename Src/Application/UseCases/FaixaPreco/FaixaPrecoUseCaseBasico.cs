@@ -3,7 +3,6 @@ using ProximoTurnoApi.Infrastructure.Repositories;
 
 namespace ProximoTurnoApi.Application.UseCases.FaixaPreco;
 
-public class FaixaPrecoUseCaseBasico(IFaixaPrecoRepository repository) : UseCaseBasico
-{
-    protected readonly IFaixaPrecoRepository _repository = repository;
+public class FaixaPrecoUseCaseBasico(IPeriodoRepository repository) : UseCaseBasico {
+    protected readonly IPeriodoRepository _repository = repository;
 }

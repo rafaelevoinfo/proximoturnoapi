@@ -5,6 +5,8 @@ namespace ProximoTurnoApi.Application.UseCases;
 
 public enum UseCaseNotificationType {
     BadRequest,
+    Forbid,
+    NotFound,
     Error
 }
 public class UseCaseNotification : Notification {

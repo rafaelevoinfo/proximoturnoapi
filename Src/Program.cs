@@ -17,18 +17,20 @@ if (builder.Environment.IsDevelopment()) {
 builder.Services.AddDbContext<DatabaseContext>(options => {
     options.UseMySql(builder.Configuration.GetConnectionString("DefaultConnection"),
         new MySqlServerVersion(new Version(9, 4, 0)));
+    options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
 });
 builder.Services.AddControllers();
 builder.Services.AddScoped<IClienteRepository, ClienteRepository>();
 builder.Services.AddScoped<IJogoRepository, JogoRepository>();
 builder.Services.AddScoped<ICategoriaRepository, CategoriaRepository>();
-builder.Services.AddScoped<IFaixaPrecoRepository, FaixaPrecoRepository>();
+builder.Services.AddScoped<IPeriodoRepository, PeriodoRepository>();
 builder.Services.AddScoped<IPedidoRepository, PedidoRepository>();
 builder.Services.AddScoped<ITagRepository, TagRepository>();
 
 builder.Services.AddIdentityUser();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddDocumentation();
+builder.Services.AddCors();
 // builder.Services.AddEndpointsApiExplorer();
 // builder.Services.AddSwaggerGen();
 
@@ -43,6 +45,9 @@ if (app.Environment.IsDevelopment()) {
     app.UseSwaggerUI();
 }
 
+app.UseCors(c => c.AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowAnyOrigin());
 app.UseHttpsRedirection();
 app.MapGroup("/api")
    .MapIdentityApi<Usuario>();

@@ -30,6 +30,9 @@ public record ClienteDTO {
     [Required, MaxLength(100)]
     public string Email { get; set; } = string.Empty;
 
+    [Required, MaxLength(100)]
+    public string Senha { get; set; } = string.Empty;
+
     public DateOnly? DataNascimento { get; set; }
 
     public string? ComoNosConheceu { get; set; }
@@ -52,7 +55,6 @@ public record ClienteDTO {
         cliente.Nome = Nome;
         cliente.Telefone = Telefone;
         cliente.Endereco = Endereco;
-        cliente.Email = Email;
         cliente.DataNascimento = DataNascimento;
         cliente.ComoNosConheceu = ComoNosConheceu;
         cliente.AceitaReceberOfertas = AceitaReceberOfertas;

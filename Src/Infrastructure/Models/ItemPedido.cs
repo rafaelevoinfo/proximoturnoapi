@@ -3,15 +3,15 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace ProximoTurnoApi.Infrastructure.Models;
 
 
-[Table("PEDIDO_JOGO")]
+[Table("PEDIDO_ITEM")]
 public class ItemPedido {
     [Column("ID")]
     public int Id { get; set; }
     [Column("ID_PEDIDO")]
     public int IdPedido { get; set; }
-    [Column("ID_JOGO")]
-    public int IdJogo { get; set; }
-    public Jogo Jogo { get; set; } = null!;
+    [Column("ID_JOGO_COPIA")]
+    public int IdJogoCopia { get; set; }
+    public JogoCopia JogoCopia { get; set; } = null!;
 
     [Column("VALOR")]
     public decimal Valor { get; set; }

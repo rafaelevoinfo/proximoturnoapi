@@ -28,7 +28,7 @@ public record CategoriaDTO {
         return new CategoriaDTO {
             Id = categoria.Id,
             Descricao = StringUtils.Capitalize(categoria.Descricao),
-            FaixasPrecoIds = categoria.FaixasPreco.Select(fp => fp.Id).ToList()
+            FaixasPrecoIds = categoria.Periodos.Select(fp => fp.Id).ToList()
         };
     }
 }

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using ProximoTurnoApi.Application.DTOs;
+using ProximoTurnoApi.Domain;
 using ProximoTurnoApi.Infrastructure.Models;
 
 namespace ProximoTurnoApi.Infrastructure.Repositories;
@@ -18,12 +19,13 @@ public class PedidoRepository(DatabaseContext dbContext) : BaseRepository(dbCont
         var query = _dbContext.Pedidos
             .Include(p => p.Cliente)
             .Include(p => p.Items)!
-                .ThenInclude(j => j.Jogo)
+                .ThenInclude(j => j.JogoCopia)
+                    .ThenInclude(jc => jc.Jogo)
             .AsNoTracking()
             .AsQueryable();
 
         if (filtro.IdCliente.HasValue) {
-            query = query.Where(p => p.IdCliente == filtro.IdCliente.Value);
+            query = query.Where(p => p.Cliente.Id == filtro.IdCliente.Value);
         }
 
         if (filtro.DataInicial.HasValue) {
@@ -40,7 +42,7 @@ public class PedidoRepository(DatabaseContext dbContext) : BaseRepository(dbCont
 
         if (filtro.Atrasados) {
             // nao vou considerar horas, apenas dias
-            query = query.Where(p => p.Items!.Any(i => i.DataDevolucao.Date < DateTime.Today && i.Jogo.Status == StatusJogo.Alugado));
+            query = query.Where(p => p.Items!.Any(i => i.DataDevolucao.Date < DateTime.Today && i.JogoCopia.Status == StatusJogo.Alugado));
         }
 
         return await query.ToListAsync();
@@ -50,7 +52,9 @@ public class PedidoRepository(DatabaseContext dbContext) : BaseRepository(dbCont
         return await _dbContext.Pedidos
             .Include(p => p.Cliente)
             .Include(p => p.Items)!
-            .ThenInclude(j => j.Jogo)
+                .ThenInclude(j => j.JogoCopia)
+                    .ThenInclude(jc => jc.Jogo)
+            .AsTracking()
             .FirstOrDefaultAsync(p => p.Id == id);
     }
 
@@ -62,6 +66,7 @@ public class PedidoRepository(DatabaseContext dbContext) : BaseRepository(dbCont
         }
         if (!commit)
             return;
+
 
         await _dbContext.SaveChangesAsync();
     }

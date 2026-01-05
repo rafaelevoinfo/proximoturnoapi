@@ -11,7 +11,7 @@ namespace ProximoTurnoApi.Application.Controllers;
 [Route("api/faixas-preco")]
 [ApiController]
 [Authorize(Roles = Roles.Admin)]
-public class FaixasPrecoController(ILogger<ControllerBasico> logger, IFaixaPrecoRepository _repository) : ControllerBasico(logger) {
+public class FaixasPrecoController(ILogger<ControllerBasico> logger, IPeriodoRepository _repository) : ControllerBasico(logger) {
 
     [HttpGet]
     public async Task<IActionResult> GetFaixasPreco([FromQuery] FiltroFaixaPrecoDTO filtro) {

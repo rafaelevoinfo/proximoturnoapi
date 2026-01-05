@@ -31,7 +31,7 @@ public class TagRepository : BaseRepository, ITagRepository {
     }
 
     public async Task<Tag?> GetByIdAsync(int id) {
-        return await _dbContext.Tags.FirstOrDefaultAsync(t => t.Id == id);
+        return await _dbContext.Tags.AsTracking().FirstOrDefaultAsync(t => t.Id == id);
     }
 
     public async Task AddAsync(Tag tag) {

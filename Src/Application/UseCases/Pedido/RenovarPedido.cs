@@ -4,43 +4,42 @@ using ProximoTurnoApi.Infrastructure.Repositories;
 
 namespace ProximoTurnoApi.Application.UseCases;
 
-public class RenovarPedido(IPedidoRepository _pedidoRepository, IJogoRepository _jogoRepository, IClienteRepository _clienteRepository) : PedidoUseCaseBasico(_pedidoRepository, _jogoRepository, _clienteRepository) {
-    public async Task ExecuteAsync(int idPedido, List<ItemPedidoDTO> itens) {
+public class RenovarPedido(IPedidoRepository pedidoRepository,
+                           IJogoRepository _jogoRepository,
+                           IPeriodoRepository _periodoRepository,
+                           ICategoriaRepository _categoriaRepository) : PedidoUseCaseBasico(pedidoRepository) {
+    public async Task ExecuteAsync(int idPedido, List<ItemPedidoRenovarDTO> itens) {
         var pedidoExistente = await _pedidoRepository.GetByIdAsync(idPedido);
         if (pedidoExistente is null) {
             AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest, "Pedido não encontrado."));
             return;
         }
 
-        var novoPedido = new Pedido() {
-            IdCliente = pedidoExistente.IdCliente,
-            DataHora = DateTime.Now,
-            Status = StatusPedido.Entregue,
-            Items = itens.Select(i => new ItemPedido() {
-                IdJogo = i.Jogo!.Id,
-                Valor = i.Valor.GetValueOrDefault(),
-                DataDevolucao = i.DataDevolucao.GetValueOrDefault()
-            }).ToList()
-        };
-        novoPedido.ValorTotal = novoPedido.Items!.Sum(i => i.Valor);
+        List<(int, Periodo)?> itensNovoPedido = [];
+        foreach (var itemRenovar in itens) {
+            var itemPedido = pedidoExistente.Items.FirstOrDefault(i => i.Id == itemRenovar.Id);
+            if (itemPedido is not null) {
+                var novoItemDto = new NovoItemPedidoDTO() {
+                    IdCopiaJogo = itemPedido.IdJogoCopia,
+                    IdJogo = itemPedido.JogoCopia.IdJogo,
+                    IdPeriodo = itemRenovar.IdPeriodo
+                };
+                var resultValidacao = await ValidarAdicionarItem(novoItemDto, _jogoRepository, _periodoRepository, _categoriaRepository);
+                if (!IsValid) {
+                    return;
+                }
 
-        //pegar os itens que nao estao na lista de itens a serem renovados e marcar os que estão como renovados. 
-        var jogosDevolvidos = new List<ItemPedido>();
-        foreach (var item in pedidoExistente.Items) {
-            if (!itens.Any(i => i.Jogo!.Id == item.IdJogo)) {
-                jogosDevolvidos.Add(item);
-            } else {
-                item.Renovado = true;
+                itensNovoPedido.Add((itemRenovar.Id, resultValidacao.Value.periodo));
             }
         }
 
-        await _pedidoRepository.SaveAsync(novoPedido, false);
-        await _pedidoRepository.SaveAsync(pedidoExistente, false);
-        await AtualizarStatusJogos(novoPedido.Items, StatusJogo.Alugado);//teoricamente nao precisa pq já estao alugados, mas vamos garantir
-        if (jogosDevolvidos.Count > 0) {
-            await AtualizarStatusJogos(jogosDevolvidos, StatusJogo.Disponivel);
+        var novoPedido = pedidoExistente.Renovar(itensNovoPedido);
+        if (novoPedido is null || !pedidoExistente.IsValid) {
+            AddNotifications((IList<UseCaseNotification>)pedidoExistente.Notifications.Select(n => UseCaseNotification.Create(UseCaseNotificationType.BadRequest, n.Message)).ToList());
+            return;
         }
 
-        await _pedidoRepository.SaveChangesAsync();
+        await _pedidoRepository.SaveAsync(pedidoExistente, false);
+        await _pedidoRepository.SaveAsync(novoPedido);
     }
 }

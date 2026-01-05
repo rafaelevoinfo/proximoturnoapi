@@ -9,7 +9,7 @@ namespace ProximoTurnoApi.Application.Controllers;
 
 [Route("api/categorias")]
 [ApiController]
-public class CategoriasController(ILogger<ControllerBasico> logger, ICategoriaRepository _repository, IFaixaPrecoRepository _faixaPrecoRepository) : ControllerBasico(logger) {
+public class CategoriasController(ILogger<ControllerBasico> logger, ICategoriaRepository _repository, IPeriodoRepository _faixaPrecoRepository) : ControllerBasico(logger) {
 
     [HttpGet]
     public async Task<IActionResult> GetCategorias(FiltroCategoriaDTO filtro) {

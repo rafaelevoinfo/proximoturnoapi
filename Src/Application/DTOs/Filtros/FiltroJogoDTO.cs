@@ -14,6 +14,8 @@ public class FiltroJogoDTO {
     public StatusJogo? Status { get; set; }
     [FromQuery(Name = "idade_minima")]
     public short? IdadeMinima { get; set; }
-    [FromQuery(Name = "numero_de_jogadores")]
-    public short? NumeroDeJogadores { get; set; }
+    [FromQuery(Name = "minimo_jogadores")]
+    public short? MinimoJogadores { get; set; }
+    [FromQuery(Name = "maximo_jogadores")]
+    public short? MaximoJogadores { get; set; }
 }

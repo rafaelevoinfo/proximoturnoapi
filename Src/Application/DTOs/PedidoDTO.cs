@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using ProximoTurnoApi.Domain;
 using ProximoTurnoApi.Infrastructure.Models;
 
 namespace ProximoTurnoApi.Application.DTOs;
@@ -28,7 +29,7 @@ public record PedidoDTO {
             Status = pedido.Status,
             Items = pedido.Items.Select(i => new ItemPedidoDTO {
                 Id = i.Id,
-                Jogo = JogoResumoDTO.FromModel(i.Jogo!),
+                Jogo = JogoResumoDTO.FromModel(i.JogoCopia.Jogo!),
                 Valor = i.Valor,
                 DataDevolucao = i.DataDevolucao,
                 Renovado = i.Renovado
@@ -41,20 +42,42 @@ public record NovoPedidoDTO {
     public int? Id { get; set; }
 
     [Required]
-    public int IdCliente { get; set; }
+    public List<NovoItemPedidoDTO> Items { get; set; } = [];
+}
 
+
+public record NovoItemPedidoDTO {
+    public int? Id { get; set; }
     [Required]
-    public List<ItemPedidoDTO> Items { get; set; } = [];
+    public int IdJogo { get; set; }
+    [Required]
+    public int IdCopiaJogo { get; set; }
+    [Required]
+    public int IdPeriodo { get; set; }
+    // public decimal? Valor { get; set; }
+    // [Required]
+    // public DateTime? DataDevolucao { get; set; }
+
+    public bool Renovado { get; set; }
+}
+
+
+
+
+public record ItemPedidoRenovarDTO {
+    [Required]
+    public int Id { get; set; }
+    [Required]
+    public int IdPeriodo { get; set; }
 }
 
 public record ItemPedidoDTO {
     public int Id { get; set; }
-    [Required]
+
     public JogoResumoDTO? Jogo { get; set; } = null!;
-    [Required]
-    public decimal? Valor { get; set; }
-    [Required]
-    public DateTime? DataDevolucao { get; set; }
+
+    public decimal Valor { get; set; }
+    public DateTime DataDevolucao { get; set; }
 
     public bool Renovado { get; set; }
 }

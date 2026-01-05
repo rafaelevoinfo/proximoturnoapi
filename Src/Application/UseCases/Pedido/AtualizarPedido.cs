@@ -4,41 +4,51 @@ using ProximoTurnoApi.Infrastructure.Repositories;
 
 namespace ProximoTurnoApi.Application.UseCases;
 
-public class AtualizarPedido(IPedidoRepository _pedidoRepository, IClienteRepository _clienteRepository, IJogoRepository _jogoRepository) : PedidoUseCaseBasico(_pedidoRepository, _jogoRepository, _clienteRepository) {
+public class AtualizarPedido(IPedidoRepository pedidoRepository,
+                             IJogoRepository _jogoRepository,
+                             IPeriodoRepository _periodoRepository,
+                             ICategoriaRepository _categoriaRepository) : PedidoUseCaseBasico(pedidoRepository) {
 
     public async Task ExecuteAsync(NovoPedidoDTO novoPedidoDto) {
-
-        if (!await ValidarDados(novoPedidoDto.IdCliente, novoPedidoDto.Items!.Select(i => i.Jogo!.Id).ToList())) {
-            return;
-        }
-
-        var pedidoExistente = await _pedidoRepository.GetByIdAsync(novoPedidoDto.Id.GetValueOrDefault());
-        if (pedidoExistente is null) {
+        var pedido = await _pedidoRepository.GetByIdAsync(novoPedidoDto.Id.GetValueOrDefault());
+        if (pedido is null) {
             AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest, "Pedido não encontrado."));
             return;
         }
 
-        for (var i = pedidoExistente.Items.Count - 1; i >= 0; i--) {
-            var itemExistente = pedidoExistente.Items[i];
+        for (var i = pedido.Items.Count - 1; i >= 0; i--) {
+            var itemExistente = pedido.Items[i];
             if (!novoPedidoDto.Items.Any(novoItem => novoItem.Id == itemExistente.Id)) {
-                pedidoExistente.Items.RemoveAt(i);
+                if (!pedido.RemoverItem(itemExistente.Id)) {
+                    AddNotifications((IList<UseCaseNotification>)pedido.Notifications.Select(n => UseCaseNotification.Create(UseCaseNotificationType.BadRequest, n.Message)).ToList());
+                    return;
+                }
             }
         }
         foreach (var item in novoPedidoDto.Items!) {
-            var itemExistente = pedidoExistente.Items.FirstOrDefault(pi => pi.Id == item.Id);
+            var itemExistente = pedido.Items.FirstOrDefault(pi => pi.Id == item.Id);
             if (itemExistente != null) {
-                itemExistente.Valor = item.Valor.GetValueOrDefault();
-                itemExistente.DataDevolucao = item.DataDevolucao.GetValueOrDefault();
-            } else {
-                pedidoExistente.Items.Add(new ItemPedido {
-                    IdJogo = item.Jogo!.Id,
-                    Valor = item.Valor.GetValueOrDefault(),
-                    DataDevolucao = item.DataDevolucao.GetValueOrDefault(),
-                });
+                pedido.RemoverItem(itemExistente);
             }
+
+            var resultValidacao = await ValidarAdicionarItem(item, _jogoRepository, _periodoRepository, _categoriaRepository);
+            if (!IsValid) {
+                return;
+            }
+
+            var itemPedido = new ItemPedido() {
+                JogoCopia = resultValidacao.Value.copia!,
+                Valor = resultValidacao.Value.periodo.Valor,
+                DataDevolucao = pedido.CalcularDataDevolucao(resultValidacao.Value.periodo.QuantidadeDias)
+            };
+            if (!pedido.AdicionarItem(itemPedido)) {
+                var notifications = pedido.Notifications.Select(n => UseCaseNotification.Create(UseCaseNotificationType.BadRequest, n.Message)).ToList();
+                AddNotifications((IList<UseCaseNotification>)notifications);
+                return;
+            }
+
         }
 
-        pedidoExistente.ValorTotal = novoPedidoDto.Items!.Sum(i => i.Valor.GetValueOrDefault());
-        await _pedidoRepository.SaveAsync(pedidoExistente, true);
+        await _pedidoRepository.SaveAsync(pedido);
     }
 }

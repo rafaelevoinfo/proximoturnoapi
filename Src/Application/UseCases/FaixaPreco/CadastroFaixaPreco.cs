@@ -3,12 +3,9 @@ using ProximoTurnoApi.Infrastructure.Repositories;
 
 namespace ProximoTurnoApi.Application.UseCases.FaixaPreco;
 
-public class CadastroFaixaPreco(IFaixaPrecoRepository repository) : FaixaPrecoUseCaseBasico(repository)
-{
-    public async Task<int> ExecuteAsync(FaixaPrecoDTO faixaPrecoDto)
-    {
-        var faixaPreco = new Infrastructure.Models.FaixaPreco
-        {
+public class CadastroFaixaPreco(IPeriodoRepository repository) : FaixaPrecoUseCaseBasico(repository) {
+    public async Task<int> ExecuteAsync(FaixaPrecoDTO faixaPrecoDto) {
+        var faixaPreco = new Infrastructure.Models.Periodo {
             QuantidadeDias = faixaPrecoDto.QuantidadeDias,
             Valor = faixaPrecoDto.Valor
         };
