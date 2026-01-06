@@ -4,20 +4,17 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace ProximoTurnoApi.Migrations
-{
+namespace ProximoTurnoApi.Migrations {
     /// <inheritdoc />
-    public partial class RefatorandoMapeamentoEF : Migration
-    {
+    public partial class RefatorandoMapeamentoEF : Migration {
         /// <inheritdoc />
-        protected override void Up(MigrationBuilder migrationBuilder)
-        {
+        protected override void Up(MigrationBuilder migrationBuilder) {
             migrationBuilder.DropForeignKey(
                 name: "FK_CATEGORIA_FAIXA_PRECO_FAIXA_PRECO_ID_FAIXA_PRECO",
                 table: "CATEGORIA_FAIXA_PRECO");
 
             migrationBuilder.DropForeignKey(
-                name: "FK_JOGO_COPIA_JOGO_JogoId",
+                name: "FK_JOGO_COPIA_JOGO_ID_JOGO",
                 table: "JOGO_COPIA");
 
             migrationBuilder.DropForeignKey(
@@ -28,12 +25,9 @@ namespace ProximoTurnoApi.Migrations
                 name: "FAIXA_PRECO");
 
             migrationBuilder.DropIndex(
-                name: "IX_JOGO_COPIA_JogoId",
+                name: "IX_JOGO_COPIA_ID_JOGO",
                 table: "JOGO_COPIA");
 
-            migrationBuilder.DropColumn(
-                name: "JogoId",
-                table: "JOGO_COPIA");
 
             migrationBuilder.AlterColumn<decimal>(
                 name: "VALOR_TOTAL",
@@ -58,33 +52,14 @@ namespace ProximoTurnoApi.Migrations
                 nullable: true);
 
             migrationBuilder.CreateTable(
-                name: "JogosMaisAlugados",
-                columns: table => new
-                {
-                    ID = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
-                    NOME = table.Column<string>(type: "longtext", nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    FOTO = table.Column<byte[]>(type: "longblob", nullable: false),
-                    QTDE = table.Column<int>(type: "int", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_JogosMaisAlugados", x => x.ID);
-                })
-                .Annotation("MySql:CharSet", "utf8mb4");
-
-            migrationBuilder.CreateTable(
                 name: "PERIODO",
-                columns: table => new
-                {
+                columns: table => new {
                     ID = table.Column<int>(type: "int", nullable: false)
                         .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
                     QUANTIDADE_DIAS = table.Column<int>(type: "int", nullable: false),
                     VALOR = table.Column<decimal>(type: "decimal(65,30)", nullable: false)
                 },
-                constraints: table =>
-                {
+                constraints: table => {
                     table.PrimaryKey("PK_PERIODO", x => x.ID);
                 })
                 .Annotation("MySql:CharSet", "utf8mb4");
@@ -120,8 +95,7 @@ namespace ProximoTurnoApi.Migrations
         }
 
         /// <inheritdoc />
-        protected override void Down(MigrationBuilder migrationBuilder)
-        {
+        protected override void Down(MigrationBuilder migrationBuilder) {
             migrationBuilder.DropForeignKey(
                 name: "FK_CATEGORIA_FAIXA_PRECO_PERIODO_ID_FAIXA_PRECO",
                 table: "CATEGORIA_FAIXA_PRECO");
@@ -133,9 +107,6 @@ namespace ProximoTurnoApi.Migrations
             migrationBuilder.DropForeignKey(
                 name: "FK_PEDIDO_PEDIDO_ID_PEDIDO_ORIGINAL",
                 table: "PEDIDO");
-
-            migrationBuilder.DropTable(
-                name: "JogosMaisAlugados");
 
             migrationBuilder.DropTable(
                 name: "PERIODO");
@@ -162,46 +133,24 @@ namespace ProximoTurnoApi.Migrations
                 oldPrecision: 18,
                 oldScale: 2);
 
-            migrationBuilder.AddColumn<int>(
-                name: "JogoId",
-                table: "JOGO_COPIA",
-                type: "int",
-                nullable: false,
-                defaultValue: 0);
-
             migrationBuilder.CreateTable(
                 name: "FAIXA_PRECO",
-                columns: table => new
-                {
+                columns: table => new {
                     ID = table.Column<int>(type: "int", nullable: false)
                         .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
                     QUANTIDADE_DIAS = table.Column<int>(type: "int", nullable: false),
                     VALOR = table.Column<decimal>(type: "decimal(65,30)", nullable: false)
                 },
-                constraints: table =>
-                {
+                constraints: table => {
                     table.PrimaryKey("PK_FAIXA_PRECO", x => x.ID);
                 })
                 .Annotation("MySql:CharSet", "utf8mb4");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_JOGO_COPIA_JogoId",
-                table: "JOGO_COPIA",
-                column: "JogoId");
 
             migrationBuilder.AddForeignKey(
                 name: "FK_CATEGORIA_FAIXA_PRECO_FAIXA_PRECO_ID_FAIXA_PRECO",
                 table: "CATEGORIA_FAIXA_PRECO",
                 column: "ID_FAIXA_PRECO",
                 principalTable: "FAIXA_PRECO",
-                principalColumn: "ID",
-                onDelete: ReferentialAction.Cascade);
-
-            migrationBuilder.AddForeignKey(
-                name: "FK_JOGO_COPIA_JOGO_JogoId",
-                table: "JOGO_COPIA",
-                column: "JogoId",
-                principalTable: "JOGO",
                 principalColumn: "ID",
                 onDelete: ReferentialAction.Cascade);
 

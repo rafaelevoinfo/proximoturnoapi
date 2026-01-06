@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using ProximoTurnoApi.Infrastructure.Repositories;
 
@@ -11,9 +12,11 @@ using ProximoTurnoApi.Infrastructure.Repositories;
 namespace ProximoTurnoApi.Migrations
 {
     [DbContext(typeof(DatabaseContext))]
-    partial class DatabaseContextModelSnapshot : ModelSnapshot
+    [Migration("20260105234559_MudandoNomeCategoriaFaixaPreco")]
+    partial class MudandoNomeCategoriaFaixaPreco
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -21,6 +24,21 @@ namespace ProximoTurnoApi.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 64);
 
             MySqlModelBuilderExtensions.AutoIncrementColumns(modelBuilder);
+
+            modelBuilder.Entity("CATEGORIA_PERIODO", b =>
+                {
+                    b.Property<int>("ID_CATEGORIA")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ID_PERIODO")
+                        .HasColumnType("int");
+
+                    b.HasKey("ID_CATEGORIA", "ID_PERIODO");
+
+                    b.HasIndex("ID_PERIODO");
+
+                    b.ToTable("CATEGORIA_PERIODO");
+                });
 
             modelBuilder.Entity("JOGO_TAG", b =>
                 {
@@ -231,34 +249,6 @@ namespace ProximoTurnoApi.Migrations
                         .IsUnique();
 
                     b.ToTable("CATEGORIA");
-                });
-
-            modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.CategoriaPeriodo", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("ID");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("ID_CATEGORIA")
-                        .HasColumnType("int");
-
-                    b.Property<int>("QuantidadeDias")
-                        .HasColumnType("int")
-                        .HasColumnName("QTDE_DIAS");
-
-                    b.Property<decimal>("Valor")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)")
-                        .HasColumnName("VALOR");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ID_CATEGORIA");
-
-                    b.ToTable("CATEGORIA_PERIODO", (string)null);
                 });
 
             modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.Cliente", b =>
@@ -472,6 +462,28 @@ namespace ProximoTurnoApi.Migrations
                     b.ToTable("LINK");
                 });
 
+            modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.Periodo", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("ID");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("QuantidadeDias")
+                        .HasColumnType("int")
+                        .HasColumnName("QUANTIDADE_DIAS");
+
+                    b.Property<decimal>("Valor")
+                        .HasColumnType("decimal(65,30)")
+                        .HasColumnName("VALOR");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("PERIODO");
+                });
+
             modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.Tag", b =>
                 {
                     b.Property<int>("Id")
@@ -559,6 +571,21 @@ namespace ProximoTurnoApi.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
+            modelBuilder.Entity("CATEGORIA_PERIODO", b =>
+                {
+                    b.HasOne("ProximoTurnoApi.Infrastructure.Models.Categoria", null)
+                        .WithMany()
+                        .HasForeignKey("ID_CATEGORIA")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ProximoTurnoApi.Infrastructure.Models.Periodo", null)
+                        .WithMany()
+                        .HasForeignKey("ID_PERIODO")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("JOGO_TAG", b =>
                 {
                     b.HasOne("ProximoTurnoApi.Infrastructure.Models.Jogo", null)
@@ -643,17 +670,6 @@ namespace ProximoTurnoApi.Migrations
                     b.Navigation("PedidoOriginal");
                 });
 
-            modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.CategoriaPeriodo", b =>
-                {
-                    b.HasOne("ProximoTurnoApi.Infrastructure.Models.Categoria", "Categoria")
-                        .WithMany("Periodos")
-                        .HasForeignKey("ID_CATEGORIA")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Categoria");
-                });
-
             modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.ItemPedido", b =>
                 {
                     b.HasOne("ProximoTurnoApi.Infrastructure.Models.JogoCopia", "JogoCopia")
@@ -705,11 +721,6 @@ namespace ProximoTurnoApi.Migrations
             modelBuilder.Entity("ProximoTurnoApi.Domain.Pedido", b =>
                 {
                     b.Navigation("Items");
-                });
-
-            modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.Categoria", b =>
-                {
-                    b.Navigation("Periodos");
                 });
 
             modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.Jogo", b =>

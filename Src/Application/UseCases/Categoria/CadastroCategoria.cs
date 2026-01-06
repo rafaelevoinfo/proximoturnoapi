@@ -1,12 +1,12 @@
-using Flunt.Notifications;
+
 using ProximoTurnoApi.Application.DTOs;
+using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Infrastructure.Repositories;
 
-namespace ProximoTurnoApi.Application.UseCases.Categoria;
+namespace ProximoTurnoApi.Application.UseCases;
 
-public class CadastroCategoria(ICategoriaRepository repository, IPeriodoRepository faixaPrecoRepository) : UseCaseBasico {
+public class CadastroCategoria(ICategoriaRepository repository) : UseCaseBasico {
     private readonly ICategoriaRepository _repository = repository;
-    private readonly IPeriodoRepository _faixaPrecoRepository = faixaPrecoRepository;
 
     public async Task<int> ExecuteAsync(CategoriaDTO categoriaDto) {
         var filtro = new FiltroCategoriaDTO {
@@ -21,18 +21,15 @@ public class CadastroCategoria(ICategoriaRepository repository, IPeriodoReposito
         if (!IsValid)
             return 0;
 
-        var categoria = categoriaDto.ToModel();
+        var categoria = new Categoria() {
+            Descricao = categoriaDto.Descricao,
+            Periodos = categoriaDto.Periodos.Select(cp => new CategoriaPeriodo() {
+                QuantidadeDias = cp.QtdeDias,
+                Valor = cp.Valor
+            }).ToList()
+        };
 
-        if (categoriaDto.FaixasPrecoIds.Count > 0) {
-            foreach (var faixaId in categoriaDto.FaixasPrecoIds) {
-                var faixa = await _faixaPrecoRepository.GetByIdAsync(faixaId);
-                if (faixa != null) {
-                    categoria.Periodos.Add(faixa);
-                }
-            }
-        }
-
-        await _repository.AddAsync(categoria);
+        await _repository.SaveAsync(categoria);
         return categoria.Id;
     }
 }

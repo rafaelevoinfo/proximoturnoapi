@@ -11,7 +11,6 @@ namespace ProximoTurnoApi.Application.UseCases;
 public class CadastroPedido(IPedidoRepository pedidoRepository,
                             IJogoRepository _jogoRepository,
                             IClienteRepository _clienteRepository,
-                            IPeriodoRepository _periodoRepository,
                             ICategoriaRepository _categoriaRepository) : PedidoUseCaseBasico(pedidoRepository) {
 
     public async Task<int> ExecuteAsync(ClaimsPrincipal user, NovoPedidoDTO novoPedidoDto) {
@@ -23,7 +22,7 @@ public class CadastroPedido(IPedidoRepository pedidoRepository,
 
         var pedido = new Pedido(cliente);
         foreach (var item in novoPedidoDto.Items) {
-            var resultValidacao = await ValidarAdicionarItem(item, _jogoRepository, _periodoRepository, _categoriaRepository);
+            var resultValidacao = await ValidarAdicionarItem(item, _jogoRepository, _categoriaRepository);
             if (!IsValid) {
                 return 0;
             }

@@ -4,13 +4,11 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace ProximoTurnoApi.Infrastructure.Models;
 
 [Table("CATEGORIA")]
-public class Categoria {
+public class Categoria : BaseModel {
     private string _descricao = null!;
-    [Column("ID")]
-    public int Id { get; set; }
 
     [Column("DESCRICAO"), MaxLength(100)]
     public string Descricao { get => _descricao; set => _descricao = value.ToLowerInvariant(); }
 
-    public ICollection<Periodo> Periodos { get; set; } = [];
+    public List<CategoriaPeriodo> Periodos { get; set; } = [];
 }

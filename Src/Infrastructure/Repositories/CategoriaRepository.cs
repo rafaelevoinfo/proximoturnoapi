@@ -7,8 +7,7 @@ namespace ProximoTurnoApi.Infrastructure.Repositories;
 public interface ICategoriaRepository {
     Task<List<Categoria>> GetAllAsync(FiltroCategoriaDTO filtro);
     Task<Categoria?> GetByIdAsync(int id);
-    Task AddAsync(Categoria categoria);
-    Task UpdateAsync(Categoria categoria);
+    Task SaveAsync(Categoria categoria, bool commit = true);
     Task<bool> DeleteAsync(int id);
 }
 
@@ -36,14 +35,8 @@ public class CategoriaRepository : BaseRepository, ICategoriaRepository {
             .FirstOrDefaultAsync(c => c.Id == id);
     }
 
-    public async Task AddAsync(Categoria categoria) {
-        _dbContext.Categorias.Add(categoria);
-        await _dbContext.SaveChangesAsync();
-    }
-
-    public async Task UpdateAsync(Categoria categoria) {
-        _dbContext.Entry(categoria).State = EntityState.Modified;
-        await _dbContext.SaveChangesAsync();
+    public async Task SaveAsync(Categoria categoria, bool commit = true) {
+        await SaveChangesAsync(_dbContext.Categorias, categoria, commit);
     }
 
     public async Task<bool> DeleteAsync(int id) {

@@ -6,7 +6,6 @@ namespace ProximoTurnoApi.Application.UseCases;
 
 public class RenovarPedido(IPedidoRepository pedidoRepository,
                            IJogoRepository _jogoRepository,
-                           IPeriodoRepository _periodoRepository,
                            ICategoriaRepository _categoriaRepository) : PedidoUseCaseBasico(pedidoRepository) {
     public async Task ExecuteAsync(int idPedido, List<ItemPedidoRenovarDTO> itens) {
         var pedidoExistente = await _pedidoRepository.GetByIdAsync(idPedido);
@@ -15,7 +14,7 @@ public class RenovarPedido(IPedidoRepository pedidoRepository,
             return;
         }
 
-        List<(int, Periodo)?> itensNovoPedido = [];
+        List<(int, CategoriaPeriodo)?> itensNovoPedido = [];
         foreach (var itemRenovar in itens) {
             var itemPedido = pedidoExistente.Items.FirstOrDefault(i => i.Id == itemRenovar.Id);
             if (itemPedido is not null) {
@@ -24,13 +23,17 @@ public class RenovarPedido(IPedidoRepository pedidoRepository,
                     IdJogo = itemPedido.JogoCopia.IdJogo,
                     IdPeriodo = itemRenovar.IdPeriodo
                 };
-                var resultValidacao = await ValidarAdicionarItem(novoItemDto, _jogoRepository, _periodoRepository, _categoriaRepository);
+                var resultValidacao = await ValidarAdicionarItem(novoItemDto, _jogoRepository, _categoriaRepository);
                 if (!IsValid) {
                     return;
                 }
 
                 itensNovoPedido.Add((itemRenovar.Id, resultValidacao.Value.periodo));
             }
+        }
+        if (itensNovoPedido.Count == 0) {
+            AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest, "Nenhum item foi informado para ser renovado"));
+            return;
         }
 
         var novoPedido = pedidoExistente.Renovar(itensNovoPedido);

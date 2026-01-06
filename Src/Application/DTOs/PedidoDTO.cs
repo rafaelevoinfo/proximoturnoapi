@@ -54,11 +54,6 @@ public record NovoItemPedidoDTO {
     public int IdCopiaJogo { get; set; }
     [Required]
     public int IdPeriodo { get; set; }
-    // public decimal? Valor { get; set; }
-    // [Required]
-    // public DateTime? DataDevolucao { get; set; }
-
-    public bool Renovado { get; set; }
 }
 
 

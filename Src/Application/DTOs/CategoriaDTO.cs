@@ -11,24 +11,25 @@ public record CategoriaDTO {
     [Required, MaxLength(100)]
     public string Descricao { get => _descricao; set => _descricao = StringUtils.Capitalize(value); }
 
-    public List<int> FaixasPrecoIds { get; set; } = [];
+    public List<PeriodoDTO> Periodos { get; set; } = [];
 
-    public Categoria ToModel() {
-        return new Categoria {
-            Id = Id ?? 0,
-            Descricao = Descricao,
-        };
-    }
-
-    public void UpdateModel(Categoria categoria) {
-        categoria.Descricao = Descricao;
-    }
 
     public static CategoriaDTO FromModel(Categoria categoria) {
         return new CategoriaDTO {
             Id = categoria.Id,
             Descricao = StringUtils.Capitalize(categoria.Descricao),
-            FaixasPrecoIds = categoria.Periodos.Select(fp => fp.Id).ToList()
+            Periodos = categoria.Periodos.Select(p => new PeriodoDTO() {
+                Id = p.Id,
+                QtdeDias = p.QuantidadeDias,
+                Valor = p.Valor
+            }).ToList()
         };
     }
+
+}
+
+public record PeriodoDTO {
+    public int Id { get; set; }
+    public int QtdeDias { get; set; }
+    public decimal Valor { get; set; }
 }

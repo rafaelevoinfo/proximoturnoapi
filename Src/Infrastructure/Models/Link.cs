@@ -4,9 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace ProximoTurnoApi.Infrastructure.Models;
 
 [Table("LINK")]
-public class Link {
-    [Column("ID")]
-    public int Id { get; set; }
+public class Link : BaseModel {
     [Column("ID_JOGO")]
     public int IdJogo { get; set; }
 

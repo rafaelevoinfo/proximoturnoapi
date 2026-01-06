@@ -10,8 +10,7 @@ public enum StatusPedido : short {
     Cancelado
 }
 
-public class Pedido : Notifiable<Notification> {
-    public int Id { get; }
+public class Pedido : BaseModel {
     public Cliente Cliente { get; }
     //Em caso de renovações, estara preenchido com o pedido que gerou a renovacao
     public Pedido? PedidoOriginal { get; init; }
@@ -81,6 +80,11 @@ public class Pedido : Notifiable<Notification> {
         return true;
     }
 
+    public ItemPedido? BuscarItem(int IdCopiaJogo) {
+        return _items.FirstOrDefault(i => i.IdJogoCopia == IdCopiaJogo);
+    }
+
+
     public bool RemoverItem(int idItemPedido) {
         Clear();
         if (Status != StatusPedido.Criado) {
@@ -88,6 +92,7 @@ public class Pedido : Notifiable<Notification> {
         }
         for (var i = _items.Count - 1; i >= 0; i--) {
             if (_items[i].Id == idItemPedido) {
+                _items[i].JogoCopia.Status = StatusJogo.Disponivel;
                 _items.RemoveAt(i);
                 return true;
             }
@@ -100,6 +105,7 @@ public class Pedido : Notifiable<Notification> {
         if (Status != StatusPedido.Criado) {
             AddNotification("ERRO", $"Não é possivel remover items de um pedido no status {Status}");
         }
+        item.JogoCopia.Status = StatusJogo.Disponivel;
         return _items.Remove(item);
     }
 
@@ -126,7 +132,7 @@ public class Pedido : Notifiable<Notification> {
         return true;
     }
 
-    public Pedido? Renovar(List<(int idItem, Periodo periodo)?> itensRenovar) {
+    public Pedido? Renovar(List<(int idItem, CategoriaPeriodo periodo)?> itensRenovar) {
         Clear();
         if (Status != StatusPedido.Entregue) {
             AddNotification("ERRO", "Não é possível renovar um pedido não entregue");

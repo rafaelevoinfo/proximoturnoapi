@@ -56,6 +56,7 @@ public class ClienteRepository : BaseRepository, IClienteRepository {
 
     public async Task<Cliente?> GetByEmailAsync(string email) {
         return await _dbContext.Clientes
+            .AsTracking()
             .FirstOrDefaultAsync(c => c.Email == email.ToLowerInvariant());
     }
 

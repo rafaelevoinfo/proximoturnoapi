@@ -6,7 +6,6 @@ namespace ProximoTurnoApi.Application.UseCases;
 
 public class AtualizarPedido(IPedidoRepository pedidoRepository,
                              IJogoRepository _jogoRepository,
-                             IPeriodoRepository _periodoRepository,
                              ICategoriaRepository _categoriaRepository) : PedidoUseCaseBasico(pedidoRepository) {
 
     public async Task ExecuteAsync(NovoPedidoDTO novoPedidoDto) {
@@ -26,27 +25,32 @@ public class AtualizarPedido(IPedidoRepository pedidoRepository,
             }
         }
         foreach (var item in novoPedidoDto.Items!) {
-            var itemExistente = pedido.Items.FirstOrDefault(pi => pi.Id == item.Id);
-            if (itemExistente != null) {
-                pedido.RemoverItem(itemExistente);
-            }
-
-            var resultValidacao = await ValidarAdicionarItem(item, _jogoRepository, _periodoRepository, _categoriaRepository);
+            var resultValidacao = await ValidarAdicionarItem(item, _jogoRepository, _categoriaRepository);
             if (!IsValid) {
                 return;
             }
 
+            var dataDevolucao = pedido.CalcularDataDevolucao(resultValidacao.Value.periodo.QuantidadeDias);
+            var itemExistente = pedido.Items.FirstOrDefault(pi => pi.Id == item.Id);
+            if (itemExistente != null) {
+                if (itemExistente.IdJogoCopia == item.IdCopiaJogo &&
+                    itemExistente.Valor == resultValidacao.Value.periodo.Valor &&
+                    itemExistente.DataDevolucao == dataDevolucao) {
+                    continue;
+                }
+                pedido.RemoverItem(itemExistente);
+            }
             var itemPedido = new ItemPedido() {
-                JogoCopia = resultValidacao.Value.copia!,
+                JogoCopia = resultValidacao.Value.copia,
                 Valor = resultValidacao.Value.periodo.Valor,
                 DataDevolucao = pedido.CalcularDataDevolucao(resultValidacao.Value.periodo.QuantidadeDias)
             };
+
             if (!pedido.AdicionarItem(itemPedido)) {
                 var notifications = pedido.Notifications.Select(n => UseCaseNotification.Create(UseCaseNotificationType.BadRequest, n.Message)).ToList();
                 AddNotifications((IList<UseCaseNotification>)notifications);
                 return;
             }
-
         }
 
         await _pedidoRepository.SaveAsync(pedido);

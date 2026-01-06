@@ -107,6 +107,7 @@ public class JogosController(ILogger<ControllerBasico> logger,
                 copia.Status = StatusJogo.Desativado;
             }
             await _repository.SaveChangesAsync();
+
             return Ok(ApiResultDTO<object>.CreateSuccessResult(null, "Jogo desativado com sucesso."));
         });
     }

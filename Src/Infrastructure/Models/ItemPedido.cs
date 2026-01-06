@@ -4,9 +4,7 @@ namespace ProximoTurnoApi.Infrastructure.Models;
 
 
 [Table("PEDIDO_ITEM")]
-public class ItemPedido {
-    [Column("ID")]
-    public int Id { get; set; }
+public class ItemPedido : BaseModel {
     [Column("ID_PEDIDO")]
     public int IdPedido { get; set; }
     [Column("ID_JOGO_COPIA")]

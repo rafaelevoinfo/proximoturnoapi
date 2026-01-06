@@ -6,10 +6,9 @@ using ProximoTurnoApi.Infrastructure.Models;
 namespace ProximoTurnoApi.Infrastructure.Repositories;
 
 public interface IPedidoRepository : IBaseRepository {
-    Task<List<Pedido>> GetAllAsync(FiltroPedidoDTO filtro);
-
-    Task<Pedido?> GetByIdAsync(int id);
     Task SaveAsync(Pedido pedido, bool commit = true);
+    Task<List<Pedido>> GetAllAsync(FiltroPedidoDTO filtro);
+    Task<Pedido?> GetByIdAsync(int id);
     Task<bool> DeleteAsync(int id);
 }
 
@@ -21,7 +20,6 @@ public class PedidoRepository(DatabaseContext dbContext) : BaseRepository(dbCont
             .Include(p => p.Items)!
                 .ThenInclude(j => j.JogoCopia)
                     .ThenInclude(jc => jc.Jogo)
-            .AsNoTracking()
             .AsQueryable();
 
         if (filtro.IdCliente.HasValue) {
@@ -45,7 +43,10 @@ public class PedidoRepository(DatabaseContext dbContext) : BaseRepository(dbCont
             query = query.Where(p => p.Items!.Any(i => i.DataDevolucao.Date < DateTime.Today && i.JogoCopia.Status == StatusJogo.Alugado));
         }
 
-        return await query.ToListAsync();
+        return await query
+            .AsNoTracking()
+            .OrderByDescending(p => p.DataHora)
+            .ToListAsync();
     }
 
     public async Task<Pedido?> GetByIdAsync(int id) {
@@ -58,24 +59,13 @@ public class PedidoRepository(DatabaseContext dbContext) : BaseRepository(dbCont
             .FirstOrDefaultAsync(p => p.Id == id);
     }
 
-    public async Task SaveAsync(Pedido pedido, bool commit = true) {
-        if (pedido.Id == 0) {
-            _dbContext.Pedidos.Add(pedido);
-        } else if (_dbContext.Entry(pedido).State == EntityState.Detached) {
-            _dbContext.Pedidos.Update(pedido);
-        }
-        if (!commit)
-            return;
-
-
-        await _dbContext.SaveChangesAsync();
-    }
-
     public async Task<bool> DeleteAsync(int id) {
         return await _dbContext.Pedidos
             .Where(p => p.Id == id)
             .ExecuteDeleteAsync() > 0;
     }
 
-
+    public async Task SaveAsync(Pedido pedido, bool commit) {
+        await SaveChangesAsync(_dbContext.Pedidos, pedido, commit);
+    }
 }

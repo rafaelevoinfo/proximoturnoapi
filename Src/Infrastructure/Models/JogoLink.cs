@@ -3,9 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace ProximoTurnoApi.Infrastructure.Models;
 
 [Table("JOGO_LINK")]
-public class JogoLink {
-    [Column("ID")]
-    public int Id { get; set; }
+public class JogoLink : BaseModel {
     [Column("ID_JOGO")]
     public int IdJogo { get; set; }
     [Column("ID_LINK")]

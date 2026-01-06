@@ -15,7 +15,6 @@ public class PedidosController(ILogger<ControllerBasico> logger,
     IPedidoRepository _pedidoRepository,
     IClienteRepository _clienteRepository,
     IJogoRepository _jogoRepository,
-    IPeriodoRepository _periodoRepository,
     ICategoriaRepository _categoriaRepository) : ControllerBasico(logger) {
 
 
@@ -54,7 +53,7 @@ public class PedidosController(ILogger<ControllerBasico> logger,
     [HttpPost]
     public async Task<IActionResult> NovoPedido(NovoPedidoDTO novoPedido) {
         return await EncapsulateRequestAsync(async () => {
-            var cadastroPedidoUseCase = new CadastroPedido(_pedidoRepository, _jogoRepository, _clienteRepository, _periodoRepository, _categoriaRepository);
+            var cadastroPedidoUseCase = new CadastroPedido(_pedidoRepository, _jogoRepository, _clienteRepository, _categoriaRepository);
             var novoPedidoId = await cadastroPedidoUseCase.ExecuteAsync(User, novoPedido);
             if (novoPedidoId == 0) {
                 return BadRequest(ApiResultDTO<PedidoDTO>.CreateFailureResult(cadastroPedidoUseCase.AggregateErrors()));
@@ -69,7 +68,7 @@ public class PedidosController(ILogger<ControllerBasico> logger,
             if (id != novoPedido.Id) {
                 return BadRequest(ApiResultDTO<PedidoDTO>.CreateFailureResult("O ID do pedido na URL deve corresponder ao ID no corpo da requisição."));
             }
-            var atualizarPedidoUseCase = new AtualizarPedido(_pedidoRepository, _jogoRepository, _periodoRepository, _categoriaRepository);
+            var atualizarPedidoUseCase = new AtualizarPedido(_pedidoRepository, _jogoRepository, _categoriaRepository);
             await atualizarPedidoUseCase.ExecuteAsync(novoPedido);
             if (!atualizarPedidoUseCase.IsValid) {
                 return BadRequest(ApiResultDTO<PedidoDTO>.CreateFailureResult(atualizarPedidoUseCase.AggregateErrors()));
@@ -93,7 +92,7 @@ public class PedidosController(ILogger<ControllerBasico> logger,
     [HttpPut("{id}/renovar")]
     public async Task<IActionResult> RenovarPedido(int id, List<ItemPedidoRenovarDTO> itensRenovacao) {
         return await EncapsulateRequestAsync(async () => {
-            var renovarPedidoUseCase = new RenovarPedido(_pedidoRepository, _jogoRepository, _periodoRepository, _categoriaRepository);
+            var renovarPedidoUseCase = new RenovarPedido(_pedidoRepository, _jogoRepository, _categoriaRepository);
             await renovarPedidoUseCase.ExecuteAsync(id, itensRenovacao);
             if (!renovarPedidoUseCase.IsValid) {
                 return BadRequest(ApiResultDTO<PedidoDTO>.CreateFailureResult(renovarPedidoUseCase.AggregateErrors()));

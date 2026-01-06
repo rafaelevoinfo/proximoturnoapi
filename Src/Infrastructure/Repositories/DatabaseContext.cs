@@ -16,6 +16,7 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : Identi
         ConfigurePedido(modelBuilder);
         ConfigureJogo(modelBuilder);
 
+
         modelBuilder.Entity<Cliente>(b => {
             b.HasIndex(c => c.Email).IsUnique();
             b.HasIndex(c => c.Telefone).IsUnique();
@@ -23,21 +24,33 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : Identi
 
         modelBuilder.Entity<Categoria>(b => {
             b.HasIndex(c => c.Descricao).IsUnique();
-
             b.HasMany(c => c.Periodos)
-             .WithMany(f => f.Categorias)
-             .UsingEntity<Dictionary<string, object>>(
-                 "CATEGORIA_FAIXA_PRECO",
-                 j => j.HasOne<Periodo>().WithMany().HasForeignKey("ID_FAIXA_PRECO").OnDelete(DeleteBehavior.Cascade),
-                 t => t.HasOne<Categoria>().WithMany().HasForeignKey("ID_CATEGORIA").OnDelete(DeleteBehavior.Cascade),
-                 je => je.HasKey("ID_CATEGORIA", "ID_FAIXA_PRECO")
-             );
+             .WithOne(cp => cp.Categoria)
+             .OnDelete(DeleteBehavior.Cascade);
         });
+
+        ConfigureCategoriaPeriodo(modelBuilder);
+
+
 
         modelBuilder.Entity<Tag>(b => {
             b.HasIndex(t => t.Nome).IsUnique();
         });
 
+    }
+
+    private static void ConfigureCategoriaPeriodo(ModelBuilder modelBuilder) {
+        modelBuilder.Entity<CategoriaPeriodo>(builder => {
+            builder.ToTable("CATEGORIA_PERIODO");
+            builder.HasKey(cp => cp.Id);
+            builder.Property(p => p.Id).HasColumnName("ID");
+            builder.Property(p => p.QuantidadeDias).HasColumnName("QTDE_DIAS");
+            builder.Property(p => p.Valor).HasColumnName("VALOR").HasPrecision(18, 2);
+            builder.HasOne(cp => cp.Categoria)
+                   .WithMany(p => p.Periodos)
+                   .HasForeignKey("ID_CATEGORIA")
+                   .OnDelete(DeleteBehavior.Cascade);
+        });
     }
 
     private static void ConfigureJogo(ModelBuilder modelBuilder) {
@@ -89,11 +102,6 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : Identi
                    .HasForeignKey("ID_PEDIDO_ORIGINAL")
                    .OnDelete(DeleteBehavior.Restrict);
 
-            // builder.HasMany<ItemPedido>("_items")
-            //        .WithOne()
-            //        .HasForeignKey(pj => pj.IdPedido)
-            //        .OnDelete(DeleteBehavior.Cascade);
-
             builder.HasMany(p => p.Items)
                    .WithOne()
                    .HasForeignKey(i => i.IdPedido)
@@ -115,10 +123,8 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : Identi
     public DbSet<Jogo> Jogos { get; set; }
     public DbSet<JogoCopia> JogoCopias { get; set; }
     public DbSet<Categoria> Categorias { get; set; }
-    public DbSet<Periodo> FaixasPreco { get; set; }
     public DbSet<Pedido> Pedidos { get; set; }
     public DbSet<Tag> Tags { get; set; }
     public DbSet<ItemPedido> ItemPedidos { get; set; }
-    public DbSet<JogoMaisAlugado> JogosMaisAlugados { get; set; }
 
 }

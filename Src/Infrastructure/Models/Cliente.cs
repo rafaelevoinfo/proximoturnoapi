@@ -5,11 +5,10 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace ProximoTurnoApi.Infrastructure.Models;
 
 [Table("CLIENTE")]
-public class Cliente {
+public class Cliente : BaseModel {
     private string _nome = null!;
     private string _email = null!;
-    [Column("ID")]
-    public int Id { get; set; }
+
     [Column("NOME"), MaxLength(100)]
     public required string Nome {
         get => _nome; set => _nome = value.ToLowerInvariant();

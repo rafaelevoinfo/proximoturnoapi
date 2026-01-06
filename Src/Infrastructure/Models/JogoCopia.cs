@@ -12,9 +12,7 @@ public enum StatusJogo : short {
 }
 
 [Table("JOGO_COPIA")]
-public class JogoCopia {
-    [Key, Column("ID")]
-    public int Id { get; set; }
+public class JogoCopia : BaseModel {
     [Column("ID_JOGO")]
     public int IdJogo { get; set; }
     [Column("STATUS")]

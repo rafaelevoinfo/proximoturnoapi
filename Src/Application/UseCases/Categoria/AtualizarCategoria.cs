@@ -1,11 +1,11 @@
 using ProximoTurnoApi.Application.DTOs;
+using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Infrastructure.Repositories;
 
-namespace ProximoTurnoApi.Application.UseCases.Categoria;
+namespace ProximoTurnoApi.Application.UseCases;
 
-public class AtualizarCategoria(ICategoriaRepository repository, IPeriodoRepository faixaPrecoRepository) : UseCaseBasico {
+public class AtualizarCategoria(ICategoriaRepository repository) : UseCaseBasico {
     private readonly ICategoriaRepository _repository = repository;
-    private readonly IPeriodoRepository _faixaPrecoRepository = faixaPrecoRepository;
 
     public async Task<bool> ExecuteAsync(CategoriaDTO categoriaDto) {
         var categoria = await _repository.GetByIdAsync(categoriaDto.Id ?? 0);
@@ -27,19 +27,21 @@ public class AtualizarCategoria(ICategoriaRepository repository, IPeriodoReposit
         if (!IsValid)
             return false;
 
-        categoriaDto.UpdateModel(categoria);
+        categoria.Periodos.RemoveAll(periodo =>
+            !categoriaDto.Periodos.Any(p =>
+                p.QtdeDias == periodo.QuantidadeDias &&
+                p.Valor == periodo.Valor));
 
-        categoria.Periodos.Clear();
-        if (categoriaDto.FaixasPrecoIds.Count > 0) {
-            foreach (var faixaId in categoriaDto.FaixasPrecoIds) {
-                var faixa = await _faixaPrecoRepository.GetByIdAsync(faixaId);
-                if (faixa != null) {
-                    categoria.Periodos.Add(faixa);
-                }
+        foreach (var periodo in categoriaDto.Periodos) {
+            if (!categoria.Periodos.Any(p => p.QuantidadeDias == periodo.QtdeDias && p.Valor == periodo.Valor)) {
+                categoria.Periodos.Add(new CategoriaPeriodo() {
+                    QuantidadeDias = periodo.QtdeDias,
+                    Valor = periodo.Valor
+                });
             }
         }
 
-        await _repository.UpdateAsync(categoria);
+        await _repository.SaveAsync(categoria);
         return IsValid;
     }
 }

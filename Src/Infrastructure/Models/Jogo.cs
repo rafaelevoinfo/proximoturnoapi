@@ -18,10 +18,7 @@ public class JogoMaisAlugado {
 }
 
 [Table("JOGO")]
-public class Jogo {
-    [Column("ID")]
-    public int Id { get; set; }
-
+public class Jogo : BaseModel {
     [Column("ID_CATEGORIA")]
     public int IdCategoria { get; set; }
 

@@ -14,8 +14,8 @@ public interface IJogoRepository : IBaseRepository {
     Task<Jogo?> GetByIdAsync(int id);
     Task<List<JogoCopia>> GetCopiasAsync(int id);
     Task<JogoCopia?> GetCopiaByIdAsync(int id);
-    Task SaveAsync(Jogo jogo, bool saveChanges = true);
-    Task SaveAsync(JogoCopia jogo, bool saveChanges = true);
+    Task SaveAsync(Jogo jogo, bool commit = true);
+    Task SaveAsync(JogoCopia jogo, bool commit = true);
     Task<bool> DeleteAsync(int id);
     Task<bool> ExisteAsync(int id);
     Task<bool> CopiaExisteAndDisponivel(int id);
@@ -84,27 +84,12 @@ public class JogoRepository : BaseRepository, IJogoRepository {
            .FirstOrDefaultAsync(j => j.Id == id);
     }
 
-    public async Task SaveAsync(Jogo jogo, bool saveChanges = true) {
-        if (jogo.Id == 0) {
-            _dbContext.Jogos.Add(jogo);
-        } else {
-            _dbContext.Jogos.Update(jogo);
-        }
-        if (!saveChanges)
-            return;
-        await _dbContext.SaveChangesAsync();
+    public async Task SaveAsync(Jogo jogo, bool commit = true) {
+        await SaveChangesAsync(_dbContext.Jogos, jogo, commit);
     }
 
-    public async Task SaveAsync(JogoCopia jogoCopia, bool saveChanges = true) {
-        if (jogoCopia.Id == 0) {
-            _dbContext.JogoCopias.Add(jogoCopia);
-        } else {
-            _dbContext.JogoCopias.Update(jogoCopia);
-        }
-        if (!saveChanges)
-            return;
-
-        await _dbContext.SaveChangesAsync();
+    public async Task SaveAsync(JogoCopia jogoCopia, bool commit = true) {
+        await SaveChangesAsync(_dbContext.JogoCopias, jogoCopia, commit);
     }
 
     public async Task<bool> DeleteAsync(int id) {
@@ -137,7 +122,8 @@ public class JogoRepository : BaseRepository, IJogoRepository {
     }
 
     public async Task<List<JogoMaisAlugado>> GetMaisAlugadosAsync() {
-        return await _dbContext.JogosMaisAlugados.FromSqlRaw(@$"
+        return await _dbContext.Database
+            .SqlQuery<JogoMaisAlugado>(@$"
             select count(*) as qtde,
                    j.ID,
                    j.NOME,
