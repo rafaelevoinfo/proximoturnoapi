@@ -1,9 +1,11 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using ProximoTurnoApi.Application.DTOs;
 using ProximoTurnoApi.Application.UseCases;
 using ProximoTurnoApi.Domain;
+using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Infrastructure.Repositories;
 
 namespace ProximoTurnoApi.Application.Controllers;
@@ -15,13 +17,14 @@ public class PedidosController(ILogger<ControllerBasico> logger,
     IPedidoRepository _pedidoRepository,
     IClienteRepository _clienteRepository,
     IJogoRepository _jogoRepository,
-    ICategoriaRepository _categoriaRepository) : ControllerBasico(logger) {
+    ICategoriaRepository _categoriaRepository,
+    UserManager<Usuario> _userManager) : ControllerBasico(logger) {
 
 
     [HttpGet()]
     public async Task<IActionResult> GetAll(FiltroPedidoDTO filtro) {
         return await EncapsulateRequestAsync(async () => {
-            var buscarPedidosUseCase = new BuscarPedidos(_pedidoRepository, _clienteRepository);
+            var buscarPedidosUseCase = new BuscarPedidos(_pedidoRepository, _clienteRepository, _userManager);
             var pedidos = await buscarPedidosUseCase.ExecuteAsync(User, filtro);
             if (!buscarPedidosUseCase.IsValid) {
                 if (buscarPedidosUseCase.Notifications.Any(un => un.Type == UseCaseNotificationType.Forbid)) {
@@ -37,7 +40,7 @@ public class PedidosController(ILogger<ControllerBasico> logger,
     [HttpGet("{id}")]
     public async Task<IActionResult> GetPedido(int id) {
         return await EncapsulateRequestAsync(async () => {
-            var buscarPedidosUseCase = new BuscarPedidos(_pedidoRepository, _clienteRepository);
+            var buscarPedidosUseCase = new BuscarPedidos(_pedidoRepository, _clienteRepository, _userManager);
             var pedido = await buscarPedidosUseCase.ExecuteAsync(User, id);
             if (!buscarPedidosUseCase.IsValid) {
                 return Forbid();
@@ -53,7 +56,7 @@ public class PedidosController(ILogger<ControllerBasico> logger,
     [HttpPost]
     public async Task<IActionResult> NovoPedido(NovoPedidoDTO novoPedido) {
         return await EncapsulateRequestAsync(async () => {
-            var cadastroPedidoUseCase = new CadastroPedido(_pedidoRepository, _jogoRepository, _clienteRepository, _categoriaRepository);
+            var cadastroPedidoUseCase = new CadastroPedido(_pedidoRepository, _jogoRepository, _clienteRepository, _categoriaRepository, _userManager);
             var novoPedidoId = await cadastroPedidoUseCase.ExecuteAsync(User, novoPedido);
             if (novoPedidoId == 0) {
                 return BadRequest(ApiResultDTO<PedidoDTO>.CreateFailureResult(cadastroPedidoUseCase.AggregateErrors()));
@@ -78,10 +81,10 @@ public class PedidosController(ILogger<ControllerBasico> logger,
     }
 
     [HttpPut("{id}/status")]
-    public async Task<IActionResult> AtualizarStatusPedido(int id, StatusPedido novoStatus) {
+    public async Task<IActionResult> AtualizarStatusPedido(int id, [FromBody] StatusPedidoDTO novoStatus) {
         return await EncapsulateRequestAsync(async () => {
             var atualizarStatusPedidoUseCase = new AtualizarStatusPedido(_pedidoRepository);
-            await atualizarStatusPedidoUseCase.ExecuteAsync(id, novoStatus);
+            await atualizarStatusPedidoUseCase.ExecuteAsync(id, novoStatus.Status);
             if (!atualizarStatusPedidoUseCase.IsValid) {
                 return BadRequest(ApiResultDTO<PedidoDTO>.CreateFailureResult(atualizarStatusPedidoUseCase.AggregateErrors()));
             }

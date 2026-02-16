@@ -50,11 +50,8 @@ public class JogoRepository : BaseRepository, IJogoRepository {
             query = query.Where(j => j.IdadeMinima <= filtro.IdadeMinima.Value);
         }
 
-        if (filtro.MinimoJogadores.HasValue) {
-            query = query.Where(j => j.MinimoDeJogadores >= filtro.MinimoJogadores.Value);
-        }
-        if (filtro.MaximoJogadores.HasValue) {
-            query = query.Where(j => j.MaximoDeJogadores <= filtro.MaximoJogadores.Value);
+        if (filtro.QtdeJogadores.HasValue) {
+            query = query.Where(j => j.MinimoDeJogadores <= filtro.QtdeJogadores.Value && j.MaximoDeJogadores >= filtro.QtdeJogadores.Value);
         }
 
         return await query

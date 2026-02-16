@@ -1,0 +1,86 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:9.0
+    container_name: proximoturno-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-proximoturno_db}
+      MYSQL_USER: ${MYSQL_USER:-proximoturno}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-password123}
+    # ports:
+    #   - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 5s
+      retries: 10
+      interval: 5s
+    networks:
+      - proximoturno-network
+
+  migrations:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: proximoturno-migrations
+    environment:
+      ConnectionStrings__DefaultConnection: Server=mysql;Port=3306;Database=${MYSQL_DATABASE};User=${MYSQL_USER};Password=${MYSQL_PASSWORD};
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - proximoturno-network
+    entrypoint: /bin/sh -c "dotnet ef database update --project Src/ProximoTurnoApi.csproj; exit 0"
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: proximoturno-api
+    environment:
+      ConnectionStrings__DefaultConnection: Server=mysql;Port=3306;Database=${MYSQL_DATABASE};User=${MYSQL_USER};Password=${MYSQL_PASSWORD};      
+    depends_on:
+      migrations:
+        condition: service_completed_successfully
+      mysql:
+        condition: service_healthy
+    networks:
+      - proximoturno-network
+      - dokploy-network
+
+    labels:
+        - "traefik.enable=true"
+        
+        # === Service Configuration ===
+        - "traefik.http.services.proximoturno-service.loadbalancer.server.port=80"
+        - "traefik.http.services.proximoturno-service.loadbalancer.server.scheme=http"
+        
+        # === Middleware: HTTP → HTTPS Redirect ===
+        - "traefik.http.middlewares.https-redirect.redirectscheme.scheme=https"
+        - "traefik.http.middlewares.https-redirect.redirectscheme.permanent=true"
+
+        # === Router HTTP (redireciona para HTTPS) ===
+        - "traefik.http.routers.proximoturno-http.rule=Host(`proximoturno.com.br`)"
+        - "traefik.http.routers.proximoturno-http.entrypoints=web"      
+        - "traefik.http.routers.proximoturno-http.middlewares=https-redirect"
+        - "traefik.http.routers.proximoturno-http.service=proximoturno-service"
+
+        # === Router HTTPS ===
+        - "traefik.http.routers.proximoturno-https.rule=Host(`proximoturno.com.br`)"
+        - "traefik.http.routers.proximoturno-https.entrypoints=websecure"
+        - "traefik.http.routers.proximoturno-https.service=proximoturno-service"
+        - "traefik.http.routers.proximoturno-https.tls=true"
+        - "traefik.http.routers.proximoturno-https.tls.certresolver=letsencrypt"
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  proximoturno-network:
+    driver: bridge
+  dokploy-network:
+    external: true

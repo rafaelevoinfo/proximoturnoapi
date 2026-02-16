@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Security.Claims;
+using Microsoft.AspNetCore.Identity;
 using ProximoTurnoApi.Application.DTOs;
 using ProximoTurnoApi.Domain;
 using ProximoTurnoApi.Infrastructure.Models;
@@ -11,10 +12,12 @@ namespace ProximoTurnoApi.Application.UseCases;
 public class CadastroPedido(IPedidoRepository pedidoRepository,
                             IJogoRepository _jogoRepository,
                             IClienteRepository _clienteRepository,
-                            ICategoriaRepository _categoriaRepository) : PedidoUseCaseBasico(pedidoRepository) {
+                            ICategoriaRepository _categoriaRepository,
+                            UserManager<Usuario> _userManager) : PedidoUseCaseBasico(pedidoRepository) {
 
-    public async Task<int> ExecuteAsync(ClaimsPrincipal user, NovoPedidoDTO novoPedidoDto) {
-        var cliente = await _clienteRepository.GetByEmailAsync(user.Identity?.Name ?? "");//BuscarIdClienteLogado(user.Identity?.Name ?? "");
+    public async Task<int> ExecuteAsync(ClaimsPrincipal userClaim, NovoPedidoDTO novoPedidoDto) {
+        var user = await _userManager.GetUserAsync(userClaim);
+        var cliente = await _clienteRepository.GetByEmailAsync(user?.Email ?? "");
         if (cliente is null) {
             AddNotification(UseCaseNotification.Create(UseCaseNotificationType.Forbid, "Usuário não logado ou não vinculado a nenhum cliente."));
             return 0;

@@ -17,6 +17,7 @@ if (builder.Environment.IsDevelopment()) {
 builder.Services.AddDbContext<DatabaseContext>(options => {
     options.UseMySql(builder.Configuration.GetConnectionString("DefaultConnection"),
         new MySqlServerVersion(new Version(9, 4, 0)));
+    options.EnableSensitiveDataLogging();
     options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
 });
 builder.Services.AddControllers();
@@ -29,9 +30,26 @@ builder.Services.AddScoped<ITagRepository, TagRepository>();
 builder.Services.AddIdentityUser();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddDocumentation();
-builder.Services.AddCors();
-// builder.Services.AddEndpointsApiExplorer();
-// builder.Services.AddSwaggerGen();
+
+// Configure CORS based on environment
+builder.Services.AddCors(options => {
+    if (builder.Environment.IsDevelopment()) {
+        // Dev: permitir tudo
+        options.AddDefaultPolicy(policy => {
+            policy.AllowAnyOrigin()
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        });
+    } else {
+        // Prod: permitir apenas proximoturno.com.br
+        options.AddDefaultPolicy(policy => {
+            policy.WithOrigins("https://proximoturno.com.br")
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
+        });
+    }
+});
 
 builder.Host.UseSerilog((hostingContext, loggerConfiguration) => loggerConfiguration.ReadFrom.Configuration(hostingContext.Configuration));
 
@@ -44,9 +62,7 @@ if (app.Environment.IsDevelopment()) {
     app.UseSwaggerUI();
 }
 
-app.UseCors(c => c.AllowAnyHeader()
-                  .AllowAnyMethod()
-                  .AllowAnyOrigin());
+app.UseCors();
 app.UseHttpsRedirection();
 app.MapGroup("/api")
    .MapIdentityApi<Usuario>();
@@ -91,7 +107,9 @@ static class Extensions {
         // services.AddIdentity<Usuario, IdentityRole>(op => {
         //     op.User.RequireUniqueEmail = true;
         // })
-        services.AddIdentityCore<Usuario>()
+        services.AddIdentityCore<Usuario>(options => {
+            options.User.RequireUniqueEmail = true;
+        })
             .AddRoles<IdentityRole>()
             .AddApiEndpoints()
             .AddEntityFrameworkStores<DatabaseContext>();

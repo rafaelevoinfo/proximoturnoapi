@@ -1,11 +1,9 @@
-using System.ComponentModel.DataAnnotations.Schema;
-using Flunt.Notifications;
 using ProximoTurnoApi.Infrastructure.Models;
 
 namespace ProximoTurnoApi.Domain;
 
 public enum StatusPedido : short {
-    Criado,
+    Pendente,
     Entregue,
     Cancelado
 }
@@ -56,7 +54,7 @@ public class Pedido : BaseModel {
 
     public bool AdicionarItem(ItemPedido item) {
         Clear();
-        if (Status != StatusPedido.Criado) {
+        if (Status != StatusPedido.Pendente) {
             AddNotification("ERRO", $"Não é possivel adicionar novos items a um pedido no status {Status}");
         }
         if (item.JogoCopia is null) {
@@ -76,18 +74,15 @@ public class Pedido : BaseModel {
             return false;
         }
         _items.Add(item);
+        CalcularTotal();
 
         return true;
-    }
-
-    public ItemPedido? BuscarItem(int IdCopiaJogo) {
-        return _items.FirstOrDefault(i => i.IdJogoCopia == IdCopiaJogo);
     }
 
 
     public bool RemoverItem(int idItemPedido) {
         Clear();
-        if (Status != StatusPedido.Criado) {
+        if (Status != StatusPedido.Pendente) {
             AddNotification("ERRO", $"Não é possivel remover items de um pedido no status {Status}");
         }
         for (var i = _items.Count - 1; i >= 0; i--) {
@@ -97,22 +92,25 @@ public class Pedido : BaseModel {
                 return true;
             }
         }
+        CalcularTotal();
         return false;
     }
 
     public bool RemoverItem(ItemPedido item) {
         Clear();
-        if (Status != StatusPedido.Criado) {
+        if (Status != StatusPedido.Pendente) {
             AddNotification("ERRO", $"Não é possivel remover items de um pedido no status {Status}");
         }
         item.JogoCopia.Status = StatusJogo.Disponivel;
-        return _items.Remove(item);
+        var result = _items.Remove(item);
+        CalcularTotal();
+        return result;
     }
 
     public bool Entregar() {
         Clear();
-        if (Status != StatusPedido.Criado) {
-            AddNotification("ERRO", $"Somente um pedido no status Criado pode ser entregue.");
+        if (Status != StatusPedido.Pendente) {
+            AddNotification("ERRO", $"Somente um pedido no status {StatusPedido.Pendente} pode ser entregue.");
             return false;
         }
         Status = StatusPedido.Entregue;
@@ -178,5 +176,10 @@ public class Pedido : BaseModel {
             return false;
         }
         return true;
+    }
+
+
+    private void CalcularTotal() {
+        ValorTotal = _items.Sum(i => i.Valor);
     }
 }

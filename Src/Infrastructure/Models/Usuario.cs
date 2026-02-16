@@ -6,15 +6,11 @@ namespace ProximoTurnoApi.Infrastructure.Models;
 
 // [Table("USUARIO")]
 public class Usuario : IdentityUser {
-    // [Key, Column("ID")]
-    // public int Id { get; set; }
+    [Column("NOME"), MaxLength(60)]
+    public string? Nome { get; set; } = null!;
+}
 
-    // [Column("NOME")]
-    // public string Nome { get; set; } = null!;
-
-    // [Column("EMAIL")]
-    // public string Email { get; set; } = null!;
-
-    // [Column("ADMIN")]
-    // public bool IsAdmin { get; set; }
+public abstract class Roles {
+    public const string Admin = "Admin";
+    public const string Member = "Member";
 }
