@@ -49,42 +49,10 @@ services:
         condition: service_healthy
     networks:
       - proximoturno-network
-      - dokploy-network
 
-    labels:
-        - "traefik.enable=true"
-        
-        # === Service Configuration ===
-        - "traefik.http.services.proximoturno-service.loadbalancer.server.port=80"
-        
-        # === Middleware: HTTP → HTTPS Redirect ===
-        - "traefik.http.middlewares.proximo-turno-https-redirect.redirectscheme.scheme=https"
-        - "traefik.http.middlewares.proximo-turno-https-redirect.redirectscheme.permanent=true"
-
-        # === Router HTTP (redireciona para HTTPS) ===
-        - "traefik.http.routers.proximoturno-http.rule=Host(`proximoturno.com.br`,`www.proximoturno.com.br`)"
-        - "traefik.http.routers.proximoturno-http.entrypoints=web"      
-        - "traefik.http.routers.proximoturno-http.middlewares=proximo-turno-https-redirect"
-        - "traefik.http.routers.proximoturno-http.service=proximoturno-service"
-
-         # Exceção: ACME HTTP-01 (sem redirect)
-        - "traefik.http.routers.proximoturno-acme.rule=(Host(`proximoturno.com.br`) || Host(`www.proximoturno.com.br`)) && PathPrefix(`/.well-known/acme-challenge/`)"
-        - "traefik.http.routers.proximoturno-acme.entrypoints=web"
-        - "traefik.http.routers.proximoturno-acme.priority=1000"
-        - "traefik.http.routers.proximoturno-acme.service=proximoturno-service"
-
-        # === Router HTTPS ===        
-        - "traefik.http.routers.proximoturno-https.rule=Host(`proximoturno.com.br`,`www.proximoturno.com.br`)"
-        - "traefik.http.routers.proximoturno-https.entrypoints=websecure"
-        - "traefik.http.routers.proximoturno-https.service=proximoturno-service"
-        - "traefik.http.routers.proximoturno-https.tls=true"
-        - "traefik.http.routers.proximoturno-https.tls.certresolver=letsencrypt"
-volumes:
   mysql_data:
     driver: local
 
 networks:
   proximoturno-network:
     driver: bridge
-  dokploy-network:
-    external: true
