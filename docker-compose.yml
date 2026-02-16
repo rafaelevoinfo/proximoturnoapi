@@ -63,13 +63,13 @@ services:
         - "traefik.http.middlewares.proximo-turno-https-redirect.redirectscheme.permanent=true"
 
         # === Router HTTP (redireciona para HTTPS) ===
-        - "traefik.http.routers.proximoturno-http.rule=Host(`proximoturno.com.br`)"
+        - "traefik.http.routers.proximoturno-http.rule=Host(`proximoturno.com.br`,`www.proximoturno.com.br`)"
         - "traefik.http.routers.proximoturno-http.entrypoints=web"      
         - "traefik.http.routers.proximoturno-http.middlewares=proximo-turno-https-redirect"
         - "traefik.http.routers.proximoturno-http.service=proximoturno-service"
 
-        # === Router HTTPS ===
-        - "traefik.http.routers.proximoturno-https.rule=Host(`proximoturno.com.br`)"
+        # === Router HTTPS ===        
+        - "traefik.http.routers.proximoturno-https.rule=Host(`proximoturno.com.br`,`www.proximoturno.com.br`)"
         - "traefik.http.routers.proximoturno-https.entrypoints=websecure"
         - "traefik.http.routers.proximoturno-https.service=proximoturno-service"
         - "traefik.http.routers.proximoturno-https.tls=true"
