@@ -59,13 +59,13 @@ services:
         - "traefik.http.services.proximoturno-service.loadbalancer.server.scheme=http"
         
         # === Middleware: HTTP → HTTPS Redirect ===
-        - "traefik.http.middlewares.https-redirect.redirectscheme.scheme=https"
-        - "traefik.http.middlewares.https-redirect.redirectscheme.permanent=true"
+        - "traefik.http.middlewares.proximo-turno-https-redirect.redirectscheme.scheme=https"
+        - "traefik.http.middlewares.proximo-turno-https-redirect.redirectscheme.permanent=true"
 
         # === Router HTTP (redireciona para HTTPS) ===
         - "traefik.http.routers.proximoturno-http.rule=Host(`proximoturno.com.br`)"
         - "traefik.http.routers.proximoturno-http.entrypoints=web"      
-        - "traefik.http.routers.proximoturno-http.middlewares=https-redirect"
+        - "traefik.http.routers.proximoturno-http.middlewares=proximo-turno-https-redirect"
         - "traefik.http.routers.proximoturno-http.service=proximoturno-service"
 
         # === Router HTTPS ===
