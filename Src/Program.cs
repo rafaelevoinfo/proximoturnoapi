@@ -51,6 +51,8 @@ builder.Services.AddCors(options => {
     }
 });
 
+builder.Services.AddHealthChecks();
+
 builder.Host.UseSerilog((hostingContext, loggerConfiguration) => loggerConfiguration.ReadFrom.Configuration(hostingContext.Configuration));
 
 
@@ -64,6 +66,9 @@ if (app.Environment.IsDevelopment()) {
 
 app.UseCors();
 app.UseHttpsRedirection();
+
+app.MapHealthChecks("/health");
+
 app.MapGroup("/api")
    .MapIdentityApi<Usuario>();
 

@@ -26,5 +26,7 @@ COPY --from=build /app/publish .
 # Set environment variables
 ENV ASPNETCORE_HTTP_PORTS=80
 
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
 # Run the application
 ENTRYPOINT ["dotnet", "ProximoTurnoApi.dll"]
