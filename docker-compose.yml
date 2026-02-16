@@ -27,7 +27,7 @@ services:
       dockerfile: Dockerfile.migrations
     container_name: proximoturno-migrations
     environment:
-      ConnectionStrings__DefaultConnection: Server=mysql;Port=3306;Database=${MYSQL_DATABASE};User=root;Password=${MYSQL_ROOT_PASSWORD};
+      ConnectionStrings__DefaultConnection: Server=proximoturno-mysql;Port=3306;Database=${MYSQL_DATABASE};User=root;Password=${MYSQL_ROOT_PASSWORD};
     depends_on:
       mysql:
         condition: service_healthy
@@ -41,7 +41,7 @@ services:
     image: proximoturno_api:latest
     container_name: proximoturno-api
     environment:
-      ConnectionStrings__DefaultConnection: Server=mysql;Port=3306;Database=${MYSQL_DATABASE};User=${MYSQL_USER};Password=${MYSQL_PASSWORD};      
+      ConnectionStrings__DefaultConnection: Server=proximoturno-mysql;Port=3306;Database=${MYSQL_DATABASE};User=${MYSQL_USER};Password=${MYSQL_PASSWORD};      
     depends_on:
       migrations:
         condition: service_completed_successfully
