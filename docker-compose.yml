@@ -8,9 +8,9 @@ services:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-proximoturno_db}
       MYSQL_USER: ${MYSQL_USER:-proximoturno}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-password123}
-    # ports:
-    #   - "3306:3306"
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-password123}    
+    ports:
+      - "127.0.0.1:3308:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
@@ -24,7 +24,8 @@ services:
   migrations:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile      
+    image: proximoturno_api:latest
     container_name: proximoturno-migrations
     environment:
       ConnectionStrings__DefaultConnection: Server=mysql;Port=3306;Database=${MYSQL_DATABASE};User=${MYSQL_USER};Password=${MYSQL_PASSWORD};
@@ -38,7 +39,8 @@ services:
   api:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile    
+    image: proximoturno_api:latest
     container_name: proximoturno-api
     environment:
       ConnectionStrings__DefaultConnection: Server=mysql;Port=3306;Database=${MYSQL_DATABASE};User=${MYSQL_USER};Password=${MYSQL_PASSWORD};      
