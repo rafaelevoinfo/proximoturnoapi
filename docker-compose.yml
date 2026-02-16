@@ -67,6 +67,12 @@ services:
         - "traefik.http.routers.proximoturno-http.middlewares=proximo-turno-https-redirect"
         - "traefik.http.routers.proximoturno-http.service=proximoturno-service"
 
+         # Exceção: ACME HTTP-01 (sem redirect)
+        - "traefik.http.routers.proximoturno-acme.rule=(Host(`proximoturno.com.br`) || Host(`www.proximoturno.com.br`)) && PathPrefix(`/.well-known/acme-challenge/`)"
+        - "traefik.http.routers.proximoturno-acme.entrypoints=web"
+        - "traefik.http.routers.proximoturno-acme.priority=1000"
+        - "traefik.http.routers.proximoturno-acme.service=proximoturno-service"
+
         # === Router HTTPS ===        
         - "traefik.http.routers.proximoturno-https.rule=Host(`proximoturno.com.br`,`www.proximoturno.com.br`)"
         - "traefik.http.routers.proximoturno-https.entrypoints=websecure"
