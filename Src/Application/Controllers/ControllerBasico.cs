@@ -6,6 +6,7 @@ namespace ProximoTurnoApi.Application.Controllers;
 public abstract class ControllerBasico(ILogger logger) : ControllerBase {
     protected readonly ILogger _logger = logger;
 
+
     protected async Task<IActionResult> EncapsulateRequestAsync(Func<Task<IActionResult>> func) {
         try {
             return await func();

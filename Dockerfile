@@ -26,9 +26,5 @@ COPY --from=build /app/publish .
 # Set environment variables
 ENV ASPNETCORE_HTTP_PORTS=80
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD dotnet --version || exit 1
-
 # Run the application
 ENTRYPOINT ["dotnet", "ProximoTurnoApi.dll"]
