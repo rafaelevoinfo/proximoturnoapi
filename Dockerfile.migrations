@@ -1,0 +1,19 @@
+# Image for running EF Core migrations
+FROM mcr.microsoft.com/dotnet/sdk:8.0
+
+WORKDIR /src
+
+# Copy project file and restore to cache dependencies
+COPY ["Src/ProximoTurnoApi.csproj", "Src/"]
+RUN dotnet restore "Src/ProximoTurnoApi.csproj"
+
+# Install EF Core CLI as a global tool
+RUN dotnet tool install --global dotnet-ef --version 8.0.22 || dotnet tool install --global dotnet-ef
+ENV PATH="$PATH:/root/.dotnet/tools"
+
+# Copy full source
+COPY . .
+
+# Default command can be overridden by docker-compose 'entrypoint' or 'command'
+ENTRYPOINT ["/bin/sh", "-c"]
+CMD ["dotnet ef database update --project Src/ProximoTurnoApi.csproj"]
