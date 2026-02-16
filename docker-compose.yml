@@ -56,7 +56,6 @@ services:
         
         # === Service Configuration ===
         - "traefik.http.services.proximoturno-service.loadbalancer.server.port=80"
-        - "traefik.http.services.proximoturno-service.loadbalancer.server.scheme=http"
         
         # === Middleware: HTTP → HTTPS Redirect ===
         - "traefik.http.middlewares.proximo-turno-https-redirect.redirectscheme.scheme=https"
@@ -74,7 +73,6 @@ services:
         - "traefik.http.routers.proximoturno-https.service=proximoturno-service"
         - "traefik.http.routers.proximoturno-https.tls=true"
         - "traefik.http.routers.proximoturno-https.tls.certresolver=letsencrypt"
-
 volumes:
   mysql_data:
     driver: local
