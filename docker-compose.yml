@@ -33,7 +33,6 @@ services:
         condition: service_healthy
     networks:
       - proximoturno-network
-    entrypoint: /bin/sh -c "dotnet ef database update --project Src/ProximoTurnoApi.csproj; exit 0"
 
   api:
     build:
