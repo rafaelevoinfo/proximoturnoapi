@@ -1,117 +1,77 @@
-# Descrição do Projeto
-Esta será uma API para um web app de aluguel de jogos de tabuleiro. Nessa API as seguintes funcionalidades irão existir:
-* CRUD de cliente.  
-    * Cada cliente precisa minimamente dos campos:
-        * Nome Completo
-        * Telefone
-        * Endereço
-        * Email
-        Campos opcionais:
-            * Data de Nascimento
-            * Como nos conheceu?
-            * Aceita receber ofertas?
+# GEMINI.md - Próximo Turno API
 
-* CRUD de Jogo
-    * Campos obrigatorios:
-        * Nome
-        * Descrição
-        * Idade minima
-        * Foto
-        * Minimo de jogadores
-        * Máximo de jogadores
-        * Categoria (Categoria usada para saber o preço)
-        * Tempo estimado por partida
-        * Links para videos
-        * Valor de Compra
-        * Data de Aquisição
-        * Tags (Lista de de nomes para encontrar o jogo facilmente. Ex. Facil de jogar, bom para crianças, estratégico etc)
-        * Status (Alugado, Disponivel, Indisponível)
-        Campos opcionais:  
-            * Tempo estimado de jogo
-            * Links para videos sobre o jogo
-            * Valor de compra
-            * Data de compra
+## Project Overview
+**Próximo Turno API** is a backend system for managing board game rentals. It is built using **.NET 8.0** and follows a clean, layered architecture designed for maintainability and scalability.
 
-* CRUD de Categoria
-    * Campos obrigatorios
-        * Descrição
+### Core Technologies
+- **Framework:** .NET 8.0 (ASP.NET Core Web API)
+- **Database:** MySQL (via Pomelo.EntityFrameworkCore.MySql)
+- **ORM:** Entity Framework Core
+- **Authentication:** ASP.NET Core Identity with Bearer tokens
+- **Validation:** Flunt (Notification Pattern)
+- **Logging:** Serilog
+- **Documentation:** Swagger/OpenAPI (Swashbuckle)
+- **Environment Management:** DotNetEnv for `.env` support
 
-* CRUD de Preço por Categoria
-    * Campos obrigatórios
-        * Id da categoria
-        * Quantidade de dias
-        * Valor
+## Architecture
+The project is organized into several key layers within the `Src/` directory:
 
-* CRUD de Pedido de Aluguel
-    * Campos obrigatórios
-        * Id do Cliente
-        * Data         
-        * Valor Total
-        * Jogos (Tabela filha)
-            * Id do jogo             
-            * Valor  
-            * Data de Devolução
-            * Status (Alugado, Devolvido, Renovado)            
+- **Application:**
+    - `Controllers/`: API endpoints handling HTTP requests.
+    - `UseCases/`: Core business logic. Each use case typically inherits from `UseCaseBasico` and uses the notification pattern for validation/error handling.
+    - `DTOs/`: Data Transfer Objects for requests and responses.
+- **Domain:** Contains domain-specific logic and entities.
+- **Infrastructure:**
+    - `Models/`: Database entities (EF Core).
+    - `Repositories/`: Data access implementations (following the Repository pattern).
+    - `DatabaseContext.cs`: Entity Framework database context.
+- **Migrations:** Entity Framework Core database migration files.
 
-* Funcionalidades extras
-    * Devolver jogos de um pedido
-        Altera o status de todos os jogos de um pedido para disponível
-        * Parametros de entrada
-            * Id do Pedido
-        
+## Building and Running
 
-    * Devolver jogo avulso
-        Altera o status do jogo informado para disponivel
-        * Parametros de entrada
-            * Id do Pedido
-            * Id do jogo
-        
+### Prerequisites
+- .NET 8.0 SDK
+- MySQL Server (or Docker)
+- Docker Desktop (optional, for containerized execution)
 
-    * Alerta de atraso
-        * Verifica todos os jogos com status alugado onde a data atual é superior a data de devolução 
-            * Nome cliente
-            * Telefone do cliente
-            * E-mail do cliente
-            * Data do pedido
-            * Nome do Jogo 
-            * Data de Devolução
-            * Dias de atraso
-    
-    * Renovar Pedido
-        Muda o status dos jogos de um pedido para Renovado e então cria um novo pedido com os mesmos jogos.
-        * Parametros obrigatórios
-            * Id do Pedido
-        * Parametros opcionais
-            * Lista de jogos e faixa de preço
-                * Id do jogo
-                * Data de Devolução
-                * Valor
-            Observação: A lista de jogos informada deve ser um subconjunto da lista de jogos do pedido original, ou seja, não é permito adicionar novos jogos em uma renovação. Se informada, apenas os jogos dessa lista estarão no novo pedido, os demais jogos deverão ser devolvidos. Se não for informada, todos os jogos do pedido original serão renovados.
+### Key Commands
 
-                
-            
-               
+#### Local Development
+- **Build:** `dotnet build`
+- **Run:** `dotnet run --project Src/ProximoTurnoApi.csproj`
+- **Restore Dependencies:** `dotnet restore`
 
-           
+#### Docker (Recommended)
+- **Start API and MySQL:** `docker-compose up --build`
+- **Stop Containers:** `docker-compose down`
+- **Reset Database (Volumes):** `docker-compose down -v`
 
-# Padrões a serem adotados:  
-## Tecnologias utilizadas
-- .Net10
-- Asp.Net Core
-- Banco de Dados MySQL
-- Docker
+#### Database Migrations
+- **Add Migration:** `dotnet ef migrations add <MigrationName> --project Src/ProximoTurnoApi.csproj`
+- **Update Database:** `dotnet ef database update --project Src/ProximoTurnoApi.csproj`
 
-## Nomenclaturas
-Nome de classes: PascalCase. Ex.: JogoTabuleiro, Cliente
-Nome de métodos: PascalCase. Ex.: jogo.Alugar()
-Nome de variavies locais: camelCase. Ex.: var jogo = new JogoTabuleiro();
-Nome de fields privados: _camelCasel. Ex.: _cliente
-Nome de constantes: UPPER_SNACK_CASE. Ex.: CATEGORIA_LEVEL_1
+### API Access
+- **API Base URL:** `http://localhost:8080` (Docker) or `http://localhost:5000` (Local)
+- **Swagger UI:** `/swagger/index.html`
+- **Health Check:** `/health`
 
-# Regras gerais e padrões de código
-- Ao declarar namespaces use a abordagem mais moderna onde não é necessário o uso de chaves. Ex. namespace ProximoTurnoApi.Models;
-- Nao quebre linha para adicionar chaves, coloque-as logo após a declaração da instrução. Ex.: `If (debug){`
-- Para manter o codigo mais simples, ao criar repositórios mantenha a classe e a interface em um mesmo arquivo.
-- Todas as tabelas criadas devem conter uma chave primária de nome ID.
-- Use funções assincronas nos repositórios.
-- Crie migrations para todo o banco de dados.
+## Development Conventions
+
+### Business Logic (Use Cases)
+All business logic should be encapsulated in the `Application/UseCases` layer. Use cases should:
+1. Inherit from `UseCaseBasico`.
+2. Use **Flunt** for validation and error reporting.
+3. Be registered as `Scoped` in `Program.cs`.
+
+### Data Access
+- Use the **Repository Pattern** for all database operations.
+- Repositories should be defined in `Infrastructure/Repositories` and registered in `Program.cs`.
+
+### Authentication
+- The API uses **ASP.NET Core Identity API Endpoints** for user management.
+- Authentication is handled via **Bearer tokens**.
+- Protected endpoints should use the `[Authorize]` attribute.
+
+### Configuration
+- Sensitive configurations (connection strings, etc.) should be stored in a `.env` file (see `.env.example`).
+- `DotNetEnv` loads these variables automatically in the `Development` environment.

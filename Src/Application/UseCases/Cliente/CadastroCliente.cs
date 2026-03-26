@@ -36,7 +36,11 @@ public class CadastroCliente(IClienteRepository repository, UserManager<Usuario>
         await _repository.StartTransactionAsync();
         try {
             await _repository.AddAsync(cliente);
-            var usuario = new Usuario() { Email = cliente.Email };
+            var usuario = new Usuario() {
+                UserName = cliente.Email,
+                Email = cliente.Email,
+                Nome = cliente.Nome
+            };
             await _userManager.CreateAsync(usuario, clienteDto.Senha);
             await _userManager.AddToRoleAsync(usuario, Roles.Member);
             await _repository.CommitTransactionAsync();

@@ -86,10 +86,22 @@ if (app.Environment.IsDevelopment()) {
     }
 
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<Usuario>>();
-    var admin = await userManager.FindByEmailAsync("rafaelevoinfo@gmail.com");
+    var admin = await userManager.FindByEmailAsync("contato@proximoturno.com.br");
     if (admin is null) {
-        admin = new Usuario();
-        await userManager.CreateAsync(admin);
+        var adminEmail = "contato@proximoturno.com.br";
+        admin = new Usuario() {
+            Nome = "Rafael",
+            UserName = adminEmail,
+            Email = adminEmail
+        };
+        userManager.Options.Password.RequiredLength = 1;
+        userManager.Options.Password.RequireUppercase = false;
+        userManager.Options.Password.RequireNonAlphanumeric = false;
+        userManager.Options.Password.RequireLowercase = false;
+        var result = await userManager.CreateAsync(admin, "1");
+        if (!result.Succeeded) {
+            throw new Exception("Failed to create admin user: " + string.Join(", ", result.Errors.Select(e => e.Description)));
+        }
     }
     if (!await userManager.IsInRoleAsync(admin, Roles.Admin)) {
         await userManager.AddToRoleAsync(admin, Roles.Admin);
