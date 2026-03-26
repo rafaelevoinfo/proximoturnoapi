@@ -1,10 +1,11 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.OpenApi.Models;
-using ProximoTurnoApi.Application.Swagger;
+using Microsoft.OpenApi;
 using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Infrastructure.Repositories;
 using Serilog;
+using Scalar.AspNetCore;
+using Microsoft.AspNetCore.Authentication;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,8 +16,11 @@ if (builder.Environment.IsDevelopment()) {
 
 // Add services to the container.
 builder.Services.AddDbContext<DatabaseContext>(options => {
-    options.UseMySql(builder.Configuration.GetConnectionString("DefaultConnection"),
-        new MySqlServerVersion(new Version(9, 4, 0)));
+    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    if (string.IsNullOrEmpty(connectionString)) {
+        throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+    }
+    options.UseMySQL(connectionString);
     options.EnableSensitiveDataLogging();
     options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
 });
@@ -28,7 +32,6 @@ builder.Services.AddScoped<IPedidoRepository, PedidoRepository>();
 builder.Services.AddScoped<ITagRepository, TagRepository>();
 
 builder.Services.AddIdentityUser();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddDocumentation();
 
 // Configure CORS based on environment
@@ -60,8 +63,8 @@ var app = builder.Build();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment()) {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    app.MapOpenApi();
+    app.MapScalarApiReference();
 }
 
 app.UseCors();
@@ -132,21 +135,37 @@ static class Extensions {
     }
 
     public static void AddDocumentation(this IServiceCollection services) {
-        // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-        services.AddEndpointsApiExplorer();
-        services.AddSwaggerGen(c => {
-            // Define o esquema de segurança (Bearer Token)
-            c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme {
-                Description = "Autenticação JWT usando o esquema Bearer. Exemplo: \"Authorization: Bearer {token}\"",
-                Name = "Authorization",
-                In = ParameterLocation.Header,
-                Type = SecuritySchemeType.Http,
-                Scheme = "bearer",
-                BearerFormat = "JWT"
-            });
+        services.AddOpenApi("v1", options => {
+            options.AddDocumentTransformer((document, context, cancellationToken) => {
+                document.Info = new OpenApiInfo {
+                    Title = "Próximo Turno API",
+                    Version = "v1",
+                    Description = "API para gerenciamento de jogos de tabuleiro, incluindo funcionalidades de cadastro, consulta e empréstimo de jogos.",
+                    Contact = new OpenApiContact {
+                        Name = "Rafael",
+                        Email = "contato@proximoturno.com.br"
+                    }
+                };
+                var schemeName = "Bearer";
+                document.Components ??= new Microsoft.OpenApi.OpenApiComponents();
+                if (document.Components.SecuritySchemes == null) {
+                    document.Components.SecuritySchemes = new Dictionary<string, Microsoft.OpenApi.IOpenApiSecurityScheme>();
+                }
+                document.Components.SecuritySchemes.Add(schemeName, new Microsoft.OpenApi.OpenApiSecurityScheme {
+                    Type = Microsoft.OpenApi.SecuritySchemeType.Http,
+                    Scheme = "bearer",
+                    BearerFormat = "JWT",
+                    Description = "Autenticação JWT usando o esquema Bearer. Exemplo: \"Authorization: Bearer {token}\""
+                });
 
-            // Adiciona o filtro de operação que aplica o requisito de segurança dinamicamente
-            c.OperationFilter<SecurityRequirementsOperationFilter>();
+                var requirement = new Microsoft.OpenApi.OpenApiSecurityRequirement();
+                var schemeReference = new Microsoft.OpenApi.OpenApiSecuritySchemeReference(schemeName, document);
+                requirement.Add(schemeReference, new List<string>());
+                document.Security ??= new List<Microsoft.OpenApi.OpenApiSecurityRequirement>();
+                document.Security.Add(requirement);
+
+                return Task.CompletedTask;
+            });
         });
     }
 }

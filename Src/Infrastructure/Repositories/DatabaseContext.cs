@@ -16,7 +16,6 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : Identi
         ConfigurePedido(modelBuilder);
         ConfigureJogo(modelBuilder);
 
-
         modelBuilder.Entity<Cliente>(b => {
             b.HasIndex(c => c.Email).IsUnique();
             b.HasIndex(c => c.Telefone).IsUnique();
@@ -31,12 +30,28 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : Identi
 
         ConfigureCategoriaPeriodo(modelBuilder);
 
-
-
         modelBuilder.Entity<Tag>(b => {
             b.HasIndex(t => t.Nome).IsUnique();
         });
 
+        // Configuração de Conversores para .NET 10 / MySql.EntityFrameworkCore
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes()) {
+            var properties = entityType.GetProperties();
+            foreach (var property in properties) {
+                if (property.ClrType == typeof(TimeOnly) || property.ClrType == typeof(TimeOnly?)) {
+                    property.SetValueConverter(new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<TimeOnly, TimeSpan>(
+                        timeOnly => timeOnly.ToTimeSpan(),
+                        timeSpan => TimeOnly.FromTimeSpan(timeSpan)
+                    ));
+                }
+                else if (property.ClrType == typeof(DateOnly) || property.ClrType == typeof(DateOnly?)) {
+                    property.SetValueConverter(new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateOnly, DateTime>(
+                        dateOnly => dateOnly.ToDateTime(TimeOnly.MinValue),
+                        dateTime => DateOnly.FromDateTime(dateTime)
+                    ));
+                }
+            }
+        }
     }
 
     private static void ConfigureCategoriaPeriodo(ModelBuilder modelBuilder) {
