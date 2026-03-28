@@ -21,13 +21,13 @@ public record JogoMaisAlugadoDTO {
     public int Qtde { get; set; }
     public int Id { get; set; }
     public string Nome { get => _nome; set => _nome = StringUtils.Capitalize(value); }
-    public byte[] Foto { get; set; } = null!;
+    public string Foto { get; set; } = string.Empty;
 
     public static JogoMaisAlugadoDTO FromModel(JogoMaisAlugado jogo) {
         return new JogoMaisAlugadoDTO {
             Id = jogo.Id,
             Nome = jogo.Nome,
-            Foto = jogo.Foto ?? []
+            Foto = jogo.Foto ?? string.Empty
         };
     }
 
@@ -57,7 +57,7 @@ public record JogoDTO {
     [Required]
     public short IdadeMinima { get; set; }
     [Required]
-    public byte[] Foto { get; set; } = null!;
+    public string Foto { get; set; } = string.Empty;
     [Required]
     public short MinimoDeJogadores { get; set; }
     [Required]
@@ -78,7 +78,7 @@ public record JogoDTO {
             Nome = jogo.Nome,
             Descricao = jogo.Descricao,
             IdadeMinima = jogo.IdadeMinima,
-            Foto = jogo.Foto ?? [],
+            Foto = jogo.Foto ?? string.Empty,
             MinimoDeJogadores = jogo.MinimoDeJogadores,
             MaximoDeJogadores = jogo.MaximoDeJogadores,
             TempoEstimadoDeJogo = jogo.TempoEstimadoDeJogo,
@@ -107,7 +107,7 @@ public record JogoDTO {
         jogo.Nome = Nome;
         jogo.Descricao = Descricao;
         jogo.IdadeMinima = IdadeMinima;
-        jogo.Foto = Foto ?? jogo.Foto;
+        jogo.Foto = string.IsNullOrEmpty(Foto) ? jogo.Foto : Foto;
         jogo.MinimoDeJogadores = MinimoDeJogadores;
         jogo.MaximoDeJogadores = MaximoDeJogadores;
         jogo.TempoEstimadoDeJogo = TempoEstimadoDeJogo;
@@ -146,7 +146,7 @@ public record JogoDTO {
             Nome = Nome,
             Descricao = Descricao,
             IdadeMinima = IdadeMinima,
-            Foto = Foto ?? [],
+            Foto = Foto ?? string.Empty,
             MinimoDeJogadores = MinimoDeJogadores,
             MaximoDeJogadores = MaximoDeJogadores,
             TempoEstimadoDeJogo = TempoEstimadoDeJogo,

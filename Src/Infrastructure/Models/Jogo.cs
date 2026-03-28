@@ -12,7 +12,7 @@ public class JogoMaisAlugado {
     [Column("NOME")]
     public string Nome { get; set; } = null!;
     [Column("FOTO")]
-    public byte[] Foto { get; set; } = null!;
+    public string Foto { get; set; } = null!;
     [Column("QTDE")]
     public int Qtde { get; set; }
 }
@@ -31,8 +31,8 @@ public class Jogo : BaseModel {
     [Column("IDADE_MINIMA")]
     public short IdadeMinima { get; set; }
 
-    [Column("FOTO")]
-    public byte[] Foto { get; set; } = null!;
+    [Column("FOTO"), MaxLength(100)]
+    public string Foto { get; set; } = null!;
 
     [Column("MINIMO_JOGADORES")]
     public short MinimoDeJogadores { get; set; }
