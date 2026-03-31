@@ -8,7 +8,7 @@ public class CadastroJogo(IJogoRepository _jogoRepository,
                           ITagRepository _tagRepository,
                           ILogger<CadastroJogo> _logger) : JogoUseCaseBasico(_jogoRepository, _tagRepository) {
 
-    public async Task<int> ExecuteAsync(JogoDTO jogoDto) {
+    public async Task<int> ExecuteAsync(JogoCompletoDTO jogoDto) {
         var jogosExistentes = await _jogoRepository.GetAllAsync(new FiltroJogoDTO { Nome = jogoDto.Nome });
         if (jogosExistentes.Count > 0) {
             AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest, "Já existe um jogo com o mesmo nome."));

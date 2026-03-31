@@ -9,7 +9,7 @@ public class FiltroJogoDTO {
     [FromQuery(Name = "id_categoria")]
     public int? IdCategoria { get; set; }
     [FromQuery(Name = "tags")]
-    public List<string>? Tags { get; set; }
+    public List<int>? Tags { get; set; }
     [FromQuery(Name = "status")]
     public StatusJogo? Status { get; set; }
     [FromQuery(Name = "idade_minima")]

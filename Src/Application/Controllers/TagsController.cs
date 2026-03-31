@@ -3,13 +3,13 @@ using Microsoft.AspNetCore.Mvc;
 using ProximoTurnoApi.Application.DTOs;
 using ProximoTurnoApi.Application.DTOs.Filtros;
 using ProximoTurnoApi.Application.UseCases.Tag;
+using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Infrastructure.Repositories;
 
 namespace ProximoTurnoApi.Application.Controllers;
 
 [Route("api/tags")]
 [ApiController]
-[Authorize]
 public class TagsController(ILogger<ControllerBasico> logger, ITagRepository _repository) : ControllerBasico(logger) {
 
     [HttpGet]
@@ -33,6 +33,7 @@ public class TagsController(ILogger<ControllerBasico> logger, ITagRepository _re
     }
 
     [HttpPut("{id}")]
+    [Authorize(Roles = Roles.Admin)]
     public async Task<IActionResult> PutTag(int id, TagDTO tag) {
         return await EncapsulateRequestAsync(async () => {
             if (id != tag.Id) {
@@ -48,6 +49,7 @@ public class TagsController(ILogger<ControllerBasico> logger, ITagRepository _re
     }
 
     [HttpPost]
+    [Authorize(Roles = Roles.Admin)]
     public async Task<IActionResult> PostTag(TagDTO tagDto) {
         return await EncapsulateRequestAsync(async () => {
             var cadastroTagUseCase = new CadastroTag(_repository);

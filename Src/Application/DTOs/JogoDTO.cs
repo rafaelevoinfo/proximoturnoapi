@@ -46,6 +46,28 @@ public record CopiaJogoDTO {
 }
 
 public record JogoDTO {
+    public int Id { get; set; }
+    public string Nome { get; set; } = string.Empty;
+    public string Foto { get; set; } = string.Empty;
+    public short MinimoDeJogadores { get; set; }
+    public short MaximoDeJogadores { get; set; }
+    public short IdadeMinima { get; set; }
+    public TimeOnly? TempoEstimadoDeJogo { get; set; }
+
+    public static JogoDTO FromModel(Jogo jogo) {
+        return new JogoDTO {
+            Id = jogo.Id,
+            Nome = jogo.Nome,
+            Foto = jogo.Foto ?? string.Empty,
+            MinimoDeJogadores = jogo.MinimoDeJogadores,
+            MaximoDeJogadores = jogo.MaximoDeJogadores,
+            IdadeMinima = jogo.IdadeMinima,
+            TempoEstimadoDeJogo = jogo.TempoEstimadoDeJogo
+        };
+    }
+}
+
+public record JogoCompletoDTO {
     private string _nome = null!;
     public int Id { get; set; }
     [Required]
@@ -71,8 +93,8 @@ public record JogoDTO {
     public List<LinkDTO>? Links { get; set; }
     public List<CopiaJogoDTO>? Copias { get; set; } = [];
 
-    public static JogoDTO FromModel(Jogo jogo) {
-        var result = new JogoDTO {
+    public static JogoCompletoDTO FromModel(Jogo jogo) {
+        var result = new JogoCompletoDTO {
             Id = jogo.Id,
             IdCategoria = jogo.IdCategoria,
             Nome = jogo.Nome,

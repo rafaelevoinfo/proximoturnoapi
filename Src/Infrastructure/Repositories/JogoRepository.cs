@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using MySql.Data.MySqlClient;
 using ProximoTurnoApi.Application.DTOs;
 using ProximoTurnoApi.Domain;
 using ProximoTurnoApi.Infrastructure.Models;
@@ -28,39 +29,60 @@ public class JogoRepository : BaseRepository, IJogoRepository {
     }
 
     public async Task<List<Jogo>> GetAllAsync(FiltroJogoDTO filtro) {
-        var query = _dbContext.Jogos.AsQueryable();
+        // Listamos as colunas explicitamente para evitar conflitos de nomes (ex: ID e id)
+        var sql = @"SELECT j.* 
+                    FROM JOGO j";
+        var where = new List<string>();
+        var parameters = new List<MySqlParameter>();
 
         if (!string.IsNullOrEmpty(filtro.Nome)) {
-            query = query.Where(j => j.Nome.Contains(filtro.Nome.ToLowerInvariant()));
+            where.Add("j.NOME LIKE @NOME");
+            parameters.Add(new MySqlParameter("@NOME", $"%{filtro.Nome.ToLowerInvariant()}%"));
         }
 
         if (filtro.IdCategoria.HasValue) {
-            query = query.Where(j => j.IdCategoria == filtro.IdCategoria.Value);
+            where.Add("j.ID_CATEGORIA = @ID_CATEGORIA");
+            parameters.Add(new MySqlParameter("@ID_CATEGORIA", filtro.IdCategoria.Value));
         }
 
         if (filtro.Tags != null && filtro.Tags.Count > 0) {
-            query = query.Where(j => j.Tags != null && j.Tags.Any(t => filtro.Tags.Contains(t.Nome)));
+            // Para tags, usamos uma subquery ou join. Subquery é mais segura com FromSqlRaw.
+            where.Add($"EXISTS (SELECT 1 FROM JOGO_TAG jt WHERE jt.ID_JOGO = j.ID AND jt.ID_TAG IN ({string.Join(",", filtro.Tags)}))");
         }
 
         if (filtro.Status.HasValue) {
-            query = query.Where(j => j.Copias!.Any(c => c.Status == filtro.Status.Value));
+            where.Add("EXISTS (SELECT 1 FROM JOGO_COPIA jc WHERE jc.ID_JOGO = j.ID AND jc.STATUS = @STATUS)");
+            parameters.Add(new MySqlParameter("@STATUS", (short)filtro.Status.Value));
         }
 
         if (filtro.IdadeMinima.HasValue) {
-            query = query.Where(j => j.IdadeMinima <= filtro.IdadeMinima.Value);
+            where.Add("j.IDADE_MINIMA <= @IDADE_MINIMA");
+            parameters.Add(new MySqlParameter("@IDADE_MINIMA", filtro.IdadeMinima.Value));
         }
 
         if (filtro.QtdeJogadores.HasValue) {
-            query = query.Where(j => j.MinimoDeJogadores <= filtro.QtdeJogadores.Value && j.MaximoDeJogadores >= filtro.QtdeJogadores.Value);
+            where.Add("j.MINIMO_JOGADORES <= @QTDE_JOGADORES AND j.MAXIMO_JOGADORES >= @QTDE_JOGADORES");
+            parameters.Add(new MySqlParameter("@QTDE_JOGADORES", filtro.QtdeJogadores.Value));
         }
 
-        return await query
+        // Filtro fixo para não trazer jogos desativados
+        where.Add("EXISTS (SELECT 1 FROM JOGO_COPIA jc WHERE jc.ID_JOGO = j.ID AND jc.STATUS != @STATUS_DESATIVADO)");
+        parameters.Add(new MySqlParameter("@STATUS_DESATIVADO", (short)StatusJogo.Desativado));
+
+        if (where.Count > 0) {
+            sql += " WHERE " + string.Join(" AND ", where);
+        }
+
+        // O uso de .AsSplitQuery() melhora muito a performance ao carregar múltiplas coleções.
+        return await _dbContext.Jogos
+            .FromSqlRaw(sql, [.. parameters])
             .Include(j => j.Categoria)
             .Include(j => j.Tags)
             .Include(j => j.Links)
             .Include(j => j.Copias)
-            .Where(j => j.Copias!.Any(c => c.Status != StatusJogo.Desativado))
+            .AsSplitQuery()
             .AsNoTracking()
+            .OrderBy(j => j.Nome)
             .ToListAsync();
     }
 

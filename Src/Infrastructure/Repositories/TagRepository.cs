@@ -27,6 +27,7 @@ public class TagRepository : BaseRepository, ITagRepository {
 
         return await query
             .AsNoTracking()
+            .OrderBy(t => t.Nome)
             .ToListAsync();
     }
 

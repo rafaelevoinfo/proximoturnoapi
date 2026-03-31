@@ -1,16 +1,16 @@
 # GEMINI.md - Próximo Turno API
 
 ## Project Overview
-**Próximo Turno API** is a backend system for managing board game rentals. It is built using **.NET 8.0** and follows a clean, layered architecture designed for maintainability and scalability.
+**Próximo Turno API** is a backend system for managing board game rentals. It is built using **.NET 10.0** and follows a clean, layered architecture designed for maintainability and scalability.
 
 ### Core Technologies
-- **Framework:** .NET 8.0 (ASP.NET Core Web API)
-- **Database:** MySQL (via Pomelo.EntityFrameworkCore.MySql)
+- **Framework:** .NET 10.0 (ASP.NET Core Web API)
+- **Database:** MySQL (via MySql.EntityFrameworkCore)
 - **ORM:** Entity Framework Core
 - **Authentication:** ASP.NET Core Identity with Bearer tokens
 - **Validation:** Flunt (Notification Pattern)
 - **Logging:** Serilog
-- **Documentation:** Swagger/OpenAPI (Swashbuckle)
+- **Documentation:** Scalar (Modern OpenAPI/Swagger alternative)
 - **Environment Management:** DotNetEnv for `.env` support
 
 ## Architecture
@@ -30,7 +30,7 @@ The project is organized into several key layers within the `Src/` directory:
 ## Building and Running
 
 ### Prerequisites
-- .NET 8.0 SDK
+- .NET 10.0 SDK
 - MySQL Server (or Docker)
 - Docker Desktop (optional, for containerized execution)
 
@@ -51,8 +51,8 @@ The project is organized into several key layers within the `Src/` directory:
 - **Update Database:** `dotnet ef database update --project Src/ProximoTurnoApi.csproj`
 
 ### API Access
-- **API Base URL:** `http://localhost:8080` (Docker) or `http://localhost:5000` (Local)
-- **Swagger UI:** `/swagger/index.html`
+- **API Base URL:** `http://localhost:5016` (Default)
+- **Scalar API Reference:** `/scalar/v1`
 - **Health Check:** `/health`
 
 ## Development Conventions
