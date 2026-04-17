@@ -35,6 +35,7 @@ public class CadastroPedido(IPedidoRepository pedidoRepository,
                 Valor = resultValidacao.Value.periodo.Valor,
                 DataDevolucao = pedido.DataHora.AddDays(resultValidacao.Value.periodo.QuantidadeDias)
             };
+            itemPedido.JogoCopia.Status = StatusJogo.Alugado; // Marca a cópia como alugada
             if (!pedido.AdicionarItem(itemPedido)) {
                 var notifications = pedido.Notifications.Select(n => UseCaseNotification.Create(UseCaseNotificationType.BadRequest, n.Message)).ToList();
                 AddNotifications((IList<UseCaseNotification>)notifications);

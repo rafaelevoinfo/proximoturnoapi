@@ -47,23 +47,40 @@ public record CopiaJogoDTO {
 
 public record JogoDTO {
     public int Id { get; set; }
+    public int IdCategoria { get; set; }
     public string Nome { get; set; } = string.Empty;
     public string Foto { get; set; } = string.Empty;
     public short MinimoDeJogadores { get; set; }
     public short MaximoDeJogadores { get; set; }
     public short IdadeMinima { get; set; }
+    public StatusJogo Status { get; set; }
     public TimeOnly? TempoEstimadoDeJogo { get; set; }
 
     public static JogoDTO FromModel(Jogo jogo) {
-        return new JogoDTO {
+        var result = new JogoDTO {
             Id = jogo.Id,
+            IdCategoria = jogo.IdCategoria,
             Nome = jogo.Nome,
             Foto = jogo.Foto ?? string.Empty,
             MinimoDeJogadores = jogo.MinimoDeJogadores,
             MaximoDeJogadores = jogo.MaximoDeJogadores,
             IdadeMinima = jogo.IdadeMinima,
-            TempoEstimadoDeJogo = jogo.TempoEstimadoDeJogo
+            TempoEstimadoDeJogo = jogo.TempoEstimadoDeJogo,
+            Status = StatusJogo.Indisponivel
         };
+
+        if (jogo.Copias is not null && jogo.Copias.Any()) {
+            // Se houver qualquer cópia disponível, o status do jogo é Disponivel
+            if (jogo.Copias.Any(c => c.Status == StatusJogo.Disponivel)) {
+                result.Status = StatusJogo.Disponivel;
+            } else {
+                // Caso contrário, pega o "melhor" status (menor valor numérico exceto Disponivel)
+                // Reservado (1) < Alugado (2) < Indisponivel (3) < Desativado (4)
+                result.Status = jogo.Copias.Min(c => c.Status);
+            }
+        }
+
+        return result;
     }
 }
 

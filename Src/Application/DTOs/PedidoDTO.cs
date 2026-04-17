@@ -50,8 +50,7 @@ public record NovoItemPedidoDTO {
     public int? Id { get; set; }
     [Required]
     public int IdJogo { get; set; }
-    [Required]
-    public int IdCopiaJogo { get; set; }
+    public int? IdCopiaJogo { get; set; }
     [Required]
     public int IdPeriodo { get; set; }
 }
