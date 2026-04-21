@@ -6,8 +6,9 @@ namespace ProximoTurnoApi.Application.UseCases;
 
 public class AtualizarJogo(IJogoRepository jogoRepository, ITagRepository tagRepository, ILogger<AtualizarJogo> _logger) : JogoUseCaseBasico(jogoRepository, tagRepository) {
 
-    public async Task<bool> ExecuteAsync(JogoCompletoDTO jogoDto) {
+    public async Task<bool> ExecuteAsync(JogoDTO jogoDto) {
         var jogo = await _jogoRepository.GetByIdAsync(jogoDto.Id);
+
         if (jogo is null) {
             AddNotification(UseCaseNotification.Create(UseCaseNotificationType.Error, $"Jogo de id {jogoDto.Id} não encontrado."));
             return false;

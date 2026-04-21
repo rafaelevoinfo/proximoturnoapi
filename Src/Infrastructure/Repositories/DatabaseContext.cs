@@ -76,6 +76,12 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : Identi
                     .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<Jogo>()
+                    .HasMany(j => j.Fotos)
+                    .WithOne()
+                    .HasForeignKey(f => f.IdJogo)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<Jogo>()
             .HasMany(j => j.Tags)
             .WithMany(t => t.Jogos)
             .UsingEntity<Dictionary<string, object>>(

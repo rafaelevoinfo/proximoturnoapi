@@ -3,88 +3,7 @@ using ProximoTurnoApi.Infrastructure.Models;
 
 namespace ProximoTurnoApi.Application.DTOs;
 
-
-public record JogoResumoDTO {
-    public int Id { get; set; }
-    public string Nome { get; set; } = string.Empty;
-
-    public static JogoResumoDTO FromModel(Jogo jogo) {
-        return new JogoResumoDTO {
-            Id = jogo.Id,
-            Nome = jogo.Nome,
-        };
-    }
-}
-
-public record JogoMaisAlugadoDTO {
-    private string _nome = null!;
-    public int Qtde { get; set; }
-    public int Id { get; set; }
-    public string Nome { get => _nome; set => _nome = StringUtils.Capitalize(value); }
-    public string Foto { get; set; } = string.Empty;
-
-    public static JogoMaisAlugadoDTO FromModel(JogoMaisAlugado jogo) {
-        return new JogoMaisAlugadoDTO {
-            Id = jogo.Id,
-            Nome = jogo.Nome,
-            Foto = jogo.Foto ?? string.Empty
-        };
-    }
-
-}
-
-public record CopiaJogoDTO {
-    public int Id { get; set; }
-    public StatusJogo Status { get; set; }
-
-    public static CopiaJogoDTO FromModel(JogoCopia copia) {
-        return new CopiaJogoDTO() {
-            Id = copia.Id,
-            Status = copia.Status
-        };
-    }
-}
-
 public record JogoDTO {
-    public int Id { get; set; }
-    public int IdCategoria { get; set; }
-    public string Nome { get; set; } = string.Empty;
-    public string Foto { get; set; } = string.Empty;
-    public short MinimoDeJogadores { get; set; }
-    public short MaximoDeJogadores { get; set; }
-    public short IdadeMinima { get; set; }
-    public StatusJogo Status { get; set; }
-    public TimeOnly? TempoEstimadoDeJogo { get; set; }
-
-    public static JogoDTO FromModel(Jogo jogo) {
-        var result = new JogoDTO {
-            Id = jogo.Id,
-            IdCategoria = jogo.IdCategoria,
-            Nome = jogo.Nome,
-            Foto = jogo.Foto ?? string.Empty,
-            MinimoDeJogadores = jogo.MinimoDeJogadores,
-            MaximoDeJogadores = jogo.MaximoDeJogadores,
-            IdadeMinima = jogo.IdadeMinima,
-            TempoEstimadoDeJogo = jogo.TempoEstimadoDeJogo,
-            Status = StatusJogo.Indisponivel
-        };
-
-        if (jogo.Copias is not null && jogo.Copias.Any()) {
-            // Se houver qualquer cópia disponível, o status do jogo é Disponivel
-            if (jogo.Copias.Any(c => c.Status == StatusJogo.Disponivel)) {
-                result.Status = StatusJogo.Disponivel;
-            } else {
-                // Caso contrário, pega o "melhor" status (menor valor numérico exceto Disponivel)
-                // Reservado (1) < Alugado (2) < Indisponivel (3) < Desativado (4)
-                result.Status = jogo.Copias.Min(c => c.Status);
-            }
-        }
-
-        return result;
-    }
-}
-
-public record JogoCompletoDTO {
     private string _nome = null!;
     public int Id { get; set; }
     [Required]
@@ -96,11 +15,8 @@ public record JogoCompletoDTO {
     [Required]
     public short IdadeMinima { get; set; }
     [Required]
-    public string Foto { get; set; } = string.Empty;
-    [Required]
-    public short MinimoDeJogadores { get; set; }
-    [Required]
     public short MaximoDeJogadores { get; set; }
+    public decimal? Complexidade { get; set; }
     [Required]
     public StatusJogo Status { get; set; }
     public TimeOnly? TempoEstimadoDeJogo { get; set; }
@@ -108,34 +24,33 @@ public record JogoCompletoDTO {
     public DateOnly? DataCompra { get; set; }
     public List<TagDTO>? Tags { get; set; }
     public List<LinkDTO>? Links { get; set; }
+    public List<JogoFotoDTO>? Fotos { get; set; }
     public List<CopiaJogoDTO>? Copias { get; set; } = [];
 
-    public static JogoCompletoDTO FromModel(Jogo jogo) {
-        var result = new JogoCompletoDTO {
+    public static JogoDTO FromModel(Jogo jogo) {
+        var result = new JogoDTO {
             Id = jogo.Id,
             IdCategoria = jogo.IdCategoria,
             Nome = jogo.Nome,
             Descricao = jogo.Descricao,
             IdadeMinima = jogo.IdadeMinima,
-            Foto = jogo.Foto ?? string.Empty,
             MinimoDeJogadores = jogo.MinimoDeJogadores,
             MaximoDeJogadores = jogo.MaximoDeJogadores,
+            Complexidade = jogo.Complexidade,
             TempoEstimadoDeJogo = jogo.TempoEstimadoDeJogo,
             ValorDeCompra = jogo.ValorDeCompra,
             DataCompra = jogo.DataCompra,
             Status = StatusJogo.Disponivel,
             Links = jogo.Links?.Select(LinkDTO.FromModel).ToList(),
             Tags = jogo.Tags?.Select(TagDTO.FromModel).ToList(),
+            Fotos = jogo.Fotos?.Select(JogoFotoDTO.FromModel).OrderBy(f => f.Ordem).ToList(),
             Copias = jogo.Copias?.Select(CopiaJogoDTO.FromModel).ToList()
         };
-        if (jogo.Copias is not null) {
-            foreach (var copia in jogo.Copias) {
-                if (copia.Status == StatusJogo.Disponivel) {
-                    result.Status = copia.Status;
-                    break;
-                } else if (copia.Status > result.Status) {
-                    result.Status = copia.Status;
-                }
+        if (jogo.Copias is not null && jogo.Copias.Any()) {
+            if (jogo.Copias.Any(c => c.Status == StatusJogo.Disponivel)) {
+                result.Status = StatusJogo.Disponivel;
+            } else {
+                result.Status = jogo.Copias.Min(c => c.Status);
             }
         }
         return result;
@@ -146,22 +61,25 @@ public record JogoCompletoDTO {
         jogo.Nome = Nome;
         jogo.Descricao = Descricao;
         jogo.IdadeMinima = IdadeMinima;
-        jogo.Foto = string.IsNullOrEmpty(Foto) ? jogo.Foto : Foto;
         jogo.MinimoDeJogadores = MinimoDeJogadores;
         jogo.MaximoDeJogadores = MaximoDeJogadores;
+        jogo.Complexidade = Complexidade;
         jogo.TempoEstimadoDeJogo = TempoEstimadoDeJogo;
         jogo.ValorDeCompra = ValorDeCompra;
         jogo.DataCompra = DataCompra;
         jogo.Tags = Tags?.Select(tag => tag.ToModel()).ToList();
+        
+        if (Fotos is not null) {
+            jogo.Fotos = Fotos.Select(f => f.ToModel()).ToList();
+        }
+
         if (Links is not null) {
             jogo.Links ??= [];
-            foreach (var link in jogo.Links) {
+            foreach (var link in jogo.Links.ToList()) {
                 var linkDto = Links.FirstOrDefault(l => l.Id == link.Id);
                 if (linkDto is null) {
-                    // Remover links que não estão mais no DTO
-                    jogo.Links?.Remove(link);
+                    jogo.Links.Remove(link);
                 } else {
-                    // Atualizar links existentes
                     link.Titulo = linkDto.Titulo;
                     link.Url = linkDto.Url;
                 }
@@ -169,13 +87,10 @@ public record JogoCompletoDTO {
 
             foreach (var linkDto in Links) {
                 if (!jogo.Links!.Any(l => l.Id == linkDto.Id)) {
-                    // Adicionar novos links
                     jogo.Links!.Add(linkDto.ToModel());
                 }
             }
-
         }
-
     }
 
     public Jogo ToModel() {
@@ -185,14 +100,15 @@ public record JogoCompletoDTO {
             Nome = Nome,
             Descricao = Descricao,
             IdadeMinima = IdadeMinima,
-            Foto = Foto ?? string.Empty,
             MinimoDeJogadores = MinimoDeJogadores,
             MaximoDeJogadores = MaximoDeJogadores,
+            Complexidade = Complexidade,
             TempoEstimadoDeJogo = TempoEstimadoDeJogo,
             ValorDeCompra = ValorDeCompra,
             DataCompra = DataCompra,
             Links = Links?.Select(link => link.ToModel()).ToList(),
-            Tags = Tags?.Select(tag => tag.ToModel()).ToList()
+            Tags = Tags?.Select(tag => tag.ToModel()).ToList(),
+            Fotos = Fotos?.Select(foto => foto.ToModel()).ToList()
         };
     }
 }

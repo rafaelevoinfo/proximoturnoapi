@@ -3,18 +3,15 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ProximoTurnoApi.Infrastructure.Models;
 
-
-
-
 public class JogoMaisAlugado {
     [Column("ID")]
     public int Id { get; set; }
     [Column("NOME")]
     public string Nome { get; set; } = null!;
-    [Column("FOTO")]
-    public string Foto { get; set; } = null!;
     [Column("QTDE")]
     public int Qtde { get; set; }
+    [Column("FOTO")]
+    public string? Foto { get; set; }
 }
 
 [Table("JOGO")]
@@ -31,14 +28,14 @@ public class Jogo : BaseModel {
     [Column("IDADE_MINIMA")]
     public short IdadeMinima { get; set; }
 
-    [Column("FOTO"), MaxLength(100)]
-    public string Foto { get; set; } = null!;
-
     [Column("MINIMO_JOGADORES")]
     public short MinimoDeJogadores { get; set; }
 
     [Column("MAXIMO_JOGADORES")]
     public short MaximoDeJogadores { get; set; }
+
+    [Column("COMPLEXIDADE")]
+    public decimal? Complexidade { get; set; }
 
     [Column("TEMPO_ESTIMADO_JOGO")]
     public TimeOnly? TempoEstimadoDeJogo { get; set; }
@@ -52,9 +49,6 @@ public class Jogo : BaseModel {
     public Categoria? Categoria { get; set; }
     public List<Tag>? Tags { get; set; }
     public List<Link>? Links { get; set; }
+    public List<JogoFoto>? Fotos { get; set; }
     public List<JogoCopia>? Copias { get; set; }
-
-    //Representa o status geral de todas as copias. Ex. se todas estao alugados sera alugado, se pelo menos uma estiver disponivel será disponivel
-    // [NotMapped]
-    // public StatusJogo Status { get; }
 }

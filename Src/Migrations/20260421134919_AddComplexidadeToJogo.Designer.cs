@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using ProximoTurnoApi.Infrastructure.Repositories;
 
@@ -10,9 +11,11 @@ using ProximoTurnoApi.Infrastructure.Repositories;
 namespace ProximoTurnoApi.Migrations
 {
     [DbContext(typeof(DatabaseContext))]
-    partial class DatabaseContextModelSnapshot : ModelSnapshot
+    [Migration("20260421134919_AddComplexidadeToJogo")]
+    partial class AddComplexidadeToJogo
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -424,34 +427,6 @@ namespace ProximoTurnoApi.Migrations
                     b.ToTable("JOGO_COPIA");
                 });
 
-            modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.JogoFoto", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("ID");
-
-                    b.Property<int>("IdJogo")
-                        .HasColumnType("int")
-                        .HasColumnName("ID_JOGO");
-
-                    b.Property<int>("Ordem")
-                        .HasColumnType("int")
-                        .HasColumnName("ORDEM");
-
-                    b.Property<string>("Url")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)")
-                        .HasColumnName("URL");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("IdJogo");
-
-                    b.ToTable("JOGO_FOTO");
-                });
-
             modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.Link", b =>
                 {
                     b.Property<int>("Id")
@@ -706,15 +681,6 @@ namespace ProximoTurnoApi.Migrations
                     b.Navigation("Jogo");
                 });
 
-            modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.JogoFoto", b =>
-                {
-                    b.HasOne("ProximoTurnoApi.Infrastructure.Models.Jogo", null)
-                        .WithMany("Fotos")
-                        .HasForeignKey("IdJogo")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.Link", b =>
                 {
                     b.HasOne("ProximoTurnoApi.Infrastructure.Models.Jogo", null)
@@ -737,8 +703,6 @@ namespace ProximoTurnoApi.Migrations
             modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.Jogo", b =>
                 {
                     b.Navigation("Copias");
-
-                    b.Navigation("Fotos");
 
                     b.Navigation("Links");
                 });

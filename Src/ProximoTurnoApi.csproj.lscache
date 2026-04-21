@@ -70,6 +70,7 @@ Application/DTOs/
  ApiResultDTO.cs
  CategoriaDTO.cs
  ClienteDTO.cs
+ CopiaJogoDTO.cs
  Filtros/
   FiltroCategoriaDTO.cs
   FiltroClienteDTO.cs
@@ -77,7 +78,11 @@ Application/DTOs/
   FiltroJogoDTO.cs
   FiltroPedidoDTO.cs
   FiltroTagDTO.cs
+ JogoCardDTO.cs
  JogoDTO.cs
+ JogoFotoDTO.cs
+ JogoMaisAlugadoDTO.cs
+ JogoResumoDTO.cs
  LinkDTO.cs
  PedidoDTO.cs
  StatusPedidoDTO.cs
@@ -117,6 +122,7 @@ Infrastructure/Models/
  ItemPedido.cs
  Jogo.cs
  JogoCopia.cs
+ JogoFoto.cs
  JogoLink.cs
  Link.cs
  Tag.cs
@@ -134,6 +140,10 @@ Migrations/
  20260327233114_InitialCreate.Designer.cs
  20260327233523_FixJogoTable.cs
  20260327233523_FixJogoTable.Designer.cs
+ 20260421134919_AddComplexidadeToJogo.cs
+ 20260421134919_AddComplexidadeToJogo.Designer.cs
+ 20260421144935_AddJogoFotos.cs
+ 20260421144935_AddJogoFotos.Designer.cs
  DatabaseContextModelSnapshot.cs
 obj/Debug/net10.0/
  .NETCoreApp,Version=v10.0.AssemblyAttributes.cs

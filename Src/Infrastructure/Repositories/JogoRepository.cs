@@ -90,6 +90,7 @@ public class JogoRepository : BaseRepository, IJogoRepository {
         return await _dbContext.Jogos
             .Include(j => j.Tags)
             .Include(j => j.Links)
+            .Include(j => j.Fotos)
             .Include(j => j.Copias)
             .AsTracking()
             .FirstOrDefaultAsync(j => j.Id == id);
@@ -146,7 +147,7 @@ public class JogoRepository : BaseRepository, IJogoRepository {
             select count(*) as qtde,
                    j.ID,
                    j.NOME,
-                   j.FOTO
+                   (select URL from JOGO_FOTO jf where jf.ID_JOGO = j.ID order by jf.ORDEM limit 1) as FOTO
               from PEDIDO p
             inner join PEDIDO_ITEM pi ON (p.ID = pi.ID_PEDIDO)
             inner join JOGO_COPIA jc on (jc.ID = pi.ID_JOGO_COPIA)

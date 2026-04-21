@@ -20,7 +20,7 @@ public class JogosController(ILogger<ControllerBasico> logger,
         _logger.LogInformation("Recuperando jogos.");
         return await EncapsulateRequestAsync(async () => {
             var jogos = await _repository.GetAllAsync(filtro);
-            return Ok(ApiResultDTO<List<JogoDTO>>.CreateSuccessResult(jogos.Select(JogoDTO.FromModel).ToList(), "Jogos recuperados com sucesso."));
+            return Ok(ApiResultDTO<List<JogoCardDTO>>.CreateSuccessResult(jogos.Select(JogoCardDTO.FromModel).ToList(), "Jogos recuperados com sucesso."));
         });
     }
 
@@ -46,7 +46,7 @@ public class JogosController(ILogger<ControllerBasico> logger,
 
     [HttpPut("{id}")]
     [Authorize(Roles = Roles.Admin)]
-    public async Task<IActionResult> PutJogo(int id, JogoCompletoDTO jogoDto) {
+    public async Task<IActionResult> PutJogo(int id, JogoDTO jogoDto) {
         return await EncapsulateRequestAsync(async () => {
             if (id != jogoDto.Id) {
                 return BadRequest(ApiResultDTO<object>.CreateFailureResult("ID do jogo na URL não corresponde ao ID no corpo da requisição."));
@@ -63,7 +63,7 @@ public class JogosController(ILogger<ControllerBasico> logger,
 
     [HttpPost]
     [Authorize(Roles = Roles.Admin)]
-    public async Task<IActionResult> PostJogo(JogoCompletoDTO jogoDto) {
+    public async Task<IActionResult> PostJogo(JogoDTO jogoDto) {
         return await EncapsulateRequestAsync(async () => {
             var cadastroJogo = new CadastroJogo(_repository, _tagRepository, _cadastroJogoLogger);
             var idJogo = await cadastroJogo.ExecuteAsync(jogoDto);
