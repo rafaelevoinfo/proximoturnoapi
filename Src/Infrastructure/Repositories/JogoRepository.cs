@@ -8,7 +8,7 @@ namespace ProximoTurnoApi.Infrastructure.Repositories;
 
 public interface IJogoRepository : IBaseRepository {
     Task<List<Jogo>> GetAllAsync(FiltroJogoDTO filtro);
-    Task<List<JogoMaisAlugado>> GetMaisAlugadosAsync();
+    Task<List<Jogo>> GetMaisAlugadosAsync();
     Task<List<Jogo>> GetAllByIdsAsync(List<int> ids);
     Task<List<JogoCopia>> GetAllCopiasByIdsAsync(List<int> ids);
     Task<List<JogoCopia>> GetAllCopiasByIdJogoAsync(int idJogo);
@@ -79,6 +79,7 @@ public class JogoRepository : BaseRepository, IJogoRepository {
             .Include(j => j.Categoria)
             .Include(j => j.Tags)
             .Include(j => j.Links)
+            .Include(j => j.Fotos!.OrderBy(f => f.Ordem).Take(1))
             .Include(j => j.Copias)
             .AsSplitQuery()
             .AsNoTracking()
@@ -141,21 +142,38 @@ public class JogoRepository : BaseRepository, IJogoRepository {
             .ToListAsync();
     }
 
-    public async Task<List<JogoMaisAlugado>> GetMaisAlugadosAsync() {
-        return await _dbContext.Database
-            .SqlQuery<JogoMaisAlugado>(@$"
-            select count(*) as qtde,
-                   j.ID,
-                   j.NOME,
-                   (select URL from JOGO_FOTO jf where jf.ID_JOGO = j.ID order by jf.ORDEM limit 1) as FOTO
+    public async Task<List<Jogo>> GetMaisAlugadosAsync() {
+        var maisAlugadosIds = await _dbContext.Database
+            .SqlQuery<int>(@$"
+            select j.ID
               from PEDIDO p
             inner join PEDIDO_ITEM pi ON (p.ID = pi.ID_PEDIDO)
             inner join JOGO_COPIA jc on (jc.ID = pi.ID_JOGO_COPIA)
             inner join JOGO j on (j.ID = jc.ID_JOGO)
             where p.STATUS = {(short)StatusPedido.Entregue}
-            group by j.ID, j.NOME
+            group by j.ID
             order by count(*) desc 
             limit 3")
+            .ToListAsync();
+
+        if (maisAlugadosIds.Count < 3) {
+            var faltantes = 3 - maisAlugadosIds.Count;
+            var recentesIds = await _dbContext.Jogos
+                .Where(j => !maisAlugadosIds.Contains(j.Id))
+                .Where(j => _dbContext.JogoCopias.Any(jc => jc.IdJogo == j.Id && jc.Status != StatusJogo.Desativado))
+                .OrderByDescending(j => j.Id)
+                .Take(faltantes)
+                .Select(j => j.Id)
+                .ToListAsync();
+
+            maisAlugadosIds.AddRange(recentesIds);
+        }
+
+        return await _dbContext.Jogos
+            .Include(j => j.Fotos!.OrderBy(f => f.Ordem).Take(1))
+            .Include(j => j.Copias)
+            .Where(j => maisAlugadosIds.Contains(j.Id))
+            .AsNoTracking()
             .ToListAsync();
     }
 

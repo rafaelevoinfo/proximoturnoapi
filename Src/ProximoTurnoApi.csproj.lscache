@@ -2,12 +2,10 @@ version=1
 
 # This file caches language service data to improve the performance of C# Dev Kit.
 # It is not intended for manual editing. It can safely be deleted and will be
-# regenerated automatically.
+# regenerated automatically. For more information, see https://aka.ms/lscache
 #
-# To exclude from version control, add *.lscache to your .gitignore file.
-#
-# To disable caching, add the following to your VS Code settings:
-#   "dotnet.projectsystem.enableLanguageServiceCache": false
+# To control where cache files are stored, use the following VS Code setting:
+#   "dotnet.projectsystem.cacheInProjectFolder": true
 
 [project]
 language=C#
@@ -23,7 +21,7 @@ ProjectAssetsFile=<PATH>obj/project.assets.json
 RootNamespace=ProximoTurnoApi
 RunAnalyzers=
 RunAnalyzersDuringLiveAnalysis=
-SolutionPath=*Undefined*
+SolutionPath=<PATH>../ProximoTurnoApi.slnx
 TargetFrameworkIdentifier=.NETCoreApp
 TargetPath=<PATH>bin/Debug/net10.0/ProximoTurnoApi.dll
 TargetRefPath=<PATH>obj/Debug/net10.0/ref/ProximoTurnoApi.dll
@@ -152,40 +150,7 @@ obj/Debug/net10.0/
 Program.cs
 
 [metadataReferences]
-<NUGET>/
- bouncycastle.cryptography/2.6.2/lib/net6.0/BouncyCastle.Cryptography.dll
- dotnetenv/3.1.1/lib/netstandard1.3/DotNetEnv.dll
- flunt/2.0.5/lib/netstandard2.0/Flunt.dll
- google.protobuf/3.32.0/lib/net5.0/Google.Protobuf.dll
- k4os.compression.lz4.streams/1.3.8/lib/net6.0/K4os.Compression.LZ4.Streams.dll
- k4os.compression.lz4/1.3.8/lib/net6.0/K4os.Compression.LZ4.dll
- k4os.hash.xxhash/1.0.8/lib/net6.0/K4os.Hash.xxHash.dll
- microsoft.aspnetcore.identity.entityframeworkcore/10.0.5/lib/net10.0/Microsoft.AspNetCore.Identity.EntityFrameworkCore.dll
- microsoft.aspnetcore.openapi/10.0.5/lib/net10.0/Microsoft.AspNetCore.OpenApi.dll
- microsoft.entityframeworkcore.abstractions/10.0.5/lib/net10.0/Microsoft.EntityFrameworkCore.Abstractions.dll
- microsoft.entityframeworkcore.relational/10.0.5/lib/net10.0/Microsoft.EntityFrameworkCore.Relational.dll
- microsoft.entityframeworkcore/10.0.5/lib/net10.0/Microsoft.EntityFrameworkCore.dll
- microsoft.extensions.dependencymodel/10.0.5/lib/net10.0/Microsoft.Extensions.DependencyModel.dll
- microsoft.openapi/2.0.0/lib/net8.0/Microsoft.OpenApi.dll
- mysql.data/9.6.0/lib/net10.0/MySql.Data.dll
- mysql.entityframeworkcore/10.0.1/lib/net10.0/MySql.EntityFrameworkCore.dll
- scalar.aspnetcore/2.13.15/lib/net10.0/Scalar.AspNetCore.dll
- serilog.aspnetcore/10.0.0/lib/net10.0/Serilog.AspNetCore.dll
- serilog.extensions.hosting/10.0.0/lib/net10.0/Serilog.Extensions.Hosting.dll
- serilog.extensions.logging/10.0.0/lib/net10.0/Serilog.Extensions.Logging.dll
- serilog.formatting.compact/3.0.0/lib/net8.0/Serilog.Formatting.Compact.dll
- serilog.settings.configuration/10.0.0/lib/net10.0/Serilog.Settings.Configuration.dll
- serilog.sinks.console/6.1.1/lib/net8.0/Serilog.Sinks.Console.dll
- serilog.sinks.debug/3.0.0/lib/net8.0/Serilog.Sinks.Debug.dll
- serilog.sinks.file/7.0.0/lib/net9.0/Serilog.Sinks.File.dll
- serilog/4.3.0/lib/net9.0/Serilog.dll
- sprache/2.3.1/lib/netstandard2.1/Sprache.dll
- system.configuration.configurationmanager/8.0.0/lib/net8.0/System.Configuration.ConfigurationManager.dll
- system.security.cryptography.protecteddata/8.0.0/lib/net8.0/System.Security.Cryptography.ProtectedData.dll
- system.security.permissions/8.0.0/lib/net8.0/System.Security.Permissions.dll
- system.windows.extensions/8.0.0/lib/net8.0/System.Windows.Extensions.dll
- zstdsharp.port/0.8.6/lib/net9.0/ZstdSharp.dll
-C:/Program Files/dotnet/packs/Microsoft.AspNetCore.App.Ref/10.0.0/ref/net10.0/
+<DOTNET>/packs/Microsoft.AspNetCore.App.Ref/10.0.0/ref/net10.0/
  Microsoft.AspNetCore.Antiforgery.dll
  Microsoft.AspNetCore.Authentication.Abstractions.dll
  Microsoft.AspNetCore.Authentication.BearerToken.dll
@@ -326,7 +291,7 @@ C:/Program Files/dotnet/packs/Microsoft.AspNetCore.App.Ref/10.0.0/ref/net10.0/
  System.Formats.Cbor.dll
  System.Security.Cryptography.Xml.dll
  System.Threading.RateLimiting.dll
-C:/Program Files/dotnet/packs/Microsoft.NETCore.App.Ref/10.0.0/ref/net10.0/
+<DOTNET>/packs/Microsoft.NETCore.App.Ref/10.0.0/ref/net10.0/
  Microsoft.CSharp.dll
  Microsoft.VisualBasic.Core.dll
  Microsoft.VisualBasic.dll
@@ -494,15 +459,42 @@ C:/Program Files/dotnet/packs/Microsoft.NETCore.App.Ref/10.0.0/ref/net10.0/
  System.Xml.XPath.dll
  System.Xml.XPath.XDocument.dll
  WindowsBase.dll
+<NUGET>/
+ bouncycastle.cryptography/2.6.2/lib/net6.0/BouncyCastle.Cryptography.dll
+ dotnetenv/3.1.1/lib/netstandard1.3/DotNetEnv.dll
+ flunt/2.0.5/lib/netstandard2.0/Flunt.dll
+ google.protobuf/3.32.0/lib/net5.0/Google.Protobuf.dll
+ k4os.compression.lz4.streams/1.3.8/lib/net6.0/K4os.Compression.LZ4.Streams.dll
+ k4os.compression.lz4/1.3.8/lib/net6.0/K4os.Compression.LZ4.dll
+ k4os.hash.xxhash/1.0.8/lib/net6.0/K4os.Hash.xxHash.dll
+ microsoft.aspnetcore.identity.entityframeworkcore/10.0.5/lib/net10.0/Microsoft.AspNetCore.Identity.EntityFrameworkCore.dll
+ microsoft.aspnetcore.openapi/10.0.5/lib/net10.0/Microsoft.AspNetCore.OpenApi.dll
+ microsoft.entityframeworkcore.abstractions/10.0.5/lib/net10.0/Microsoft.EntityFrameworkCore.Abstractions.dll
+ microsoft.entityframeworkcore.relational/10.0.5/lib/net10.0/Microsoft.EntityFrameworkCore.Relational.dll
+ microsoft.entityframeworkcore/10.0.5/lib/net10.0/Microsoft.EntityFrameworkCore.dll
+ microsoft.extensions.dependencymodel/10.0.5/lib/net10.0/Microsoft.Extensions.DependencyModel.dll
+ microsoft.openapi/2.0.0/lib/net8.0/Microsoft.OpenApi.dll
+ mysql.data/9.6.0/lib/net10.0/MySql.Data.dll
+ mysql.entityframeworkcore/10.0.1/lib/net10.0/MySql.EntityFrameworkCore.dll
+ scalar.aspnetcore/2.13.15/lib/net10.0/Scalar.AspNetCore.dll
+ serilog.aspnetcore/10.0.0/lib/net10.0/Serilog.AspNetCore.dll
+ serilog.extensions.hosting/10.0.0/lib/net10.0/Serilog.Extensions.Hosting.dll
+ serilog.extensions.logging/10.0.0/lib/net10.0/Serilog.Extensions.Logging.dll
+ serilog.formatting.compact/3.0.0/lib/net8.0/Serilog.Formatting.Compact.dll
+ serilog.settings.configuration/10.0.0/lib/net10.0/Serilog.Settings.Configuration.dll
+ serilog.sinks.console/6.1.1/lib/net8.0/Serilog.Sinks.Console.dll
+ serilog.sinks.debug/3.0.0/lib/net8.0/Serilog.Sinks.Debug.dll
+ serilog.sinks.file/7.0.0/lib/net9.0/Serilog.Sinks.File.dll
+ serilog/4.3.0/lib/net9.0/Serilog.dll
+ sprache/2.3.1/lib/netstandard2.1/Sprache.dll
+ system.configuration.configurationmanager/8.0.0/lib/net8.0/System.Configuration.ConfigurationManager.dll
+ system.security.cryptography.protecteddata/8.0.0/lib/net8.0/System.Security.Cryptography.ProtectedData.dll
+ system.security.permissions/8.0.0/lib/net8.0/System.Security.Permissions.dll
+ system.windows.extensions/8.0.0/lib/net8.0/System.Windows.Extensions.dll
+ zstdsharp.port/0.8.6/lib/net9.0/ZstdSharp.dll
 
 [analyzerReferences]
-<NUGET>/
- microsoft.aspnetcore.openapi/10.0.5/analyzers/dotnet/cs/Microsoft.AspNetCore.OpenApi.SourceGenerators.dll
- microsoft.codeanalysis.analyzers/3.11.0/analyzers/dotnet/cs/
-  Microsoft.CodeAnalysis.Analyzers.dll
-  Microsoft.CodeAnalysis.CSharp.Analyzers.dll
- microsoft.entityframeworkcore.analyzers/10.0.5/analyzers/dotnet/cs/Microsoft.EntityFrameworkCore.Analyzers.dll
-C:/Program Files/dotnet/packs/Microsoft.AspNetCore.App.Ref/10.0.0/analyzers/dotnet/cs/
+<DOTNET>/packs/Microsoft.AspNetCore.App.Ref/10.0.0/analyzers/dotnet/cs/
  Microsoft.AspNetCore.App.Analyzers.dll
  Microsoft.AspNetCore.App.CodeFixes.dll
  Microsoft.AspNetCore.App.SourceGenerators.dll
@@ -510,25 +502,31 @@ C:/Program Files/dotnet/packs/Microsoft.AspNetCore.App.Ref/10.0.0/analyzers/dotn
  Microsoft.Extensions.Logging.Generators.dll
  Microsoft.Extensions.Options.SourceGeneration.dll
  Microsoft.Extensions.Validation.ValidationsGenerator.dll
-C:/Program Files/dotnet/packs/Microsoft.NETCore.App.Ref/10.0.0/analyzers/dotnet/cs/
+<DOTNET>/packs/Microsoft.NETCore.App.Ref/10.0.0/analyzers/dotnet/cs/
  Microsoft.Interop.ComInterfaceGenerator.dll
  Microsoft.Interop.JavaScript.JSImportGenerator.dll
  Microsoft.Interop.LibraryImportGenerator.dll
  Microsoft.Interop.SourceGeneration.dll
  System.Text.Json.SourceGeneration.dll
  System.Text.RegularExpressions.Generator.dll
-C:/Program Files/dotnet/sdk/10.0.100/Sdks/Microsoft.NET.Sdk.Razor/source-generators/
+<DOTNET>/sdk/10.0.100/Sdks/Microsoft.NET.Sdk.Razor/source-generators/
  Microsoft.AspNetCore.Razor.Utilities.Shared.dll
  Microsoft.CodeAnalysis.Razor.Compiler.dll
  Microsoft.Extensions.ObjectPool.dll
-C:/Program Files/dotnet/sdk/10.0.100/Sdks/Microsoft.NET.Sdk.Web/analyzers/cs/
+<DOTNET>/sdk/10.0.100/Sdks/Microsoft.NET.Sdk.Web/analyzers/cs/
  Microsoft.AspNetCore.Analyzers.dll
  Microsoft.AspNetCore.Mvc.Analyzers.dll
-C:/Program Files/dotnet/sdk/10.0.100/Sdks/Microsoft.NET.Sdk/analyzers/
+<DOTNET>/sdk/10.0.100/Sdks/Microsoft.NET.Sdk/analyzers/
  Microsoft.CodeAnalysis.CSharp.NetAnalyzers.dll
  Microsoft.CodeAnalysis.NetAnalyzers.dll
+<NUGET>/
+ microsoft.aspnetcore.openapi/10.0.5/analyzers/dotnet/cs/Microsoft.AspNetCore.OpenApi.SourceGenerators.dll
+ microsoft.codeanalysis.analyzers/3.11.0/analyzers/dotnet/cs/
+  Microsoft.CodeAnalysis.Analyzers.dll
+  Microsoft.CodeAnalysis.CSharp.Analyzers.dll
+ microsoft.entityframeworkcore.analyzers/10.0.5/analyzers/dotnet/cs/Microsoft.EntityFrameworkCore.Analyzers.dll
 
 [analyzerConfigFiles]
 ../../../.editorconfig
-C:/Program Files/dotnet/sdk/10.0.100/Sdks/Microsoft.NET.Sdk/analyzers/build/config/analysislevel_10_default.globalconfig
+<DOTNET>/sdk/10.0.100/Sdks/Microsoft.NET.Sdk/analyzers/build/config/analysislevel_10_default.globalconfig
 obj/Debug/net10.0/ProximoTurnoApi.GeneratedMSBuildEditorConfig.editorconfig

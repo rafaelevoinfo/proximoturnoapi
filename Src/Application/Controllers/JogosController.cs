@@ -29,7 +29,7 @@ public class JogosController(ILogger<ControllerBasico> logger,
         _logger.LogInformation("Recuperando jogos mais alugados.");
         return await EncapsulateRequestAsync(async () => {
             var jogos = await _repository.GetMaisAlugadosAsync();
-            return Ok(ApiResultDTO<List<JogoMaisAlugadoDTO>>.CreateSuccessResult(jogos.Select(JogoMaisAlugadoDTO.FromModel).ToList(), "Jogos mais alugados recuperados com sucesso."));
+            return Ok(ApiResultDTO<List<JogoCardDTO>>.CreateSuccessResult(jogos.Select(JogoCardDTO.FromModel).ToList(), "Jogos mais alugados recuperados com sucesso."));
         });
     }
 

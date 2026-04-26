@@ -15,6 +15,8 @@ public record JogoDTO {
     [Required]
     public short IdadeMinima { get; set; }
     [Required]
+    public short MinimoDeJogadores { get; set; }
+    [Required]
     public short MaximoDeJogadores { get; set; }
     public decimal? Complexidade { get; set; }
     [Required]
