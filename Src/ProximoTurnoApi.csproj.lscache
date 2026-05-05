@@ -79,7 +79,6 @@ Application/DTOs/
  JogoCardDTO.cs
  JogoDTO.cs
  JogoFotoDTO.cs
- JogoMaisAlugadoDTO.cs
  JogoResumoDTO.cs
  LinkDTO.cs
  PedidoDTO.cs
@@ -112,27 +111,29 @@ Application/UseCases/
  UseCaseBasico.cs
  UseCaseNotification.cs
 Domain/Pedido.cs
-Infrastructure/Models/
- BaseModel.cs
- Categoria.cs
- CategoriaPeriodo.cs
- Cliente.cs
- ItemPedido.cs
- Jogo.cs
- JogoCopia.cs
- JogoFoto.cs
- JogoLink.cs
- Link.cs
- Tag.cs
- Usuario.cs
-Infrastructure/Repositories/
- BaseRepository.cs
- CategoriaRepository.cs
- ClienteRepository.cs
- DatabaseContext.cs
- JogoRepository.cs
- PedidoRepository.cs
- TagRepository.cs
+Infrastructure/
+ Identity/PortugueseIdentityErrorDescriber.cs
+ Models/
+  BaseModel.cs
+  Categoria.cs
+  CategoriaPeriodo.cs
+  Cliente.cs
+  ItemPedido.cs
+  Jogo.cs
+  JogoCopia.cs
+  JogoFoto.cs
+  JogoLink.cs
+  Link.cs
+  Tag.cs
+  Usuario.cs
+ Repositories/
+  BaseRepository.cs
+  CategoriaRepository.cs
+  ClienteRepository.cs
+  DatabaseContext.cs
+  JogoRepository.cs
+  PedidoRepository.cs
+  TagRepository.cs
 Migrations/
  20260327233114_InitialCreate.cs
  20260327233114_InitialCreate.Designer.cs
@@ -142,6 +143,8 @@ Migrations/
  20260421134919_AddComplexidadeToJogo.Designer.cs
  20260421144935_AddJogoFotos.cs
  20260421144935_AddJogoFotos.Designer.cs
+ 20260426135306_RemoveJogoFotoColumn.cs
+ 20260426135306_RemoveJogoFotoColumn.Designer.cs
  DatabaseContextModelSnapshot.cs
 obj/Debug/net10.0/
  .NETCoreApp,Version=v10.0.AssemblyAttributes.cs

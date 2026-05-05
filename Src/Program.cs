@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi;
 using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Infrastructure.Repositories;
+using ProximoTurnoApi.Infrastructure.Identity;
 using Serilog;
 using Scalar.AspNetCore;
 using Microsoft.AspNetCore.Authentication;
@@ -128,8 +129,13 @@ static class Extensions {
         // })
         services.AddIdentityCore<Usuario>(options => {
             options.User.RequireUniqueEmail = true;
+            // options.Password.RequiredLength = 6;
+            // options.Password.RequireNonAlphanumeric = false;
+            // options.Password.RequireUppercase = false;
+            // options.Password.RequireLowercase = false;
         })
             .AddRoles<IdentityRole>()
+            .AddErrorDescriber<PortugueseIdentityErrorDescriber>()
             .AddApiEndpoints()
             .AddEntityFrameworkStores<DatabaseContext>();
     }

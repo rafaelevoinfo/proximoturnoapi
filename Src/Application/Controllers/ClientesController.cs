@@ -10,10 +10,10 @@ namespace ProximoTurnoApi.Application.Controllers;
 
 [Route("api/clientes")]
 [ApiController]
-[Authorize(Roles = Roles.Admin)]
 public class ClientesController(ILogger<ControllerBasico> logger, IClienteRepository _repository) : ControllerBasico(logger) {
 
     [HttpGet]
+    [Authorize(Roles = Roles.Admin)]
     public async Task<IActionResult> GetClientes(FiltroClienteDTO filtro) {
         _logger.LogInformation("Recuperando clientes.");
         return await EncapsulateRequestAsync(async () => {
@@ -23,6 +23,7 @@ public class ClientesController(ILogger<ControllerBasico> logger, IClienteReposi
     }
 
     [HttpGet("{id}")]
+    [Authorize(Roles = Roles.Admin)]
     public async Task<IActionResult> GetCliente(int id) {
         return await EncapsulateRequestAsync(async () => {
             var cliente = await _repository.GetByIdAsync(id);
@@ -34,6 +35,7 @@ public class ClientesController(ILogger<ControllerBasico> logger, IClienteReposi
     }
 
     [HttpPut("{id}")]
+    [Authorize]
     public async Task<IActionResult> PutCliente(int id, ClienteDTO cliente) {
         return await EncapsulateRequestAsync(async () => {
             if (id != cliente.Id) {
@@ -61,6 +63,7 @@ public class ClientesController(ILogger<ControllerBasico> logger, IClienteReposi
     }
 
     [HttpDelete("{id}")]
+    [Authorize(Roles = Roles.Admin)]
     public async Task<IActionResult> DeleteCliente(int id) {
         return await EncapsulateRequestAsync(async () => {
             if (!await _repository.DeleteAsync(id)) {

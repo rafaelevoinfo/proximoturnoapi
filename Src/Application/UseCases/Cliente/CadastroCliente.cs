@@ -41,8 +41,25 @@ public class CadastroCliente(IClienteRepository repository, UserManager<Usuario>
                 Email = cliente.Email,
                 Nome = cliente.Nome
             };
-            await _userManager.CreateAsync(usuario, clienteDto.Senha);
-            await _userManager.AddToRoleAsync(usuario, Roles.Member);
+
+            var result = await _userManager.CreateAsync(usuario, clienteDto.Senha);
+            if (!result.Succeeded) {
+                foreach (var error in result.Errors) {
+                    AddNotification(UseCaseNotification.Create(UseCaseNotificationType.Error, error.Description));
+                }
+                await _repository.RollbackTransactionAsync();
+                return 0;
+            }
+
+            var roleResult = await _userManager.AddToRoleAsync(usuario, Roles.Member);
+            if (!roleResult.Succeeded) {
+                foreach (var error in roleResult.Errors) {
+                    AddNotification(UseCaseNotification.Create(UseCaseNotificationType.Error, error.Description));
+                }
+                await _repository.RollbackTransactionAsync();
+                return 0;
+            }
+
             await _repository.CommitTransactionAsync();
         } catch {
             await _repository.RollbackTransactionAsync();

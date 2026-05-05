@@ -22,12 +22,14 @@ public record ClienteDTO {
     [Required, MaxLength(100)]
     public string Nome { get => _nome; set => _nome = StringUtils.Capitalize(value); }
     [Required, MaxLength(15)]
+    [RegularExpression(@"^\d{10,11}$", ErrorMessage = "O telefone deve conter apenas números, incluindo o DDD, com 10 ou 11 dígitos.")]
     public string Telefone { get; set; } = string.Empty;
 
     [Required, MaxLength(400)]
     public string Endereco { get; set; } = string.Empty;
 
     [Required, MaxLength(100)]
+    [EmailAddress(ErrorMessage = "O e-mail informado não é válido.")]
     public string Email { get; set; } = string.Empty;
 
     [Required, MaxLength(100)]
