@@ -22,7 +22,7 @@ public class PedidosController(ILogger<ControllerBasico> logger,
 
 
     [HttpGet()]
-    public async Task<IActionResult> GetAll(FiltroPedidoDTO filtro) {
+    public async Task<IActionResult> GetAll([FromQuery] FiltroPedidoDTO filtro) {
         return await EncapsulateRequestAsync(async () => {
             var buscarPedidosUseCase = new BuscarPedidos(_pedidoRepository, _clienteRepository, _userManager);
             var pedidos = await buscarPedidosUseCase.ExecuteAsync(User, filtro);

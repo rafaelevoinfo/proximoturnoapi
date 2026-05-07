@@ -479,7 +479,6 @@ Program.cs
  microsoft.openapi/2.0.0/lib/net8.0/Microsoft.OpenApi.dll
  mysql.data/9.6.0/lib/net10.0/MySql.Data.dll
  mysql.entityframeworkcore/10.0.1/lib/net10.0/MySql.EntityFrameworkCore.dll
- scalar.aspnetcore/2.13.15/lib/net10.0/Scalar.AspNetCore.dll
  serilog.aspnetcore/10.0.0/lib/net10.0/Serilog.AspNetCore.dll
  serilog.extensions.hosting/10.0.0/lib/net10.0/Serilog.Extensions.Hosting.dll
  serilog.extensions.logging/10.0.0/lib/net10.0/Serilog.Extensions.Logging.dll
@@ -490,6 +489,7 @@ Program.cs
  serilog.sinks.file/7.0.0/lib/net9.0/Serilog.Sinks.File.dll
  serilog/4.3.0/lib/net9.0/Serilog.dll
  sprache/2.3.1/lib/netstandard2.1/Sprache.dll
+ swashbuckle.aspnetcore.swaggerui/10.1.7/lib/net10.0/Swashbuckle.AspNetCore.SwaggerUI.dll
  system.configuration.configurationmanager/8.0.0/lib/net8.0/System.Configuration.ConfigurationManager.dll
  system.security.cryptography.protecteddata/8.0.0/lib/net8.0/System.Security.Cryptography.ProtectedData.dll
  system.security.permissions/8.0.0/lib/net8.0/System.Security.Permissions.dll

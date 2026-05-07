@@ -4,7 +4,7 @@ using ProximoTurnoApi.Domain;
 namespace ProximoTurnoApi.Application.DTOs;
 
 public class FiltroPedidoDTO {
-    [FromQuery(Name = "id_cliente")]
+    //Preenchido automaticamente pelo use case baseado no usuario logado
     public int? IdCliente { get; set; }
     [FromQuery(Name = "data_inicial")]
     public DateTime? DataInicial { get; set; }

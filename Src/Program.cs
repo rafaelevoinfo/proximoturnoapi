@@ -5,8 +5,9 @@ using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Infrastructure.Repositories;
 using ProximoTurnoApi.Infrastructure.Identity;
 using Serilog;
-using Scalar.AspNetCore;
 using Microsoft.AspNetCore.Authentication;
+using Swashbuckle.AspNetCore.SwaggerUI;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -65,7 +66,9 @@ var app = builder.Build();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment()) {
     app.MapOpenApi();
-    app.MapScalarApiReference();
+    app.UseSwaggerUI(options => {
+        options.SwaggerEndpoint("/openapi/v1.json", "Próximo Turno API v1");
+    });
 }
 
 app.UseCors();
