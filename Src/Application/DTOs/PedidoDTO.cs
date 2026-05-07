@@ -17,6 +17,8 @@ public record PedidoDTO {
 
     public StatusPedido Status { get; set; }
 
+    public bool Atrasado { get; set; }
+
     [Required]
     public List<ItemPedidoDTO>? Items { get; set; } = [];
 
@@ -27,6 +29,7 @@ public record PedidoDTO {
             DataHora = pedido.DataHora,
             ValorTotal = pedido.ValorTotal,
             Status = pedido.Status,
+            Atrasado = pedido.Status == StatusPedido.Entregue && pedido.Items.Any(i => i.DataDevolucao.Date < DateTime.UtcNow.Date),
             Items = pedido.Items.Select(i => new ItemPedidoDTO {
                 Id = i.Id,
                 Jogo = JogoResumoDTO.FromModel(i.JogoCopia.Jogo!),

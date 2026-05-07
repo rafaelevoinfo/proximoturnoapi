@@ -166,7 +166,7 @@ public class Pedido : BaseModel {
         }
         var qtdeDevolvida = 0;
         foreach (var item in _items) {
-            if (idsItemsDevolvidos is null || idsItemsDevolvidos.Any(idItem => idItem == item.Id)) {
+            if (idsItemsDevolvidos is null || idsItemsDevolvidos.Count == 0 || idsItemsDevolvidos.Any(idItem => idItem == item.Id)) {
                 item.JogoCopia.Status = StatusJogo.Disponivel;
                 qtdeDevolvida++;
             }

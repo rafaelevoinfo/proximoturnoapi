@@ -105,12 +105,12 @@ public class PedidosController(ILogger<ControllerBasico> logger,
     }
 
     [HttpPut("{id}/devolver")]
-    public async Task<IActionResult> DevolverItemsPedido(int id, List<int>? idsItensDevolvidos) {
+    public async Task<IActionResult> DevolverItemsPedido(int id, [FromBody] List<int>? idsItensDevolvidos) {
         return await EncapsulateRequestAsync(async () => {
-            var renovarPedidoUseCase = new DevolverItensPedido(_pedidoRepository);
-            await renovarPedidoUseCase.ExecuteAsync(id, idsItensDevolvidos);
-            if (!renovarPedidoUseCase.IsValid) {
-                return BadRequest(ApiResultDTO<PedidoDTO>.CreateFailureResult(renovarPedidoUseCase.AggregateErrors()));
+            var devolverPedidoUseCase = new DevolverItensPedido(_pedidoRepository);
+            await devolverPedidoUseCase.ExecuteAsync(id, idsItensDevolvidos);
+            if (!devolverPedidoUseCase.IsValid) {
+                return BadRequest(ApiResultDTO<PedidoDTO>.CreateFailureResult(devolverPedidoUseCase.AggregateErrors()));
             }
             return Ok(ApiResultDTO<PedidoDTO>.CreateSuccessResult(null, "Items devolvidos com sucesso"));
         });
