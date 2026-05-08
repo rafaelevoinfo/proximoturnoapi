@@ -5,6 +5,7 @@ namespace ProximoTurnoApi.Domain;
 public enum StatusPedido : short {
     Pendente,
     Entregue,
+    Devolvido,
     Cancelado
 }
 
@@ -156,6 +157,8 @@ public class Pedido : BaseModel {
                 item.JogoCopia.Status = StatusJogo.Disponivel;
             }
         }
+
+        Status = StatusPedido.Devolvido;
         return novoPedido;
     }
 
@@ -170,6 +173,9 @@ public class Pedido : BaseModel {
                 item.JogoCopia.Status = StatusJogo.Disponivel;
                 qtdeDevolvida++;
             }
+        }
+        if (idsItemsDevolvidos?.Count == _items.Count()) {
+            Status = StatusPedido.Devolvido;
         }
         if (qtdeDevolvida == 0) {
             AddNotification("ERRO", "Nenhum item foi devolvido");
