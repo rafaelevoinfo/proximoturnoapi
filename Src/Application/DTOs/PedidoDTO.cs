@@ -33,6 +33,7 @@ public record PedidoDTO {
             Items = pedido.Items.Select(i => new ItemPedidoDTO {
                 Id = i.Id,
                 Jogo = JogoResumoDTO.FromModel(i.JogoCopia.Jogo!),
+                IdPeriodo = i.IdPeriodo,
                 Valor = i.Valor,
                 DataDevolucao = i.DataDevolucao,
                 Renovado = i.Renovado
@@ -64,14 +65,15 @@ public record NovoItemPedidoDTO {
 public record ItemPedidoRenovarDTO {
     [Required]
     public int Id { get; set; }
-    [Required]
-    public int IdPeriodo { get; set; }
+    public int? IdPeriodo { get; set; }
 }
 
 public record ItemPedidoDTO {
     public int Id { get; set; }
 
     public JogoResumoDTO? Jogo { get; set; } = null!;
+
+    public int IdPeriodo { get; set; }
 
     public decimal Valor { get; set; }
     public DateTime DataDevolucao { get; set; }

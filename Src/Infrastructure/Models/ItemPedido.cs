@@ -14,6 +14,9 @@ public class ItemPedido : BaseModel {
     [Column("VALOR")]
     public decimal Valor { get; set; }
 
+    [Column("ID_PERIODO")]
+    public int IdPeriodo { get; set; }
+
     [Column("DATA_DEVOLUCAO")]
     public DateTime DataDevolucao { get; set; }
 

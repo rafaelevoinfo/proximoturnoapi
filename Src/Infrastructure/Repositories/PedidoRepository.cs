@@ -27,11 +27,13 @@ public class PedidoRepository(DatabaseContext dbContext) : BaseRepository(dbCont
         }
 
         if (filtro.DataInicial.HasValue) {
-            query = query.Where(p => p.DataHora >= filtro.DataInicial.Value);
+            var dataInicial = filtro.DataInicial.Value.ToDateTime(TimeOnly.MinValue);
+            query = query.Where(p => p.DataHora >= dataInicial);
         }
 
         if (filtro.DataFinal.HasValue) {
-            query = query.Where(p => p.DataHora <= filtro.DataFinal.Value);
+            var dataFinal = filtro.DataFinal.Value.ToDateTime(new TimeOnly(23, 59, 59));
+            query = query.Where(p => p.DataHora <= dataFinal);
         }
 
         if (filtro.Status.HasValue) {
@@ -45,7 +47,7 @@ public class PedidoRepository(DatabaseContext dbContext) : BaseRepository(dbCont
 
         return await query
             .AsNoTracking()
-            .OrderByDescending(p => p.DataHora)
+            .OrderByDescending(p => p.Id)
             .ToListAsync();
     }
 

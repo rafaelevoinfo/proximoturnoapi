@@ -4,27 +4,36 @@ using ProximoTurnoApi.Infrastructure.Repositories;
 
 namespace ProximoTurnoApi.Application.UseCases;
 
-public class AtualizarJogo(IJogoRepository jogoRepository, ITagRepository tagRepository, ILogger<AtualizarJogo> _logger) : JogoUseCaseBasico(jogoRepository, tagRepository) {
+public class AtualizarJogo(IJogoRepository _jogoRepository, ITagRepository _tagRepository, ILogger<AtualizarJogo> _logger) : JogoUseCaseBasico(_jogoRepository, _tagRepository) {
 
     public async Task<bool> ExecuteAsync(JogoDTO jogoDto) {
+        _logger.LogInformation("Iniciando atualização do jogo ID {JogoId} ({Nome}).", jogoDto.Id, jogoDto.Nome);
         var jogo = await _jogoRepository.GetByIdAsync(jogoDto.Id);
 
         if (jogo is null) {
+            _logger.LogWarning("Falha ao atualizar: Jogo ID {JogoId} não encontrado.", jogoDto.Id);
             AddNotification(UseCaseNotification.Create(UseCaseNotificationType.Error, $"Jogo de id {jogoDto.Id} não encontrado."));
             return false;
         }
 
         var jogosExistentes = await _jogoRepository.GetAllAsync(new FiltroJogoDTO { Nome = jogoDto.Nome });
         if (jogosExistentes.Any(j => j.Id != jogoDto.Id)) {
+            _logger.LogWarning("Falha ao atualizar jogo {JogoId}: Já existe outro jogo com o nome {Nome}.", jogoDto.Id, jogoDto.Nome);
             AddNotification(UseCaseNotification.Create(UseCaseNotificationType.Error, "Já existe um jogo com o mesmo nome."));
         }
 
         if (!IsValid)
             return false;
 
-        jogoDto.UpdateModel(jogo);
-        await AtualizarTags(jogo, _logger);
-        await _jogoRepository.SaveAsync(jogo);
-        return IsValid;
+        try {
+            jogoDto.UpdateModel(jogo);
+            await AtualizarTags(jogo, _logger);
+            await _jogoRepository.SaveAsync(jogo);
+            _logger.LogInformation("Jogo ID {JogoId} atualizado com sucesso.", jogo.Id);
+            return IsValid;
+        } catch (Exception ex) {
+            _logger.LogError(ex, "Erro fatal ao salvar atualização do jogo ID {JogoId}.", jogoDto.Id);
+            throw;
+        }
     }
 }

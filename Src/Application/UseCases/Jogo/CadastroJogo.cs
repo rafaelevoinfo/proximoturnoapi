@@ -9,8 +9,10 @@ public class CadastroJogo(IJogoRepository _jogoRepository,
                           ILogger<CadastroJogo> _logger) : JogoUseCaseBasico(_jogoRepository, _tagRepository) {
 
     public async Task<int> ExecuteAsync(JogoDTO jogoDto) {
+        _logger.LogInformation("Iniciando cadastro de novo jogo: {Nome}", jogoDto.Nome);
         var jogosExistentes = await _jogoRepository.GetAllAsync(new FiltroJogoDTO { Nome = jogoDto.Nome });
         if (jogosExistentes.Count > 0) {
+            _logger.LogWarning("Falha ao cadastrar jogo: Já existe um jogo com o nome {Nome}.", jogoDto.Nome);
             AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest, "Já existe um jogo com o mesmo nome."));
         }
 
@@ -19,16 +21,24 @@ public class CadastroJogo(IJogoRepository _jogoRepository,
 
         var jogo = jogoDto.ToModel();
         await AtualizarTags(jogo, _logger);
-        await _jogoRepository.SaveAsync(jogo, false);
-        await _jogoRepository.SaveAsync(new JogoCopia() {
-            IdJogo = jogo.Id,
-        });
-
-        return jogo.Id;
+        
+        try {
+            await _jogoRepository.SaveAsync(jogo, false);
+            await _jogoRepository.SaveAsync(new JogoCopia() {
+                IdJogo = jogo.Id,
+            });
+            _logger.LogInformation("Jogo {JogoId} ({Nome}) cadastrado com sucesso com uma cópia inicial.", jogo.Id, jogo.Nome);
+            return jogo.Id;
+        } catch (Exception ex) {
+            _logger.LogError(ex, "Erro fatal ao salvar o jogo {Nome} no banco de dados.", jogoDto.Nome);
+            throw;
+        }
     }
 
     public async Task<int?> AdicionarCopia(int idJogo) {
+        _logger.LogInformation("Solicitada adição de cópia para o jogo ID {JogoId}.", idJogo);
         if (!await _jogoRepository.ExisteAsync(idJogo)) {
+            _logger.LogWarning("Falha ao adicionar cópia: Jogo ID {JogoId} não encontrado.", idJogo);
             AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest, "Jogo inexistente"));
             return null;
         }
@@ -36,7 +46,14 @@ public class CadastroJogo(IJogoRepository _jogoRepository,
             IdJogo = idJogo,
             Status = StatusJogo.Disponivel
         };
-        await _jogoRepository.SaveAsync(copia);
-        return copia.Id;
+        
+        try {
+            await _jogoRepository.SaveAsync(copia);
+            _logger.LogInformation("Nova cópia (ID {CopiaId}) adicionada com sucesso para o jogo {JogoId}.", copia.Id, idJogo);
+            return copia.Id;
+        } catch (Exception ex) {
+            _logger.LogError(ex, "Erro fatal ao salvar nova cópia para o jogo {JogoId}.", idJogo);
+            throw;
+        }
     }
 }

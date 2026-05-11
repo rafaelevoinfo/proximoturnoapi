@@ -10,7 +10,10 @@ namespace ProximoTurnoApi.Application.Controllers;
 
 [Route("api/clientes")]
 [ApiController]
-public class ClientesController(ILogger<ControllerBasico> logger, IClienteRepository _repository) : ControllerBasico(logger) {
+public class ClientesController(ILogger<ControllerBasico> logger,
+                            IClienteRepository _repository,
+                            CadastroCliente _cadastroClienteUseCase,
+                            AtualizarCliente _atualizarClienteUseCase) : ControllerBasico(logger) {
 
     [HttpGet]
     [Authorize(Roles = Roles.Admin)]
@@ -41,22 +44,20 @@ public class ClientesController(ILogger<ControllerBasico> logger, IClienteReposi
             if (id != cliente.Id) {
                 return BadRequest(ApiResultDTO<ClienteDTO>.CreateFailureResult("ID do cliente na URL não corresponde ao ID no corpo da requisição."));
             }
-            var atualizarCliente = new AtualizarCliente(_repository);
-            var result = await atualizarCliente.ExecuteAsync(cliente);
+            var result = await _atualizarClienteUseCase.ExecuteAsync(cliente);
             if (!result) {
-                return BadRequest(ApiResultDTO<ClienteDTO>.CreateFailureResult(atualizarCliente.AggregateErrors()));
+                return BadRequest(ApiResultDTO<ClienteDTO>.CreateFailureResult(_atualizarClienteUseCase.AggregateErrors()));
             }
             return Ok(ApiResultDTO<ClienteDTO>.CreateSuccessResult(null, "Cliente atualizado com sucesso."));
         });
     }
 
     [HttpPost]
-    public async Task<IActionResult> PostCliente(ClienteDTO clienteDto, UserManager<Usuario> userManager) {
+    public async Task<IActionResult> PostCliente(ClienteDTO clienteDto) {
         return await EncapsulateRequestAsync(async () => {
-            var cadastroClienteUseCase = new CadastroCliente(_repository, userManager);
-            var idCliente = await cadastroClienteUseCase.ExecuteAsync(clienteDto);
+            var idCliente = await _cadastroClienteUseCase.ExecuteAsync(clienteDto);
             if (idCliente == 0) {
-                return BadRequest(ApiResultDTO<ClienteDTO>.CreateFailureResult(cadastroClienteUseCase.AggregateErrors()));
+                return BadRequest(ApiResultDTO<ClienteDTO>.CreateFailureResult(_cadastroClienteUseCase.AggregateErrors()));
             }
             return Ok(ApiResultDTO<ClienteDTO>.CreateSuccessResult(new ClienteDTO() { Id = idCliente }, "Cliente criado com sucesso."));
         });

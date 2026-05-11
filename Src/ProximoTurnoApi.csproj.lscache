@@ -145,6 +145,8 @@ Migrations/
  20260421144935_AddJogoFotos.Designer.cs
  20260426135306_RemoveJogoFotoColumn.cs
  20260426135306_RemoveJogoFotoColumn.Designer.cs
+ 20260510213506_AddIdPeriodoToItemPedido.cs
+ 20260510213506_AddIdPeriodoToItemPedido.Designer.cs
  DatabaseContextModelSnapshot.cs
 obj/Debug/net10.0/
  .NETCoreApp,Version=v10.0.AssemblyAttributes.cs

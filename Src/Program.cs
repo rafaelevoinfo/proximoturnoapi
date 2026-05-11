@@ -4,6 +4,8 @@ using Microsoft.OpenApi;
 using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Infrastructure.Repositories;
 using ProximoTurnoApi.Infrastructure.Identity;
+using ProximoTurnoApi.Application.UseCases;
+using ProximoTurnoApi.Application.UseCases.Tag;
 using Serilog;
 using Microsoft.AspNetCore.Authentication;
 using Swashbuckle.AspNetCore.SwaggerUI;
@@ -32,6 +34,31 @@ builder.Services.AddScoped<IJogoRepository, JogoRepository>();
 builder.Services.AddScoped<ICategoriaRepository, CategoriaRepository>();
 builder.Services.AddScoped<IPedidoRepository, PedidoRepository>();
 builder.Services.AddScoped<ITagRepository, TagRepository>();
+
+// Use Cases
+// Pedido
+builder.Services.AddScoped<BuscarPedidos>();
+builder.Services.AddScoped<CadastroPedido>();
+builder.Services.AddScoped<AtualizarPedido>();
+builder.Services.AddScoped<AtualizarStatusPedido>();
+builder.Services.AddScoped<RenovarPedido>();
+builder.Services.AddScoped<DevolverItensPedido>();
+
+// Categoria
+builder.Services.AddScoped<CadastroCategoria>();
+builder.Services.AddScoped<AtualizarCategoria>();
+
+// Cliente
+builder.Services.AddScoped<CadastroCliente>();
+builder.Services.AddScoped<AtualizarCliente>();
+
+// Jogo
+builder.Services.AddScoped<CadastroJogo>();
+builder.Services.AddScoped<AtualizarJogo>();
+
+// Tag
+builder.Services.AddScoped<CadastroTag>();
+builder.Services.AddScoped<AtualizarTag>();
 
 builder.Services.AddIdentityUser();
 builder.Services.AddDocumentation();

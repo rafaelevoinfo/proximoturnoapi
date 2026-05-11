@@ -5,15 +5,14 @@ using ProximoTurnoApi.Infrastructure.Repositories;
 
 namespace ProximoTurnoApi.Application.UseCases.Tag;
 
-public class AtualizarTag(ITagRepository repository) : UseCaseBasico
-{
-    private readonly ITagRepository _repository = repository;
-
+public class AtualizarTag(ITagRepository _repository, ILogger<AtualizarTag> logger) : UseCaseBasico {
     public async Task<bool> ExecuteAsync(TagDTO tagDto)
     {
+        logger.LogInformation("Iniciando atualização da tag ID {TagId} ({Nome}).", tagDto.Id, tagDto.Nome);
         var tag = await _repository.GetByIdAsync(tagDto.Id.GetValueOrDefault());
         if (tag == null)
         {
+            logger.LogWarning("Falha ao atualizar: Tag ID {TagId} não encontrada.", tagDto.Id);
             AddNotification(UseCaseNotification.Create(UseCaseNotificationType.Error, $"Tag de id {tagDto.Id} não encontrada."));
             return false;
         }
@@ -26,14 +25,21 @@ public class AtualizarTag(ITagRepository repository) : UseCaseBasico
         var tagsExistentes = await _repository.GetAllAsync(filtro);
         if (tagsExistentes.Any(c => c.Id != tagDto.Id))
         {
+            logger.LogWarning("Falha ao atualizar tag {TagId}: Já existe outra tag com o nome {Nome}.", tagDto.Id, tagDto.Nome);
             AddNotification(UseCaseNotification.Create(UseCaseNotificationType.Error, "Já existe uma tag com o mesmo nome."));
         }
 
         if (!IsValid)
             return false;
 
-        tagDto.UpdateModel(tag);
-        await _repository.UpdateAsync(tag);
-        return IsValid;
+        try {
+            tagDto.UpdateModel(tag);
+            await _repository.UpdateAsync(tag);
+            logger.LogInformation("Tag ID {TagId} atualizada com sucesso.", tag.Id);
+            return IsValid;
+        } catch (Exception ex) {
+            logger.LogError(ex, "Erro fatal ao salvar atualização da tag ID {TagId}.", tagDto.Id);
+            throw;
+        }
     }
 }

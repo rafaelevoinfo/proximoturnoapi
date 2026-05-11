@@ -133,12 +133,19 @@ public class Pedido : BaseModel {
 
     public Pedido? Renovar(List<(int idItem, CategoriaPeriodo periodo)?> itensRenovar) {
         Clear();
-        if (Status != StatusPedido.Entregue) {
-            AddNotification("ERRO", "Não é possível renovar um pedido não entregue");
+        if (Status != StatusPedido.Devolvido) {
+            AddNotification("ERRO", "Para renovar um pedido, ele primeiro precisa ser devolvido e então renovado");
             return null;
         }
+
+        if (!Devolver(null)) {
+            AddNotification("ERRO", "Não foi possível renovar o pedido, pois houve um problema ao processar a devolução necessária para então realizar a renovação");
+            return null;
+        }
+
         var novoPedido = new Pedido(Cliente) {
             DataHora = DateTime.UtcNow,
+            Status = StatusPedido.Pendente,
             DataHoraEntrega = DataHora,
             PedidoOriginal = this
         };
@@ -148,15 +155,16 @@ public class Pedido : BaseModel {
                 var novoItem = new ItemPedido() {
                     IdJogoCopia = item.IdJogoCopia,
                     JogoCopia = item.JogoCopia,
+                    IdPeriodo = itemRenovar.Value.periodo.Id,
                     Valor = itemRenovar.Value.periodo.Valor,
                     DataDevolucao = CalcularDataDevolucao(itemRenovar.Value.periodo.QuantidadeDias),
                     Renovado = true
                 };
                 novoPedido.AdicionarItem(novoItem);
-            } else {
-                item.JogoCopia.Status = StatusJogo.Disponivel;
             }
         }
+        novoPedido.CalcularTotal();
+        novoPedido.Entregar();
 
         Status = StatusPedido.Devolvido;
         return novoPedido;
@@ -174,12 +182,12 @@ public class Pedido : BaseModel {
                 qtdeDevolvida++;
             }
         }
-        if (idsItemsDevolvidos?.Count == _items.Count()) {
-            Status = StatusPedido.Devolvido;
-        }
         if (qtdeDevolvida == 0) {
             AddNotification("ERRO", "Nenhum item foi devolvido");
             return false;
+        }
+        if (idsItemsDevolvidos is null || idsItemsDevolvidos?.Count == _items.Count()) {
+            Status = StatusPedido.Devolvido;
         }
         return true;
     }

@@ -9,7 +9,10 @@ namespace ProximoTurnoApi.Application.Controllers;
 
 [Route("api/categorias")]
 [ApiController]
-public class CategoriasController(ILogger<ControllerBasico> logger, ICategoriaRepository _repository) : ControllerBasico(logger) {
+public class CategoriasController(ILogger<ControllerBasico> logger,
+                            ICategoriaRepository _repository,
+                            CadastroCategoria _cadastroCategoriaUseCase,
+                            AtualizarCategoria _atualizarCategoriaUseCase) : ControllerBasico(logger) {
 
     [HttpGet]
     public async Task<IActionResult> GetCategorias(FiltroCategoriaDTO filtro) {
@@ -38,10 +41,9 @@ public class CategoriasController(ILogger<ControllerBasico> logger, ICategoriaRe
             if (id != categoria.Id) {
                 return BadRequest(ApiResultDTO<CategoriaDTO>.CreateFailureResult("ID da categoria na URL não corresponde ao ID no corpo da requisição."));
             }
-            var atualizarCategoria = new AtualizarCategoria(_repository);
-            var result = await atualizarCategoria.ExecuteAsync(categoria);
+            var result = await _atualizarCategoriaUseCase.ExecuteAsync(categoria);
             if (!result) {
-                return BadRequest(ApiResultDTO<CategoriaDTO>.CreateFailureResult(atualizarCategoria.AggregateErrors()));
+                return BadRequest(ApiResultDTO<CategoriaDTO>.CreateFailureResult(_atualizarCategoriaUseCase.AggregateErrors()));
             }
             return Ok(ApiResultDTO<CategoriaDTO>.CreateSuccessResult(null, "Categoria atualizada com sucesso."));
         });
@@ -51,10 +53,9 @@ public class CategoriasController(ILogger<ControllerBasico> logger, ICategoriaRe
     [Authorize(Roles = Roles.Admin)]
     public async Task<IActionResult> PostCategoria(CategoriaDTO categoriaDto) {
         return await EncapsulateRequestAsync(async () => {
-            var cadastroCategoriaUseCase = new CadastroCategoria(_repository);
-            var idCategoria = await cadastroCategoriaUseCase.ExecuteAsync(categoriaDto);
+            var idCategoria = await _cadastroCategoriaUseCase.ExecuteAsync(categoriaDto);
             if (idCategoria == 0) {
-                return BadRequest(ApiResultDTO<CategoriaDTO>.CreateFailureResult(cadastroCategoriaUseCase.AggregateErrors()));
+                return BadRequest(ApiResultDTO<CategoriaDTO>.CreateFailureResult(_cadastroCategoriaUseCase.AggregateErrors()));
             }
             return Ok(ApiResultDTO<CategoriaDTO>.CreateSuccessResult(new CategoriaDTO() { Id = idCategoria }, "Categoria criada com sucesso."));
         });

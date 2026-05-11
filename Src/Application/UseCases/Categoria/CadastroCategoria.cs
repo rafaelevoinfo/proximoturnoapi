@@ -5,16 +5,16 @@ using ProximoTurnoApi.Infrastructure.Repositories;
 
 namespace ProximoTurnoApi.Application.UseCases;
 
-public class CadastroCategoria(ICategoriaRepository repository) : UseCaseBasico {
-    private readonly ICategoriaRepository _repository = repository;
-
+public class CadastroCategoria(ICategoriaRepository _repository, ILogger<CadastroCategoria> logger) : UseCaseBasico {
     public async Task<int> ExecuteAsync(CategoriaDTO categoriaDto) {
+        logger.LogInformation("Iniciando cadastro de nova categoria: {Descricao}", categoriaDto.Descricao);
         var filtro = new FiltroCategoriaDTO {
             Descricao = categoriaDto.Descricao
         };
 
         var categoriasExistentes = await _repository.GetAllAsync(filtro);
         if (categoriasExistentes.Count > 0) {
+            logger.LogWarning("Falha ao cadastrar categoria: Já existe uma categoria com a descrição {Descricao}.", categoriaDto.Descricao);
             AddNotification(UseCaseNotification.Create(UseCaseNotificationType.Error, "Já existe uma categoria com a mesma descrição."));
         }
 
@@ -29,7 +29,13 @@ public class CadastroCategoria(ICategoriaRepository repository) : UseCaseBasico 
             }).ToList()
         };
 
-        await _repository.SaveAsync(categoria);
-        return categoria.Id;
+        try {
+            await _repository.SaveAsync(categoria);
+            logger.LogInformation("Categoria {CategoriaId} ({Descricao}) cadastrada com sucesso.", categoria.Id, categoria.Descricao);
+            return categoria.Id;
+        } catch (Exception ex) {
+            logger.LogError(ex, "Erro fatal ao salvar a categoria {Descricao} no banco de dados.", categoriaDto.Descricao);
+            throw;
+        }
     }
 }

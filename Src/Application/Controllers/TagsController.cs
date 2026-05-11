@@ -10,7 +10,10 @@ namespace ProximoTurnoApi.Application.Controllers;
 
 [Route("api/tags")]
 [ApiController]
-public class TagsController(ILogger<ControllerBasico> logger, ITagRepository _repository) : ControllerBasico(logger) {
+public class TagsController(ILogger<ControllerBasico> logger,
+                            ITagRepository _repository,
+                            CadastroTag _cadastroTagUseCase,
+                            AtualizarTag _atualizarTagUseCase) : ControllerBasico(logger) {
 
     [HttpGet]
     public async Task<IActionResult> GetTags(FiltroTagDTO filtro) {
@@ -39,10 +42,9 @@ public class TagsController(ILogger<ControllerBasico> logger, ITagRepository _re
             if (id != tag.Id) {
                 return BadRequest(ApiResultDTO<TagDTO>.CreateFailureResult("ID da tag na URL não corresponde ao ID no corpo da requisição."));
             }
-            var atualizarTag = new AtualizarTag(_repository);
-            var result = await atualizarTag.ExecuteAsync(tag);
+            var result = await _atualizarTagUseCase.ExecuteAsync(tag);
             if (!result) {
-                return BadRequest(ApiResultDTO<TagDTO>.CreateFailureResult(atualizarTag.AggregateErrors()));
+                return BadRequest(ApiResultDTO<TagDTO>.CreateFailureResult(_atualizarTagUseCase.AggregateErrors()));
             }
             return Ok(ApiResultDTO<TagDTO>.CreateSuccessResult(null, "Tag atualizada com sucesso."));
         });
@@ -52,10 +54,9 @@ public class TagsController(ILogger<ControllerBasico> logger, ITagRepository _re
     [Authorize(Roles = Roles.Admin)]
     public async Task<IActionResult> PostTag(TagDTO tagDto) {
         return await EncapsulateRequestAsync(async () => {
-            var cadastroTagUseCase = new CadastroTag(_repository);
-            var idTag = await cadastroTagUseCase.ExecuteAsync(tagDto);
+            var idTag = await _cadastroTagUseCase.ExecuteAsync(tagDto);
             if (idTag == 0) {
-                return BadRequest(ApiResultDTO<TagDTO>.CreateFailureResult(cadastroTagUseCase.AggregateErrors()));
+                return BadRequest(ApiResultDTO<TagDTO>.CreateFailureResult(_cadastroTagUseCase.AggregateErrors()));
             }
             return Ok(ApiResultDTO<TagDTO>.CreateSuccessResult(new TagDTO() { Id = idTag }, "Tag criada com sucesso."));
         });

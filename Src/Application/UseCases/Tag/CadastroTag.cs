@@ -5,12 +5,10 @@ using ProximoTurnoApi.Infrastructure.Repositories;
 
 namespace ProximoTurnoApi.Application.UseCases.Tag;
 
-public class CadastroTag(ITagRepository repository) : UseCaseBasico
-{
-    private readonly ITagRepository _repository = repository;
-
+public class CadastroTag(ITagRepository _repository, ILogger<CadastroTag> logger) : UseCaseBasico {
     public async Task<int> ExecuteAsync(TagDTO tagDto)
     {
+        logger.LogInformation("Iniciando cadastro de nova tag: {Nome}", tagDto.Nome);
         var filtro = new FiltroTagDTO
         {
             Nome = tagDto.Nome
@@ -19,6 +17,7 @@ public class CadastroTag(ITagRepository repository) : UseCaseBasico
         var tagsExistentes = await _repository.GetAllAsync(filtro);
         if (tagsExistentes.Count > 0)
         {
+            logger.LogWarning("Falha ao cadastrar tag: Já existe uma tag com o nome {Nome}.", tagDto.Nome);
             AddNotification(UseCaseNotification.Create(UseCaseNotificationType.Error, "Já existe uma tag com o mesmo nome."));
         }
 
@@ -26,7 +25,13 @@ public class CadastroTag(ITagRepository repository) : UseCaseBasico
             return 0;
 
         var tag = tagDto.ToModel();
-        await _repository.AddAsync(tag);
-        return tag.Id;
+        try {
+            await _repository.AddAsync(tag);
+            logger.LogInformation("Tag {TagId} ({Nome}) cadastrada com sucesso.", tag.Id, tag.Nome);
+            return tag.Id;
+        } catch (Exception ex) {
+            logger.LogError(ex, "Erro fatal ao salvar a tag {Nome} no banco de dados.", tagDto.Nome);
+            throw;
+        }
     }
 }

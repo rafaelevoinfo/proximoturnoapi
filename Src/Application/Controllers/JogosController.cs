@@ -10,10 +10,10 @@ namespace ProximoTurnoApi.Application.Controllers;
 [Route("api/jogos")]
 [ApiController]
 public class JogosController(ILogger<ControllerBasico> logger,
-                             ILogger<CadastroJogo> _cadastroJogoLogger,
-                             ILogger<AtualizarJogo> _atualizaJogologger,
                              IJogoRepository _repository,
-                             ITagRepository _tagRepository) : ControllerBasico(logger) {
+                             ITagRepository _tagRepository,
+                             CadastroJogo _cadastroJogoUseCase,
+                             AtualizarJogo _atualizarJogoUseCase) : ControllerBasico(logger) {
 
     [HttpGet]
     public async Task<IActionResult> GetJogos([FromQuery] FiltroJogoDTO filtro) {
@@ -52,10 +52,9 @@ public class JogosController(ILogger<ControllerBasico> logger,
                 return BadRequest(ApiResultDTO<object>.CreateFailureResult("ID do jogo na URL não corresponde ao ID no corpo da requisição."));
             }
 
-            var atualizarJogo = new AtualizarJogo(_repository, _tagRepository, _atualizaJogologger);
-            var result = await atualizarJogo.ExecuteAsync(jogoDto);
+            var result = await _atualizarJogoUseCase.ExecuteAsync(jogoDto);
             if (!result) {
-                return BadRequest(ApiResultDTO<JogoDTO>.CreateFailureResult(atualizarJogo.AggregateErrors()));
+                return BadRequest(ApiResultDTO<JogoDTO>.CreateFailureResult(_atualizarJogoUseCase.AggregateErrors()));
             }
             return Ok(ApiResultDTO<JogoDTO>.CreateSuccessResult(null, "Jogo atualizado com sucesso."));
         });
@@ -65,10 +64,9 @@ public class JogosController(ILogger<ControllerBasico> logger,
     [Authorize(Roles = Roles.Admin)]
     public async Task<IActionResult> PostJogo(JogoDTO jogoDto) {
         return await EncapsulateRequestAsync(async () => {
-            var cadastroJogo = new CadastroJogo(_repository, _tagRepository, _cadastroJogoLogger);
-            var idJogo = await cadastroJogo.ExecuteAsync(jogoDto);
+            var idJogo = await _cadastroJogoUseCase.ExecuteAsync(jogoDto);
             if (idJogo == 0) {
-                return BadRequest(ApiResultDTO<JogoDTO>.CreateFailureResult(cadastroJogo.AggregateErrors()));
+                return BadRequest(ApiResultDTO<JogoDTO>.CreateFailureResult(_cadastroJogoUseCase.AggregateErrors()));
             }
             return Ok(ApiResultDTO<JogoDTO>.CreateSuccessResult(new JogoDTO() { Id = idJogo }, "Jogo criado com sucesso."));
         });
@@ -86,10 +84,9 @@ public class JogosController(ILogger<ControllerBasico> logger,
     [Authorize(Roles = Roles.Admin)]
     public async Task<IActionResult> AdicionarCopia(int idJogo) {
         return await EncapsulateRequestAsync(async () => {
-            var cadastroJogo = new CadastroJogo(_repository, _tagRepository, _cadastroJogoLogger);
-            var idCopia = await cadastroJogo.AdicionarCopia(idJogo);
+            var idCopia = await _cadastroJogoUseCase.AdicionarCopia(idJogo);
             if (idCopia.GetValueOrDefault() == 0) {
-                return BadRequest(ApiResultDTO<JogoDTO>.CreateFailureResult(cadastroJogo.AggregateErrors()));
+                return BadRequest(ApiResultDTO<JogoDTO>.CreateFailureResult(_cadastroJogoUseCase.AggregateErrors()));
             }
             return Ok(ApiResultDTO<int>.CreateSuccessResult(idCopia.GetValueOrDefault(), "Copia adicionada com sucesso."));
         });

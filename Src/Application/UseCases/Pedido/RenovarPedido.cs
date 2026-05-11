@@ -6,13 +6,18 @@ namespace ProximoTurnoApi.Application.UseCases;
 
 public class RenovarPedido(IPedidoRepository pedidoRepository,
                            IJogoRepository _jogoRepository,
-                           ICategoriaRepository _categoriaRepository) : PedidoUseCaseBasico(pedidoRepository) {
+                           ICategoriaRepository _categoriaRepository,
+                           ILogger<RenovarPedido> logger) : PedidoUseCaseBasico(pedidoRepository) {
     public async Task ExecuteAsync(int idPedido, List<ItemPedidoRenovarDTO> itens) {
+        logger.LogInformation("Iniciando renovação para o pedido {PedidoId} com {ItemCount} itens.", idPedido, itens.Count);
         var pedidoExistente = await _pedidoRepository.GetByIdAsync(idPedido);
         if (pedidoExistente is null) {
+            logger.LogWarning("Falha na renovação: Pedido {PedidoId} não encontrado.", idPedido);
             AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest, "Pedido não encontrado."));
             return;
         }
+
+        var categorias = await _categoriaRepository.GetAllAsync(new FiltroCategoriaDTO());
 
         List<(int, CategoriaPeriodo)?> itensNovoPedido = [];
         foreach (var itemRenovar in itens) {
@@ -21,28 +26,42 @@ public class RenovarPedido(IPedidoRepository pedidoRepository,
                 var novoItemDto = new NovoItemPedidoDTO() {
                     IdCopiaJogo = itemPedido.IdJogoCopia,
                     IdJogo = itemPedido.JogoCopia.IdJogo,
-                    IdPeriodo = itemRenovar.IdPeriodo
+                    IdPeriodo = itemRenovar.IdPeriodo ?? itemPedido.IdPeriodo
                 };
-                var resultValidacao = await ValidarAdicionarItem(novoItemDto, _jogoRepository, _categoriaRepository);
-                if (!IsValid) {
-                    return;
+                var periodo = categorias.FirstOrDefault(c => c.Periodos.Any(p => p.Id == novoItemDto.IdPeriodo))?.Periodos.FirstOrDefault(p => p.Id == novoItemDto.IdPeriodo);
+                if (periodo is null) {
+                    logger.LogWarning("Período de renovação ID {PeriodoId} inválido para o item {ItemId} do pedido {PedidoId}.", novoItemDto.IdPeriodo, itemRenovar.Id, idPedido);
+                    AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest, $"Não foi possível identificar qual o periodo para renovação."));
+                    continue;
                 }
 
-                itensNovoPedido.Add((itemRenovar.Id, resultValidacao.Value.periodo));
+                itensNovoPedido.Add((itemRenovar.Id, periodo));
+            } else {
+                logger.LogWarning("Item ID {ItemId} não pertence ao pedido {PedidoId}.", itemRenovar.Id, idPedido);
             }
         }
+        
         if (itensNovoPedido.Count == 0) {
+            logger.LogWarning("Nenhum item válido foi processado para renovação do pedido {PedidoId}.", idPedido);
             AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest, "Nenhum item foi informado para ser renovado"));
             return;
         }
 
+
         var novoPedido = pedidoExistente.Renovar(itensNovoPedido);
         if (novoPedido is null || !pedidoExistente.IsValid) {
+            logger.LogWarning("Regra de negócio impediu renovação do pedido {PedidoId}: {Errors}", idPedido, string.Join(", ", pedidoExistente.Notifications.Select(n => n.Message)));
             AddNotifications((IList<UseCaseNotification>)pedidoExistente.Notifications.Select(n => UseCaseNotification.Create(UseCaseNotificationType.BadRequest, n.Message)).ToList());
             return;
         }
 
-        await _pedidoRepository.SaveAsync(pedidoExistente, false);
-        await _pedidoRepository.SaveAsync(novoPedido);
+        try {
+            await _pedidoRepository.SaveAsync(pedidoExistente, false);
+            await _pedidoRepository.SaveAsync(novoPedido);
+            logger.LogInformation("Renovação do pedido {PedidoId} concluída. Novo pedido gerado: {NovoPedidoId}.", idPedido, novoPedido.Id);
+        } catch (Exception ex) {
+            logger.LogError(ex, "Erro fatal ao salvar renovação do pedido {PedidoId}.", idPedido);
+            throw;
+        }
     }
 }

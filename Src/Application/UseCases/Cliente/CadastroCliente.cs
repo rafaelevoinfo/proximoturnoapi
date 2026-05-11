@@ -7,16 +7,16 @@ using ProximoTurnoApi.Infrastructure.Repositories;
 
 namespace ProximoTurnoApi.Application.UseCases;
 
-public class CadastroCliente(IClienteRepository repository, UserManager<Usuario> _userManager) : UseCaseBasico {
-    private readonly IClienteRepository _repository = repository;
-
+public class CadastroCliente(IClienteRepository _repository, UserManager<Usuario> _userManager, ILogger<CadastroCliente> logger) : UseCaseBasico {
     public async Task<int> ExecuteAsync(ClienteDTO clienteDto) {
+        logger.LogInformation("Iniciando cadastro de novo cliente: {Nome} ({Email})", clienteDto.Nome, clienteDto.Email);
         var filtro = new FiltroClienteDTO {
             Email = clienteDto.Email
         };
 
         var clientesExistentes = await _repository.GetAllAsync(filtro);
         if (clientesExistentes.Count > 0) {
+            logger.LogWarning("Falha ao cadastrar cliente: Já existe um cliente com o email {Email}.", clienteDto.Email);
             AddNotification(UseCaseNotification.Create(UseCaseNotificationType.Error, "Já existe um cliente com o mesmo email."));
         }
 
@@ -26,6 +26,7 @@ public class CadastroCliente(IClienteRepository repository, UserManager<Usuario>
 
         clientesExistentes = await _repository.GetAllAsync(filtro);
         if (clientesExistentes.Count > 0) {
+            logger.LogWarning("Falha ao cadastrar cliente {Email}: Já existe um cliente com o telefone {Telefone}.", clienteDto.Email, clienteDto.Telefone);
             AddNotification(UseCaseNotification.Create(UseCaseNotificationType.Error, "Já existe um cliente com o mesmo telefone."));
         }
 
@@ -44,6 +45,7 @@ public class CadastroCliente(IClienteRepository repository, UserManager<Usuario>
 
             var result = await _userManager.CreateAsync(usuario, clienteDto.Senha);
             if (!result.Succeeded) {
+                logger.LogWarning("Falha ao criar usuário Identity para o cliente {Email}: {Errors}", cliente.Email, string.Join(", ", result.Errors.Select(e => e.Description)));
                 foreach (var error in result.Errors) {
                     AddNotification(UseCaseNotification.Create(UseCaseNotificationType.Error, error.Description));
                 }
@@ -53,6 +55,7 @@ public class CadastroCliente(IClienteRepository repository, UserManager<Usuario>
 
             var roleResult = await _userManager.AddToRoleAsync(usuario, Roles.Member);
             if (!roleResult.Succeeded) {
+                logger.LogWarning("Falha ao atribuir role Member para o cliente {Email}: {Errors}", cliente.Email, string.Join(", ", roleResult.Errors.Select(e => e.Description)));
                 foreach (var error in roleResult.Errors) {
                     AddNotification(UseCaseNotification.Create(UseCaseNotificationType.Error, error.Description));
                 }
@@ -61,7 +64,9 @@ public class CadastroCliente(IClienteRepository repository, UserManager<Usuario>
             }
 
             await _repository.CommitTransactionAsync();
-        } catch {
+            logger.LogInformation("Cliente {ClienteId} ({Email}) cadastrado com sucesso.", cliente.Id, cliente.Email);
+        } catch (Exception ex) {
+            logger.LogError(ex, "Erro fatal ao cadastrar o cliente {Email} (transação revertida).", clienteDto.Email);
             await _repository.RollbackTransactionAsync();
             throw;
         }

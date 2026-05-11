@@ -6,9 +6,11 @@ using ProximoTurnoApi.Infrastructure.Repositories;
 
 namespace ProximoTurnoApi.Application.UseCases;
 
-public class BuscarPedidos(IPedidoRepository pedidoRepository, IClienteRepository _clienteRepository, UserManager<Usuario> _userManager) : PedidoUseCaseBasico(pedidoRepository) {
+public class BuscarPedidos(IPedidoRepository pedidoRepository, IClienteRepository _clienteRepository, UserManager<Usuario> _userManager, ILogger<BuscarPedidos> logger) : PedidoUseCaseBasico(pedidoRepository) {
     public async Task<List<PedidoDTO>> ExecuteAsync(ClaimsPrincipal user, FiltroPedidoDTO filtro) {
+        logger.LogInformation("Buscando lista de pedidos com filtros: {@Filtro}", filtro);
         if (!await AdicionarFiltroPorCliente(user, _clienteRepository, filtro)) {
+            logger.LogWarning("Falha na busca de pedidos: Usuário logado não possui um cliente vinculado.");
             AddNotification(UseCaseNotification.Create(UseCaseNotificationType.Forbid, "Usuário não encontrado."));
             return [];
         }
@@ -17,19 +19,23 @@ public class BuscarPedidos(IPedidoRepository pedidoRepository, IClienteRepositor
                 .Select(PedidoDTO.FromModel)
                 .ToList();
 
+        logger.LogInformation("{Count} pedidos encontrados para os critérios informados.", pedidos.Count);
         return pedidos;
     }
 
     public async Task<PedidoDTO?> ExecuteAsync(ClaimsPrincipal userClaim, int idPedido) {
+        logger.LogInformation("Buscando detalhes do pedido {PedidoId}.", idPedido);
         var pedido = await _pedidoRepository.GetByIdAsync(idPedido);
         if (pedido == null) {
+            logger.LogWarning("Pedido {PedidoId} não encontrado.", idPedido);
             return null;
         }
 
         if (!userClaim.IsInRole(Roles.Admin)) {
             var user = await _userManager.GetUserAsync(userClaim);
-            var cliente = _clienteRepository.GetIdByEmailAsync(user?.Email ?? "");
-            if (cliente is null || cliente.Id != pedido.Cliente?.Id) {
+            var idCliente = await _clienteRepository.GetIdByEmailAsync(user?.Email ?? "");
+            if (idCliente is null || idCliente.Value != pedido.Cliente?.Id) {
+                logger.LogWarning("Acesso negado: Usuário {UserEmail} tentou acessar o pedido {PedidoId} de outro cliente.", user?.Email, idPedido);
                 AddNotification(UseCaseNotification.Create(UseCaseNotificationType.Forbid, "Nenhum cliente vinculado ao usuário logado foi encontrado"));
                 return null;
             }
