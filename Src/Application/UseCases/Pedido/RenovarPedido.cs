@@ -5,7 +5,7 @@ using ProximoTurnoApi.Infrastructure.Repositories;
 namespace ProximoTurnoApi.Application.UseCases;
 
 public class RenovarPedido(IPedidoRepository pedidoRepository,
-                           IJogoRepository _jogoRepository,
+
                            ICategoriaRepository _categoriaRepository,
                            ILogger<RenovarPedido> logger) : PedidoUseCaseBasico(pedidoRepository) {
     public async Task ExecuteAsync(int idPedido, List<ItemPedidoRenovarDTO> itens) {
@@ -40,7 +40,7 @@ public class RenovarPedido(IPedidoRepository pedidoRepository,
                 logger.LogWarning("Item ID {ItemId} não pertence ao pedido {PedidoId}.", itemRenovar.Id, idPedido);
             }
         }
-        
+
         if (itensNovoPedido.Count == 0) {
             logger.LogWarning("Nenhum item válido foi processado para renovação do pedido {PedidoId}.", idPedido);
             AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest, "Nenhum item foi informado para ser renovado"));

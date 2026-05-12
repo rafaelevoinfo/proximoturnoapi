@@ -11,7 +11,6 @@ namespace ProximoTurnoApi.Application.Controllers;
 [ApiController]
 public class JogosController(ILogger<ControllerBasico> logger,
                              IJogoRepository _repository,
-                             ITagRepository _tagRepository,
                              CadastroJogo _cadastroJogoUseCase,
                              AtualizarJogo _atualizarJogoUseCase) : ControllerBasico(logger) {
 
