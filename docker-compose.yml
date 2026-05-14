@@ -42,6 +42,7 @@ services:
     container_name: proximoturno-api
     environment:
       ConnectionStrings__DefaultConnection: Server=proximoturno-mysql;Port=3306;Database=${MYSQL_DATABASE};User=${MYSQL_USER};Password=${MYSQL_PASSWORD};      
+      CLOUDINARY_URL: ${CLOUDINARY_URL}
     healthcheck:
         test: ["CMD-SHELL", "curl -f http://localhost/health || exit 1"]
         interval: 30s

@@ -62,6 +62,7 @@ Application/Controllers/
  JogosController.cs
  PedidosController.cs
  TagsController.cs
+ UploadController.cs
  UsuarioController.cs
 Application/DTOs/
  AlertaAtrasoResponse.cs
@@ -134,6 +135,7 @@ Infrastructure/
   JogoRepository.cs
   PedidoRepository.cs
   TagRepository.cs
+ Services/CloudinaryService.cs
 Migrations/
  20260327233114_InitialCreate.cs
  20260327233114_InitialCreate.Designer.cs
@@ -466,6 +468,7 @@ Program.cs
  WindowsBase.dll
 <NUGET>/
  bouncycastle.cryptography/2.6.2/lib/net6.0/BouncyCastle.Cryptography.dll
+ cloudinarydotnet/1.29.1/lib/netstandard2.0/CloudinaryDotNet.dll
  dotnetenv/3.1.1/lib/netstandard1.3/DotNetEnv.dll
  flunt/2.0.5/lib/netstandard2.0/Flunt.dll
  google.protobuf/3.32.0/lib/net5.0/Google.Protobuf.dll
@@ -481,6 +484,7 @@ Program.cs
  microsoft.openapi/2.0.0/lib/net8.0/Microsoft.OpenApi.dll
  mysql.data/9.6.0/lib/net10.0/MySql.Data.dll
  mysql.entityframeworkcore/10.0.1/lib/net10.0/MySql.EntityFrameworkCore.dll
+ newtonsoft.json/13.0.3/lib/net6.0/Newtonsoft.Json.dll
  serilog.aspnetcore/10.0.0/lib/net10.0/Serilog.AspNetCore.dll
  serilog.extensions.hosting/10.0.0/lib/net10.0/Serilog.Extensions.Hosting.dll
  serilog.extensions.logging/10.0.0/lib/net10.0/Serilog.Extensions.Logging.dll

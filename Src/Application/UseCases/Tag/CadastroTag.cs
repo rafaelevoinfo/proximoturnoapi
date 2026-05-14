@@ -8,6 +8,12 @@ namespace ProximoTurnoApi.Application.UseCases.Tag;
 public class CadastroTag(ITagRepository _repository, ILogger<CadastroTag> logger) : UseCaseBasico {
     public async Task<int> ExecuteAsync(TagDTO tagDto)
     {
+        if (string.IsNullOrWhiteSpace(tagDto.Nome))
+        {
+            AddNotification(UseCaseNotification.Create(UseCaseNotificationType.Error, "O nome da tag é obrigatório."));
+            return 0;
+        }
+
         logger.LogInformation("Iniciando cadastro de nova tag: {Nome}", tagDto.Nome);
         var filtro = new FiltroTagDTO
         {

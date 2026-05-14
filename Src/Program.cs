@@ -4,6 +4,7 @@ using Microsoft.OpenApi;
 using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Infrastructure.Repositories;
 using ProximoTurnoApi.Infrastructure.Identity;
+using ProximoTurnoApi.Infrastructure.Services;
 using ProximoTurnoApi.Application.UseCases;
 using ProximoTurnoApi.Application.UseCases.Tag;
 using Serilog;
@@ -34,6 +35,7 @@ builder.Services.AddScoped<IJogoRepository, JogoRepository>();
 builder.Services.AddScoped<ICategoriaRepository, CategoriaRepository>();
 builder.Services.AddScoped<IPedidoRepository, PedidoRepository>();
 builder.Services.AddScoped<ITagRepository, TagRepository>();
+builder.Services.AddSingleton<CloudinaryService>();
 
 // Use Cases
 // Pedido

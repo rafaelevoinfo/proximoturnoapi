@@ -8,6 +8,12 @@ namespace ProximoTurnoApi.Application.UseCases.Tag;
 public class AtualizarTag(ITagRepository _repository, ILogger<AtualizarTag> logger) : UseCaseBasico {
     public async Task<bool> ExecuteAsync(TagDTO tagDto)
     {
+        if (string.IsNullOrWhiteSpace(tagDto.Nome))
+        {
+            AddNotification(UseCaseNotification.Create(UseCaseNotificationType.Error, "O nome da tag é obrigatório."));
+            return false;
+        }
+
         logger.LogInformation("Iniciando atualização da tag ID {TagId} ({Nome}).", tagDto.Id, tagDto.Nome);
         var tag = await _repository.GetByIdAsync(tagDto.Id.GetValueOrDefault());
         if (tag == null)

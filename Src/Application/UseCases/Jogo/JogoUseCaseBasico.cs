@@ -22,7 +22,9 @@ public class JogoUseCaseBasico : UseCaseBasico {
                         _logger.LogWarning($"Tag de id {tag.Id} não encontrada. Criando nova tag com o nome {tag.Nome}.");
                     } else {
                         jogo.Tags.RemoveAt(i);
-                        tagExistente.Nome = tag.Nome;
+                        if (!string.IsNullOrEmpty(tag.Nome)) {
+                            tagExistente.Nome = tag.Nome;
+                        }
                         jogo.Tags.Add(tagExistente);
                     }
                 }
