@@ -21,6 +21,7 @@ public record JogoDTO {
     public decimal? Complexidade { get; set; }
     [Required]
     public StatusJogo Status { get; set; }
+    public int QuantidadeCopias { get; set; } = 1;
     public TimeOnly? TempoEstimadoDeJogo { get; set; }
     public decimal? ValorDeCompra { get; set; }
     public DateOnly? DataCompra { get; set; }

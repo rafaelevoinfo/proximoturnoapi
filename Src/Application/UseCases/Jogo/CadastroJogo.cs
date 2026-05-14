@@ -24,10 +24,17 @@ public class CadastroJogo(IJogoRepository _jogoRepository,
         
         try {
             await _jogoRepository.SaveAsync(jogo, false);
-            await _jogoRepository.SaveAsync(new JogoCopia() {
-                IdJogo = jogo.Id,
-            });
-            _logger.LogInformation("Jogo {JogoId} ({Nome}) cadastrado com sucesso com uma cópia inicial.", jogo.Id, jogo.Nome);
+            
+            int qtde = jogoDto.QuantidadeCopias > 0 ? jogoDto.QuantidadeCopias : 1;
+            for (int i = 0; i < qtde; i++) {
+                await _jogoRepository.SaveAsync(new JogoCopia() {
+                    IdJogo = jogo.Id,
+                    Status = StatusJogo.Disponivel
+                }, false);
+            }
+            await _jogoRepository.SaveChangesAsync();
+
+            _logger.LogInformation("Jogo {JogoId} ({Nome}) cadastrado com sucesso com {Qtde} cópias.", jogo.Id, jogo.Nome, qtde);
             return jogo.Id;
         } catch (Exception ex) {
             _logger.LogError(ex, "Erro fatal ao salvar o jogo {Nome} no banco de dados.", jogoDto.Nome);
