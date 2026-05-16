@@ -1,36 +1,14 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using ProximoTurnoApi.Infrastructure.Models;
 
 namespace ProximoTurnoApi.Application.DTOs;
 
-public record JogoDTO {
-    private string _nome = null!;
-    public int Id { get; set; }
-    [Required]
-    public int IdCategoria { get; set; }
-    [Required]
-    public string Nome { get => _nome; set => _nome = StringUtils.Capitalize(value); }
-    [Required]
-    public string Descricao { get; set; } = string.Empty;
-    [Required]
-    public short IdadeMinima { get; set; }
-    [Required]
-    public short MinimoDeJogadores { get; set; }
-    [Required]
-    public short MaximoDeJogadores { get; set; }
-    public decimal? Complexidade { get; set; }
-    [Required]
-    public StatusJogo Status { get; set; }
+public record JogoDTO : JogoPublicDTO {
     public int QuantidadeCopias { get; set; } = 1;
-    public TimeOnly? TempoEstimadoDeJogo { get; set; }
     public decimal? ValorDeCompra { get; set; }
     public DateOnly? DataCompra { get; set; }
-    public List<TagDTO>? Tags { get; set; }
-    public List<LinkDTO>? Links { get; set; }
-    public List<JogoFotoDTO>? Fotos { get; set; }
-    public List<CopiaJogoDTO>? Copias { get; set; } = [];
 
-    public static JogoDTO FromModel(Jogo jogo) {
+    public new static JogoDTO FromModel(Jogo jogo) {
         var result = new JogoDTO {
             Id = jogo.Id,
             IdCategoria = jogo.IdCategoria,
@@ -53,7 +31,7 @@ public record JogoDTO {
             if (jogo.Copias.Any(c => c.Status == StatusJogo.Disponivel)) {
                 result.Status = StatusJogo.Disponivel;
             } else {
-                result.Status = jogo.Copias.Min(c => c.Status);
+                result.Status = jogo.Copias.Where(c => c.Status != StatusJogo.Desativado).Min(c => (StatusJogo?)c.Status) ?? StatusJogo.Indisponivel;
             }
         }
         return result;
@@ -71,7 +49,7 @@ public record JogoDTO {
         jogo.ValorDeCompra = ValorDeCompra;
         jogo.DataCompra = DataCompra;
         jogo.Tags = Tags?.Select(tag => tag.ToModel()).ToList();
-        
+
         if (Fotos is not null) {
             jogo.Fotos = Fotos.Select(f => f.ToModel()).ToList();
         }
@@ -85,6 +63,7 @@ public record JogoDTO {
                 } else {
                     link.Titulo = linkDto.Titulo;
                     link.Url = linkDto.Url;
+                    link.Tipo = linkDto.Tipo;
                 }
             }
 

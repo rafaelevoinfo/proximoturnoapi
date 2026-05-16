@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ProximoTurnoApi.Application.DTOs;
 using ProximoTurnoApi.Application.UseCases;
@@ -34,6 +34,18 @@ public class JogosController(ILogger<ControllerBasico> logger,
 
     [HttpGet("{id}")]
     public async Task<IActionResult> GetJogo(int id) {
+        return await EncapsulateRequestAsync(async () => {
+            var jogo = await _repository.GetByIdAsync(id);
+            if (jogo == null) {
+                return NotFound(ApiResultDTO<JogoPublicDTO>.CreateFailureResult($"Jogo de id {id} não encontrado."));
+            }
+            return Ok(ApiResultDTO<JogoPublicDTO>.CreateSuccessResult(JogoPublicDTO.FromModel(jogo), "Jogo recuperado com sucesso."));
+        });
+    }
+
+    [HttpGet("admin/{id}")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<IActionResult> GetJogoAdmin(int id) {
         return await EncapsulateRequestAsync(async () => {
             var jogo = await _repository.GetByIdAsync(id);
             if (jogo == null) {

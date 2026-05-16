@@ -10,20 +10,23 @@ public record LinkDTO {
     public string Url { get; set; } = string.Empty;
     [Required(AllowEmptyStrings = false)]
     public string Titulo { get; set; } = string.Empty;
+    public TipoLink Tipo { get; set; }
 
-    public static LinkDTO FromModel(Link link) {
+    public static LinkDTO FromModel(JogoLink link) {
         return new LinkDTO {
             Id = link.Id,
             Url = link.Url,
             Titulo = link.Titulo,
+            Tipo = link.Tipo
         };
     }
 
-    public Link ToModel() {
-        return new Link {
+    public JogoLink ToModel() {
+        return new JogoLink {
             Id = Id,
             Url = Url,
             Titulo = Titulo,
+            Tipo = Tipo
         };
     }
 }

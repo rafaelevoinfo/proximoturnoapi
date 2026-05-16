@@ -48,7 +48,7 @@ public class Jogo : BaseModel {
 
     public Categoria? Categoria { get; set; }
     public List<Tag>? Tags { get; set; }
-    public List<Link>? Links { get; set; }
+    public List<JogoLink>? Links { get; set; }
     public List<JogoFoto>? Fotos { get; set; }
     public List<JogoCopia>? Copias { get; set; }
 }

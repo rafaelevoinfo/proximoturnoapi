@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using ProximoTurnoApi.Infrastructure.Repositories;
 
@@ -10,9 +11,11 @@ using ProximoTurnoApi.Infrastructure.Repositories;
 namespace ProximoTurnoApi.Migrations
 {
     [DbContext(typeof(DatabaseContext))]
-    partial class DatabaseContextModelSnapshot : ModelSnapshot
+    [Migration("20260516012506_AddTipoToLink")]
+    partial class AddTipoToLink
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -450,7 +453,7 @@ namespace ProximoTurnoApi.Migrations
                     b.ToTable("JOGO_FOTO");
                 });
 
-            modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.JogoLink", b =>
+            modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.Link", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -717,7 +720,7 @@ namespace ProximoTurnoApi.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.JogoLink", b =>
+            modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.Link", b =>
                 {
                     b.HasOne("ProximoTurnoApi.Infrastructure.Models.Jogo", null)
                         .WithMany("Links")
