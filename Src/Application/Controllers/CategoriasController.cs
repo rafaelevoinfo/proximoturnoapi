@@ -23,8 +23,8 @@ public class CategoriasController(ILogger<ControllerBasico> logger,
         });
     }
 
-    [HttpGet("{id}")]
-    public async Task<IActionResult> GetCategoria(int id) {
+    [HttpGet("{id:int}")]
+    public async Task<IActionResult> GetCategoria([FromRoute] int id) {
         return await EncapsulateRequestAsync(async () => {
             var categoria = await _repository.GetByIdAsync(id);
             if (categoria == null) {
@@ -34,9 +34,9 @@ public class CategoriasController(ILogger<ControllerBasico> logger,
         });
     }
 
-    [HttpPut("{id}")]
+    [HttpPut("{id:int}")]
     [Authorize(Roles = Roles.Admin)]
-    public async Task<IActionResult> PutCategoria(int id, CategoriaDTO categoria) {
+    public async Task<IActionResult> PutCategoria([FromRoute] int id, [FromBody] CategoriaDTO categoria) {
         return await EncapsulateRequestAsync(async () => {
             if (id != categoria.Id) {
                 return BadRequest(ApiResultDTO<CategoriaDTO>.CreateFailureResult("ID da categoria na URL não corresponde ao ID no corpo da requisição."));
@@ -51,7 +51,7 @@ public class CategoriasController(ILogger<ControllerBasico> logger,
 
     [HttpPost]
     [Authorize(Roles = Roles.Admin)]
-    public async Task<IActionResult> PostCategoria(CategoriaDTO categoriaDto) {
+    public async Task<IActionResult> PostCategoria([FromBody] CategoriaDTO categoriaDto) {
         return await EncapsulateRequestAsync(async () => {
             var idCategoria = await _cadastroCategoriaUseCase.ExecuteAsync(categoriaDto);
             if (idCategoria == 0) {
@@ -61,9 +61,9 @@ public class CategoriasController(ILogger<ControllerBasico> logger,
         });
     }
 
-    [HttpDelete("{id}")]
+    [HttpDelete("{id:int}")]
     [Authorize(Roles = Roles.Admin)]
-    public async Task<IActionResult> DeleteCategoria(int id) {
+    public async Task<IActionResult> DeleteCategoria([FromRoute] int id) {
         return await EncapsulateRequestAsync(async () => {
             if (!await _repository.DeleteAsync(id)) {
                 return NotFound(ApiResultDTO<CategoriaDTO>.CreateFailureResult($"Categoria de id {id} não encontrada."));

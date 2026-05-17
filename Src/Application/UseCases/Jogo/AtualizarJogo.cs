@@ -1,5 +1,6 @@
 using ProximoTurnoApi.Application.DTOs;
 using ProximoTurnoApi.Application.UseCases;
+using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Infrastructure.Repositories;
 
 namespace ProximoTurnoApi.Application.UseCases;
@@ -22,12 +23,16 @@ public class AtualizarJogo(IJogoRepository _jogoRepository, ITagRepository _tagR
             AddNotification(UseCaseNotification.Create(UseCaseNotificationType.Error, "Já existe um jogo com o mesmo nome."));
         }
 
+        await ValidarTags(jogoDto.Tags, _logger);
+        await ValidarLinks(jogoDto.Links, _logger);
+        await ValidarFotos(jogoDto.Fotos, _logger);
+
         if (!IsValid)
             return false;
 
         try {
             jogoDto.UpdateModel(jogo);
-            await AtualizarTags(jogo, _logger);
+            await AtualizarTags(jogo, jogoDto.Tags);
             await _jogoRepository.SaveAsync(jogo);
             _logger.LogInformation("Jogo ID {JogoId} atualizado com sucesso.", jogo.Id);
             return IsValid;
@@ -36,4 +41,6 @@ public class AtualizarJogo(IJogoRepository _jogoRepository, ITagRepository _tagR
             throw;
         }
     }
+
+
 }

@@ -12,4 +12,11 @@ public record CopiaJogoDTO {
             Status = copia.Status
         };
     }
+
+    public JogoCopia ToModel() {
+        return new JogoCopia() {
+            Id = Id,
+            Status = Status
+        };
+    }
 }

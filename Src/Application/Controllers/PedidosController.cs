@@ -37,8 +37,8 @@ public class PedidosController(ILogger<ControllerBasico> logger,
         });
     }
 
-    [HttpGet("{id}")]
-    public async Task<IActionResult> GetPedido(int id) {
+    [HttpGet("{id:int}")]
+    public async Task<IActionResult> GetPedido([FromRoute] int id) {
         return await EncapsulateRequestAsync(async () => {
             var pedido = await _buscarPedidosUseCase.ExecuteAsync(User, id);
             if (!_buscarPedidosUseCase.IsValid) {
@@ -53,7 +53,7 @@ public class PedidosController(ILogger<ControllerBasico> logger,
     }
 
     [HttpPost]
-    public async Task<IActionResult> NovoPedido(NovoPedidoDTO novoPedido) {
+    public async Task<IActionResult> NovoPedido([FromBody] NovoPedidoDTO novoPedido) {
         return await EncapsulateRequestAsync(async () => {
             var novoPedidoId = await _cadastroPedidoUseCase.ExecuteAsync(User, novoPedido);
             if (novoPedidoId == 0) {
@@ -63,8 +63,8 @@ public class PedidosController(ILogger<ControllerBasico> logger,
         });
     }
 
-    [HttpPut("{id}")]
-    public async Task<IActionResult> AtualizarPedido(int id, NovoPedidoDTO novoPedido) {
+    [HttpPut("{id:int}")]
+    public async Task<IActionResult> AtualizarPedido([FromRoute] int id, [FromBody] NovoPedidoDTO novoPedido) {
         return await EncapsulateRequestAsync(async () => {
             if (id != novoPedido.Id) {
                 return BadRequest(ApiResultDTO<PedidoDTO>.CreateFailureResult("O ID do pedido na URL deve corresponder ao ID no corpo da requisição."));
@@ -77,8 +77,8 @@ public class PedidosController(ILogger<ControllerBasico> logger,
         });
     }
 
-    [HttpPut("{id}/status")]
-    public async Task<IActionResult> AtualizarStatusPedido(int id, [FromBody] StatusPedidoDTO novoStatus) {
+    [HttpPut("{id:int}/status")]
+    public async Task<IActionResult> AtualizarStatusPedido([FromRoute] int id, [FromBody] StatusPedidoDTO novoStatus) {
         return await EncapsulateRequestAsync(async () => {
             await _atualizarStatusPedidoUseCase.ExecuteAsync(id, novoStatus.Status);
             if (!_atualizarStatusPedidoUseCase.IsValid) {
@@ -88,8 +88,8 @@ public class PedidosController(ILogger<ControllerBasico> logger,
         });
     }
 
-    [HttpPut("{id}/renovar")]
-    public async Task<IActionResult> RenovarPedido(int id, List<ItemPedidoRenovarDTO> itensRenovacao) {
+    [HttpPut("{id:int}/renovar")]
+    public async Task<IActionResult> RenovarPedido([FromRoute] int id, [FromBody] List<ItemPedidoRenovarDTO> itensRenovacao) {
         return await EncapsulateRequestAsync(async () => {
             await _renovarPedidoUseCase.ExecuteAsync(id, itensRenovacao);
             if (!_renovarPedidoUseCase.IsValid) {
@@ -99,8 +99,8 @@ public class PedidosController(ILogger<ControllerBasico> logger,
         });
     }
 
-    [HttpPut("{id}/devolver")]
-    public async Task<IActionResult> DevolverItemsPedido(int id, [FromBody] List<int>? idsItensDevolvidos) {
+    [HttpPut("{id:int}/devolver")]
+    public async Task<IActionResult> DevolverItemsPedido([FromRoute] int id, [FromBody] List<int>? idsItensDevolvidos) {
         return await EncapsulateRequestAsync(async () => {
             await _devolverPedidoUseCase.ExecuteAsync(id, idsItensDevolvidos);
             if (!_devolverPedidoUseCase.IsValid) {
@@ -112,8 +112,8 @@ public class PedidosController(ILogger<ControllerBasico> logger,
 
 
 
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> CancelarPedido(int id) {
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> CancelarPedido([FromRoute] int id) {
         return await EncapsulateRequestAsync(async () => {
             await _atualizarStatusPedidoUseCase.ExecuteAsync(id, StatusPedido.Cancelado);
             if (!_atualizarStatusPedidoUseCase.IsValid) {

@@ -5,12 +5,11 @@ using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Infrastructure.Repositories;
 using ProximoTurnoApi.Infrastructure.Identity;
 using ProximoTurnoApi.Infrastructure.Services;
+using ProximoTurnoApi.Application.Converters;
 using ProximoTurnoApi.Application.UseCases;
-using ProximoTurnoApi.Application.UseCases.Tag;
 using Serilog;
-using Microsoft.AspNetCore.Authentication;
-using Swashbuckle.AspNetCore.SwaggerUI;
-using Microsoft.Extensions.Options;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,15 +28,23 @@ builder.Services.AddDbContext<DatabaseContext>(options => {
     options.EnableSensitiveDataLogging();
     options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
 });
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options => {
+        options.JsonSerializerOptions.Converters.Add(new TimeOnlyJsonConverter());
+        options.JsonSerializerOptions.Converters.Add(new DateOnlyJsonConverter());
+    });
 builder.Services.AddScoped<IClienteRepository, ClienteRepository>();
 builder.Services.AddScoped<IJogoRepository, JogoRepository>();
 builder.Services.AddScoped<ICategoriaRepository, CategoriaRepository>();
 builder.Services.AddScoped<IPedidoRepository, PedidoRepository>();
 builder.Services.AddScoped<ITagRepository, TagRepository>();
+builder.Services.AddScoped<IListaDesejosRepository, ListaDesejosRepository>();
 builder.Services.AddSingleton<CloudinaryService>();
 
 // Use Cases
+// Wishlist
+builder.Services.AddScoped<GerenciarListaDesejos>();
+
 // Pedido
 builder.Services.AddScoped<BuscarPedidos>();
 builder.Services.AddScoped<CadastroPedido>();

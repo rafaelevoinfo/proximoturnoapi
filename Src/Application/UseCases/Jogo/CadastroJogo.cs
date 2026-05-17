@@ -16,25 +16,18 @@ public class CadastroJogo(IJogoRepository _jogoRepository,
             AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest, "Já existe um jogo com o mesmo nome."));
         }
 
+        await ValidarTags(jogoDto.Tags, _logger);
+        await ValidarLinks(jogoDto.Links, _logger);
+        await ValidarFotos(jogoDto.Fotos, _logger);
+
         if (!IsValid)
             return 0;
 
-        var jogo = jogoDto.ToModel();
-        await AtualizarTags(jogo, _logger);
-        
         try {
-            await _jogoRepository.SaveAsync(jogo, false);
-            
-            int qtde = jogoDto.QuantidadeCopias > 0 ? jogoDto.QuantidadeCopias : 1;
-            for (int i = 0; i < qtde; i++) {
-                await _jogoRepository.SaveAsync(new JogoCopia() {
-                    IdJogo = jogo.Id,
-                    Status = StatusJogo.Disponivel
-                }, false);
-            }
-            await _jogoRepository.SaveChangesAsync();
-
-            _logger.LogInformation("Jogo {JogoId} ({Nome}) cadastrado com sucesso com {Qtde} cópias.", jogo.Id, jogo.Nome, qtde);
+            var jogo = jogoDto.ToModel();
+            await AtualizarTags(jogo, jogoDto.Tags);
+            await _jogoRepository.SaveAsync(jogo);
+            _logger.LogInformation("Jogo {JogoId} ({Nome}) cadastrado com sucesso com {Qtde} cópias.", jogo.Id, jogo.Nome, jogoDto.Copias?.Count ?? 1);
             return jogo.Id;
         } catch (Exception ex) {
             _logger.LogError(ex, "Erro fatal ao salvar o jogo {Nome} no banco de dados.", jogoDto.Nome);
@@ -53,7 +46,7 @@ public class CadastroJogo(IJogoRepository _jogoRepository,
             IdJogo = idJogo,
             Status = StatusJogo.Disponivel
         };
-        
+
         try {
             await _jogoRepository.SaveAsync(copia);
             _logger.LogInformation("Nova cópia (ID {CopiaId}) adicionada com sucesso para o jogo {JogoId}.", copia.Id, idJogo);

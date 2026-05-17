@@ -15,6 +15,7 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : Identi
 
         ConfigurePedido(modelBuilder);
         ConfigureJogo(modelBuilder);
+        ConfigureListaDesejos(modelBuilder);
 
         modelBuilder.Entity<Cliente>(b => {
             b.HasIndex(c => c.Email).IsUnique();
@@ -140,6 +141,17 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : Identi
             .OnDelete(DeleteBehavior.Cascade);
     }
 
+    private static void ConfigureListaDesejos(ModelBuilder modelBuilder) {
+        modelBuilder.Entity<ItemListaDesejos>(builder => {
+            builder.ToTable("LISTA_DESEJOS");
+            builder.HasKey(i => i.Id);
+            builder.Property(i => i.Id).HasColumnName("ID");
+            builder.HasOne(i => i.Cliente).WithMany().HasForeignKey(i => i.IdCliente).OnDelete(DeleteBehavior.Cascade);
+            builder.HasOne(i => i.Jogo).WithMany().HasForeignKey(i => i.IdJogo).OnDelete(DeleteBehavior.Cascade);
+            builder.HasIndex(i => new { i.IdCliente, i.IdJogo }).IsUnique(); // Prevent duplicate items per client
+        });
+    }
+
     public DbSet<Cliente> Clientes { get; set; }
     public DbSet<Jogo> Jogos { get; set; }
     public DbSet<JogoCopia> JogoCopias { get; set; }
@@ -147,5 +159,6 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : Identi
     public DbSet<Pedido> Pedidos { get; set; }
     public DbSet<Tag> Tags { get; set; }
     public DbSet<ItemPedido> ItemPedidos { get; set; }
+    public DbSet<ItemListaDesejos> ItensListaDesejos { get; set; }
 
 }

@@ -15,7 +15,7 @@ public record JogoPublicDTO {
     public StatusJogo Status { get; set; }
     public TimeOnly? TempoEstimadoDeJogo { get; set; }
     public List<TagDTO>? Tags { get; set; }
-    public List<LinkDTO>? Links { get; set; }
+    public List<JogoLinkDTO>? Links { get; set; }
     public List<JogoFotoDTO>? Fotos { get; set; }
     public List<CopiaJogoDTO>? Copias { get; set; } = [];
 
@@ -31,12 +31,12 @@ public record JogoPublicDTO {
             Complexidade = jogo.Complexidade,
             TempoEstimadoDeJogo = jogo.TempoEstimadoDeJogo,
             Status = StatusJogo.Disponivel,
-            Links = jogo.Links?.Select(LinkDTO.FromModel).ToList(),
+            Links = jogo.Links?.Select(JogoLinkDTO.FromModel).ToList(),
             Tags = jogo.Tags?.Select(TagDTO.FromModel).ToList(),
             Fotos = jogo.Fotos?.Select(JogoFotoDTO.FromModel).OrderBy(f => f.Ordem).ToList(),
             Copias = jogo.Copias?.Select(CopiaJogoDTO.FromModel).ToList()
         };
-        
+
         if (jogo.Copias is not null && jogo.Copias.Any()) {
             if (jogo.Copias.Any(c => c.Status == StatusJogo.Disponivel)) {
                 result.Status = StatusJogo.Disponivel;

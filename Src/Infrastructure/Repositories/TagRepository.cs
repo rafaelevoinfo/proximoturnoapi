@@ -6,7 +6,8 @@ using ProximoTurnoApi.Infrastructure.Models;
 namespace ProximoTurnoApi.Infrastructure.Repositories;
 
 public interface ITagRepository {
-    Task<List<Tag>> GetAllAsync(FiltroTagDTO filtro);
+    Task<List<Tag>> GetAllAsync(FiltroTagDTO? filtro, bool track = false);
+    Task<List<Tag>> GetAllAsync(bool track = false);
     Task<Tag?> GetByIdAsync(int id);
     Task<Tag?> GetByNomeAsync(string nome);
     Task AddAsync(Tag tag);
@@ -18,15 +19,22 @@ public class TagRepository : BaseRepository, ITagRepository {
     public TagRepository(DatabaseContext context) : base(context) {
     }
 
-    public async Task<List<Tag>> GetAllAsync(FiltroTagDTO filtro) {
+    public async Task<List<Tag>> GetAllAsync(bool track = false) {
+        return await GetAllAsync(null, track);
+    }
+    public async Task<List<Tag>> GetAllAsync(FiltroTagDTO? filtro, bool track = false) {
         var query = _dbContext.Tags.AsQueryable();
+        if (track) {
+            query = query.AsTracking();
+        } else {
+            query = query.AsNoTracking();
+        }
 
-        if (!string.IsNullOrEmpty(filtro.Nome)) {
+        if (!string.IsNullOrEmpty(filtro?.Nome)) {
             query = query.Where(t => t.Nome.Contains(filtro.Nome.ToLowerInvariant()));
         }
 
         return await query
-            .AsNoTracking()
             .OrderBy(t => t.Nome)
             .ToListAsync();
     }

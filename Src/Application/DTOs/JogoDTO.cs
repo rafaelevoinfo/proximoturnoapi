@@ -22,7 +22,7 @@ public record JogoDTO : JogoPublicDTO {
             ValorDeCompra = jogo.ValorDeCompra,
             DataCompra = jogo.DataCompra,
             Status = StatusJogo.Disponivel,
-            Links = jogo.Links?.Select(LinkDTO.FromModel).ToList(),
+            Links = jogo.Links?.Select(JogoLinkDTO.FromModel).ToList(),
             Tags = jogo.Tags?.Select(TagDTO.FromModel).ToList(),
             Fotos = jogo.Fotos?.Select(JogoFotoDTO.FromModel).OrderBy(f => f.Ordem).ToList(),
             Copias = jogo.Copias?.Select(CopiaJogoDTO.FromModel).ToList()
@@ -37,29 +37,24 @@ public record JogoDTO : JogoPublicDTO {
         return result;
     }
 
-    public void UpdateModel(Jogo jogo) {
-        jogo.IdCategoria = IdCategoria;
-        jogo.Nome = Nome;
-        jogo.Descricao = Descricao;
-        jogo.IdadeMinima = IdadeMinima;
-        jogo.MinimoDeJogadores = MinimoDeJogadores;
-        jogo.MaximoDeJogadores = MaximoDeJogadores;
-        jogo.Complexidade = Complexidade;
-        jogo.TempoEstimadoDeJogo = TempoEstimadoDeJogo;
-        jogo.ValorDeCompra = ValorDeCompra;
-        jogo.DataCompra = DataCompra;
-        jogo.Tags = Tags?.Select(tag => tag.ToModel()).ToList();
-
-        if (Fotos is not null) {
-            jogo.Fotos = Fotos.Select(f => f.ToModel()).ToList();
-        }
+    public void UpdateModel(Jogo model) {
+        model.IdCategoria = IdCategoria;
+        model.Nome = Nome;
+        model.Descricao = Descricao;
+        model.IdadeMinima = IdadeMinima;
+        model.MinimoDeJogadores = MinimoDeJogadores;
+        model.MaximoDeJogadores = MaximoDeJogadores;
+        model.Complexidade = Complexidade;
+        model.TempoEstimadoDeJogo = TempoEstimadoDeJogo;
+        model.ValorDeCompra = ValorDeCompra;
+        model.DataCompra = DataCompra;
 
         if (Links is not null) {
-            jogo.Links ??= [];
-            foreach (var link in jogo.Links.ToList()) {
+            model.Links ??= [];
+            foreach (var link in model.Links.ToList()) {
                 var linkDto = Links.FirstOrDefault(l => l.Id == link.Id);
                 if (linkDto is null) {
-                    jogo.Links.Remove(link);
+                    model.Links.Remove(link);
                 } else {
                     link.Titulo = linkDto.Titulo;
                     link.Url = linkDto.Url;
@@ -68,15 +63,38 @@ public record JogoDTO : JogoPublicDTO {
             }
 
             foreach (var linkDto in Links) {
-                if (!jogo.Links!.Any(l => l.Id == linkDto.Id)) {
-                    jogo.Links!.Add(linkDto.ToModel());
+                if (linkDto.Id == 0) {
+                    model.Links.Add(linkDto.ToModel());
                 }
             }
+        } else {
+            model.Links?.Clear();
+        }
+
+        if (Fotos is not null && Fotos.Count > 0) {
+            model.Fotos ??= [];
+            foreach (var foto in model.Fotos.ToList()) {
+                var fotoDto = Fotos.FirstOrDefault(f => f.Id == foto.Id);
+                if (fotoDto is null) {
+                    model.Fotos.Remove(foto);
+                } else {
+                    foto.Url = fotoDto.Url;
+                    foto.Ordem = fotoDto.Ordem;
+                }
+            }
+
+            foreach (var fotoDto in Fotos) {
+                if (fotoDto.Id == 0) {
+                    model.Fotos.Add(fotoDto.ToModel());
+                }
+            }
+        } else {
+            model.Fotos?.Clear();
         }
     }
 
     public Jogo ToModel() {
-        return new Jogo {
+        var jogo = new Jogo {
             Id = Id,
             IdCategoria = IdCategoria,
             Nome = Nome,
@@ -89,8 +107,18 @@ public record JogoDTO : JogoPublicDTO {
             ValorDeCompra = ValorDeCompra,
             DataCompra = DataCompra,
             Links = Links?.Select(link => link.ToModel()).ToList(),
-            Tags = Tags?.Select(tag => tag.ToModel()).ToList(),
             Fotos = Fotos?.Select(foto => foto.ToModel()).ToList()
         };
+        var qtdeCopias = QuantidadeCopias > 0 ? QuantidadeCopias : 1;
+
+        if (qtdeCopias != Copias?.Count) {
+            jogo.Copias = [];
+            for (int i = 0; i < qtdeCopias; i++) {
+                jogo.Copias.Add(new JogoCopia() {
+                    Status = StatusJogo.Disponivel
+                });
+            }
+        }
+        return jogo;
     }
 }

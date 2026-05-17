@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ProximoTurnoApi.Application.DTOs;
 using ProximoTurnoApi.Application.DTOs.Filtros;
-using ProximoTurnoApi.Application.UseCases.Tag;
+using ProximoTurnoApi.Application.UseCases;
 using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Infrastructure.Repositories;
 
@@ -24,8 +24,8 @@ public class TagsController(ILogger<ControllerBasico> logger,
         });
     }
 
-    [HttpGet("{id}")]
-    public async Task<IActionResult> GetTag(int id) {
+    [HttpGet("{id:int}")]
+    public async Task<IActionResult> GetTag([FromRoute] int id) {
         return await EncapsulateRequestAsync(async () => {
             var tag = await _repository.GetByIdAsync(id);
             if (tag == null) {
@@ -35,9 +35,9 @@ public class TagsController(ILogger<ControllerBasico> logger,
         });
     }
 
-    [HttpPut("{id}")]
+    [HttpPut("{id:int}")]
     [Authorize(Roles = Roles.Admin)]
-    public async Task<IActionResult> PutTag(int id, TagDTO tag) {
+    public async Task<IActionResult> PutTag([FromRoute] int id, [FromBody] TagDTO tag) {
         return await EncapsulateRequestAsync(async () => {
             if (id != tag.Id) {
                 return BadRequest(ApiResultDTO<TagDTO>.CreateFailureResult("ID da tag na URL não corresponde ao ID no corpo da requisição."));
@@ -52,7 +52,7 @@ public class TagsController(ILogger<ControllerBasico> logger,
 
     [HttpPost]
     [Authorize(Roles = Roles.Admin)]
-    public async Task<IActionResult> PostTag(TagDTO tagDto) {
+    public async Task<IActionResult> PostTag([FromBody] TagDTO tagDto) {
         return await EncapsulateRequestAsync(async () => {
             var idTag = await _cadastroTagUseCase.ExecuteAsync(tagDto);
             if (idTag == 0) {
@@ -62,8 +62,8 @@ public class TagsController(ILogger<ControllerBasico> logger,
         });
     }
 
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> DeleteTag(int id) {
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> DeleteTag([FromRoute] int id) {
         return await EncapsulateRequestAsync(async () => {
             if (!await _repository.DeleteAsync(id)) {
                 return NotFound(ApiResultDTO<TagDTO>.CreateFailureResult($"Tag de id {id} não encontrada."));

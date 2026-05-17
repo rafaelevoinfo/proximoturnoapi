@@ -25,9 +25,9 @@ public class ClientesController(ILogger<ControllerBasico> logger,
         });
     }
 
-    [HttpGet("{id}")]
+    [HttpGet("{id:int}")]
     [Authorize(Roles = Roles.Admin)]
-    public async Task<IActionResult> GetCliente(int id) {
+    public async Task<IActionResult> GetCliente([FromRoute] int id) {
         return await EncapsulateRequestAsync(async () => {
             var cliente = await _repository.GetByIdAsync(id);
             if (cliente == null) {
@@ -37,9 +37,9 @@ public class ClientesController(ILogger<ControllerBasico> logger,
         });
     }
 
-    [HttpPut("{id}")]
+    [HttpPut("{id:int}")]
     [Authorize]
-    public async Task<IActionResult> PutCliente(int id, ClienteDTO cliente) {
+    public async Task<IActionResult> PutCliente([FromRoute] int id, [FromBody] ClienteDTO cliente) {
         return await EncapsulateRequestAsync(async () => {
             if (id != cliente.Id) {
                 return BadRequest(ApiResultDTO<ClienteDTO>.CreateFailureResult("ID do cliente na URL não corresponde ao ID no corpo da requisição."));
@@ -53,7 +53,7 @@ public class ClientesController(ILogger<ControllerBasico> logger,
     }
 
     [HttpPost]
-    public async Task<IActionResult> PostCliente(ClienteDTO clienteDto) {
+    public async Task<IActionResult> PostCliente([FromBody] ClienteDTO clienteDto) {
         return await EncapsulateRequestAsync(async () => {
             var idCliente = await _cadastroClienteUseCase.ExecuteAsync(clienteDto);
             if (idCliente == 0) {
@@ -63,9 +63,9 @@ public class ClientesController(ILogger<ControllerBasico> logger,
         });
     }
 
-    [HttpDelete("{id}")]
+    [HttpDelete("{id:int}")]
     [Authorize(Roles = Roles.Admin)]
-    public async Task<IActionResult> DeleteCliente(int id) {
+    public async Task<IActionResult> DeleteCliente([FromRoute] int id) {
         return await EncapsulateRequestAsync(async () => {
             if (!await _repository.DeleteAsync(id)) {
                 return NotFound(ApiResultDTO<ClienteDTO>.CreateFailureResult($"Cliente de id {id} não encontrado."));

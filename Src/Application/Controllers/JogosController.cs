@@ -32,8 +32,8 @@ public class JogosController(ILogger<ControllerBasico> logger,
         });
     }
 
-    [HttpGet("{id}")]
-    public async Task<IActionResult> GetJogo(int id) {
+    [HttpGet("{id:int}")]
+    public async Task<IActionResult> GetJogo([FromRoute] int id) {
         return await EncapsulateRequestAsync(async () => {
             var jogo = await _repository.GetByIdAsync(id);
             if (jogo == null) {
@@ -43,9 +43,9 @@ public class JogosController(ILogger<ControllerBasico> logger,
         });
     }
 
-    [HttpGet("admin/{id}")]
+    [HttpGet("admin/{id:int}")]
     [Authorize(Roles = Roles.Admin)]
-    public async Task<IActionResult> GetJogoAdmin(int id) {
+    public async Task<IActionResult> GetJogoAdmin([FromRoute] int id) {
         return await EncapsulateRequestAsync(async () => {
             var jogo = await _repository.GetByIdAsync(id);
             if (jogo == null) {
@@ -55,9 +55,9 @@ public class JogosController(ILogger<ControllerBasico> logger,
         });
     }
 
-    [HttpPut("{id}")]
+    [HttpPut("{id:int}")]
     [Authorize(Roles = Roles.Admin)]
-    public async Task<IActionResult> PutJogo(int id, JogoDTO jogoDto) {
+    public async Task<IActionResult> PutJogo([FromRoute] int id, [FromBody] JogoDTO jogoDto) {
         return await EncapsulateRequestAsync(async () => {
             if (id != jogoDto.Id) {
                 return BadRequest(ApiResultDTO<object>.CreateFailureResult("ID do jogo na URL não corresponde ao ID no corpo da requisição."));
@@ -73,7 +73,7 @@ public class JogosController(ILogger<ControllerBasico> logger,
 
     [HttpPost]
     [Authorize(Roles = Roles.Admin)]
-    public async Task<IActionResult> PostJogo(JogoDTO jogoDto) {
+    public async Task<IActionResult> PostJogo([FromBody] JogoDTO jogoDto) {
         return await EncapsulateRequestAsync(async () => {
             var idJogo = await _cadastroJogoUseCase.ExecuteAsync(jogoDto);
             if (idJogo == 0) {
@@ -83,17 +83,17 @@ public class JogosController(ILogger<ControllerBasico> logger,
         });
     }
 
-    [HttpGet("{idJogo}/copias")]
-    public async Task<IActionResult> GetCopias(int idJogo) {
+    [HttpGet("{idJogo:int}/copias")]
+    public async Task<IActionResult> GetCopias([FromRoute] int idJogo) {
         return await EncapsulateRequestAsync(async () => {
             var copias = await _repository.GetCopiasAsync(idJogo);
             return Ok(ApiResultDTO<List<CopiaJogoDTO>>.CreateSuccessResult(copias.Select(CopiaJogoDTO.FromModel).ToList(), "Copias recuperadas com sucesso."));
         });
     }
 
-    [HttpPost("{idJogo}/copia")]
+    [HttpPost("{idJogo:int}/copia")]
     [Authorize(Roles = Roles.Admin)]
-    public async Task<IActionResult> AdicionarCopia(int idJogo) {
+    public async Task<IActionResult> AdicionarCopia([FromRoute] int idJogo) {
         return await EncapsulateRequestAsync(async () => {
             var idCopia = await _cadastroJogoUseCase.AdicionarCopia(idJogo);
             if (idCopia.GetValueOrDefault() == 0) {
@@ -103,9 +103,9 @@ public class JogosController(ILogger<ControllerBasico> logger,
         });
     }
 
-    [HttpDelete("{id}")]
+    [HttpDelete("{id:int}")]
     [Authorize(Roles = Roles.Admin)]
-    public async Task<IActionResult> DeleteJogo(int id) {
+    public async Task<IActionResult> DeleteJogo([FromRoute] int id) {
         return await EncapsulateRequestAsync(async () => {
             var copias = await _repository.GetAllCopiasByIdJogoAsync(id);
             if (copias is null || copias.Count == 0) {
@@ -120,9 +120,9 @@ public class JogosController(ILogger<ControllerBasico> logger,
         });
     }
 
-    [HttpDelete("{idJogo}/copia/{id}")]
+    [HttpDelete("{idJogo:int}/copia/{id:int}")]
     [Authorize(Roles = Roles.Admin)]
-    public async Task<IActionResult> DesativarCopiaJogo(int id) {
+    public async Task<IActionResult> DesativarCopiaJogo([FromRoute] int idJogo, [FromRoute] int id) {
         return await EncapsulateRequestAsync(async () => {
             var copia = await _repository.GetCopiaByIdAsync(id);
             if (copia == null) {
