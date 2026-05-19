@@ -15,18 +15,22 @@ public class AtualizarCategoria(ICategoriaRepository _repository, ILogger<Atuali
         }
 
         var filtro = new FiltroCategoriaDTO {
-            Descricao = categoriaDto.Descricao
+            Descricao = categoriaDto.Descricao,
+            ApenasAtivos = true
         };
 
         var categoriasExistentes = await _repository.GetAllAsync(filtro);
-        if (categoriasExistentes.Any(c => c.Id != categoriaDto.Id)) {
-            logger.LogWarning("Falha ao atualizar categoria {CategoriaId}: Já existe outra categoria com a descrição {Descricao}.", categoriaDto.Id, categoriaDto.Descricao);
-            AddNotification(UseCaseNotification.Create(UseCaseNotificationType.Error, "Já existe uma categoria com a mesma descrição."));
+        if (categoriasExistentes.Any(c => c.Id != categoriaDto.Id && c.Descricao == categoriaDto.Descricao.ToLowerInvariant())) {
+            logger.LogWarning("Falha ao atualizar categoria {CategoriaId}: Já existe outra categoria ativa com a descrição {Descricao}.", categoriaDto.Id, categoriaDto.Descricao);
+            AddNotification(UseCaseNotification.Create(UseCaseNotificationType.Error, "Já existe uma categoria ativa com a mesma descrição."));
             return false;
         }
 
         if (!IsValid)
             return false;
+
+        categoria.Descricao = categoriaDto.Descricao;
+        categoria.Ativo = categoriaDto.Ativo;
 
         categoria.Periodos.RemoveAll(periodo =>
             !categoriaDto.Periodos.Any(p =>

@@ -9,13 +9,14 @@ public class CadastroCategoria(ICategoriaRepository _repository, ILogger<Cadastr
     public async Task<int> ExecuteAsync(CategoriaDTO categoriaDto) {
         logger.LogInformation("Iniciando cadastro de nova categoria: {Descricao}", categoriaDto.Descricao);
         var filtro = new FiltroCategoriaDTO {
-            Descricao = categoriaDto.Descricao
+            Descricao = categoriaDto.Descricao,
+            ApenasAtivos = true
         };
 
         var categoriasExistentes = await _repository.GetAllAsync(filtro);
-        if (categoriasExistentes.Count > 0) {
-            logger.LogWarning("Falha ao cadastrar categoria: Já existe uma categoria com a descrição {Descricao}.", categoriaDto.Descricao);
-            AddNotification(UseCaseNotification.Create(UseCaseNotificationType.Error, "Já existe uma categoria com a mesma descrição."));
+        if (categoriasExistentes.Any(c => c.Descricao == categoriaDto.Descricao.ToLowerInvariant())) {
+            logger.LogWarning("Falha ao cadastrar categoria: Já existe uma categoria ativa com a descrição {Descricao}.", categoriaDto.Descricao);
+            AddNotification(UseCaseNotification.Create(UseCaseNotificationType.Error, "Já existe uma categoria ativa com a mesma descrição."));
         }
 
         if (!IsValid)
@@ -23,6 +24,7 @@ public class CadastroCategoria(ICategoriaRepository _repository, ILogger<Cadastr
 
         var categoria = new Categoria() {
             Descricao = categoriaDto.Descricao,
+            Ativo = categoriaDto.Ativo,
             Periodos = categoriaDto.Periodos.Select(cp => new CategoriaPeriodo() {
                 QuantidadeDias = cp.QtdeDias,
                 Valor = cp.Valor

@@ -10,5 +10,8 @@ public class Categoria : BaseModel {
     [Column("DESCRICAO"), MaxLength(100)]
     public string Descricao { get => _descricao; set => _descricao = value.ToLowerInvariant(); }
 
+    [Column("ATIVO")]
+    public bool Ativo { get; set; } = true;
+
     public List<CategoriaPeriodo> Periodos { get; set; } = [];
 }

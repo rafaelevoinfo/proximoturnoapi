@@ -23,7 +23,6 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : Identi
         });
 
         modelBuilder.Entity<Categoria>(b => {
-            b.HasIndex(c => c.Descricao).IsUnique();
             b.HasMany(c => c.Periodos)
              .WithOne(cp => cp.Categoria)
              .OnDelete(DeleteBehavior.Cascade);

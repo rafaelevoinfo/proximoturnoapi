@@ -23,6 +23,10 @@ public class CategoriaRepository : BaseRepository, ICategoriaRepository {
             query = query.Where(c => c.Descricao.Contains(filtro.Descricao.ToLowerInvariant()));
         }
 
+        if (filtro.ApenasAtivos) {
+            query = query.Where(c => c.Ativo);
+        }
+
         return await query
             .Include(c => c.Periodos)
             .ToListAsync();
@@ -42,6 +46,6 @@ public class CategoriaRepository : BaseRepository, ICategoriaRepository {
     public async Task<bool> DeleteAsync(int id) {
         return await _dbContext.Categorias
             .Where(c => c.Id == id)
-            .ExecuteDeleteAsync() > 0;
+            .ExecuteUpdateAsync(s => s.SetProperty(c => c.Ativo, false)) > 0;
     }
 }

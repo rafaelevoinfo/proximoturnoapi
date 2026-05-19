@@ -11,6 +11,8 @@ public record CategoriaDTO {
     [Required, MaxLength(100)]
     public string Descricao { get => _descricao; set => _descricao = StringUtils.Capitalize(value); }
 
+    public bool Ativo { get; set; } = true;
+
     public List<PeriodoDTO> Periodos { get; set; } = [];
 
 
@@ -18,6 +20,7 @@ public record CategoriaDTO {
         return new CategoriaDTO {
             Id = categoria.Id,
             Descricao = StringUtils.Capitalize(categoria.Descricao),
+            Ativo = categoria.Ativo,
             Periodos = categoria.Periodos.Select(p => new PeriodoDTO() {
                 Id = p.Id,
                 QtdeDias = p.QuantidadeDias,
