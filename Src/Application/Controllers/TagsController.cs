@@ -63,6 +63,7 @@ public class TagsController(ILogger<ControllerBasico> logger,
     }
 
     [HttpDelete("{id:int}")]
+    [Authorize(Roles = Roles.Admin)]
     public async Task<IActionResult> DeleteTag([FromRoute] int id) {
         return await EncapsulateRequestAsync(async () => {
             if (!await _repository.DeleteAsync(id)) {
