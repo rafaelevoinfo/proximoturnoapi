@@ -9,4 +9,8 @@ public class FiltroClienteDTO {
     public string? Email { get; set; }
     [FromQuery(Name = "telefone")]
     public string? Telefone { get; set; }
+    [FromQuery(Name = "page")]
+    public int? Page { get; set; }
+    [FromQuery(Name = "pageSize")]
+    public int? PageSize { get; set; }
 }

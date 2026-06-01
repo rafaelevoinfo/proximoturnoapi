@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using ProximoTurnoApi.Infrastructure.Repositories;
 
@@ -10,9 +11,11 @@ using ProximoTurnoApi.Infrastructure.Repositories;
 namespace ProximoTurnoApi.Migrations
 {
     [DbContext(typeof(DatabaseContext))]
-    partial class DatabaseContextModelSnapshot : ModelSnapshot
+    [Migration("20260601004539_AddMetodosPagamentoEEntrega")]
+    partial class AddMetodosPagamentoEEntrega
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -172,10 +175,6 @@ namespace ProximoTurnoApi.Migrations
                     b.Property<DateTime>("DataHora")
                         .HasColumnType("datetime(6)")
                         .HasColumnName("DATA_HORA");
-
-                    b.Property<DateTime?>("DataHoraAlteracao")
-                        .HasColumnType("datetime(6)")
-                        .HasColumnName("DATA_HORA_ALTERACAO");
 
                     b.Property<DateTime?>("DataHoraEntrega")
                         .HasColumnType("datetime(6)")

@@ -1,5 +1,5 @@
 # Image for running EF Core migrations
-FROM mcr.microsoft.com/dotnet/sdk:8.0
+FROM mcr.microsoft.com/dotnet/sdk:10.0
 
 WORKDIR /src
 
@@ -8,7 +8,7 @@ COPY ["Src/ProximoTurnoApi.csproj", "Src/"]
 RUN dotnet restore "Src/ProximoTurnoApi.csproj"
 
 # Install EF Core CLI as a global tool
-RUN dotnet tool install --global dotnet-ef --version 8.0.22 || dotnet tool install --global dotnet-ef
+RUN dotnet tool install --global dotnet-ef --version 10.0.7 || dotnet tool install --global dotnet-ef
 ENV PATH="$PATH:/root/.dotnet/tools"
 
 # Copy full source

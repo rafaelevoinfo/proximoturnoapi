@@ -74,7 +74,7 @@ public class JogoRepository : BaseRepository, IJogoRepository {
         }
 
         // O uso de .AsSplitQuery() melhora muito a performance ao carregar múltiplas coleções.
-        return await _dbContext.Jogos
+        IQueryable<Jogo> query = _dbContext.Jogos
             .FromSqlRaw(sql, [.. parameters])
             .Include(j => j.Categoria)
             .Include(j => j.Tags)
@@ -83,8 +83,14 @@ public class JogoRepository : BaseRepository, IJogoRepository {
             .Include(j => j.Copias)
             .AsSplitQuery()
             .AsNoTracking()
-            .OrderBy(j => j.Nome)
-            .ToListAsync();
+            .OrderBy(j => j.Nome);
+
+        if (filtro.Page.HasValue && filtro.PageSize.HasValue) {
+            var skip = (filtro.Page.Value - 1) * filtro.PageSize.Value;
+            query = query.Skip(skip).Take(filtro.PageSize.Value);
+        }
+
+        return await query.ToListAsync();
     }
 
     public async Task<Jogo?> GetByIdAsync(int id) {

@@ -112,6 +112,9 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : Identi
             builder.Property(p => p.DataHora).HasColumnName("DATA_HORA");
             builder.Property(p => p.DataHoraEntrega).HasColumnName("DATA_HORA_ENTREGA").IsRequired(false);
             builder.Property(p => p.ValorTotal).HasColumnName("VALOR_TOTAL").HasPrecision(18, 2);
+            builder.Property(p => p.MetodoPagamento).HasColumnName("METODO_PAGAMENTO").HasMaxLength(50).IsRequired(false);
+            builder.Property(p => p.MetodoEntrega).HasColumnName("METODO_ENTREGA").HasMaxLength(50).IsRequired(false);
+            builder.Property(p => p.DataHoraAlteracao).HasColumnName("DATA_HORA_ALTERACAO").IsRequired(false);
 
             builder.HasOne(p => p.Cliente)
                    .WithMany()

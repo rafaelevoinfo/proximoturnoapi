@@ -18,6 +18,8 @@ public class AtualizarPedido(IPedidoRepository pedidoRepository,
             return;
         }
 
+        pedido.DefinirMetodos(novoPedidoDto.MetodoPagamento, novoPedidoDto.MetodoEntrega);
+
         for (var i = pedido.Items.Count - 1; i >= 0; i--) {
             var itemExistente = pedido.Items[i];
             if (!novoPedidoDto.Items.Any(novoItem => novoItem.Id == itemExistente.Id)) {

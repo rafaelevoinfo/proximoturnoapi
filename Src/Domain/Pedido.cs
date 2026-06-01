@@ -24,6 +24,9 @@ public class Pedido : BaseModel {
         private set => _valorTotal = value;
     }
     public StatusPedido Status { get; private set; }
+    public string? MetodoPagamento { get; private set; }
+    public string? MetodoEntrega { get; private set; }
+    public DateTime? DataHoraAlteracao { get; private set; }
     private List<ItemPedido> _items = [];
     public IReadOnlyList<ItemPedido> Items {
         get => _items.AsReadOnly();
@@ -36,12 +39,15 @@ public class Pedido : BaseModel {
     }
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
 
-    public Pedido(Cliente cliente) {
+    public Pedido(Cliente cliente, string? metodoPagamento = null, string? metodoEntrega = null) {
         if (cliente is null) {
             throw new Exception("Não é possível criar um pedido sem um cliente");
         }
         Cliente = cliente;
-        DataHora = DateTime.UtcNow;
+        DataHora = DateTime.Now;
+        DataHoraAlteracao = DataHora;
+        MetodoPagamento = metodoPagamento;
+        MetodoEntrega = metodoEntrega;
     }
 
     public DateTime CalcularDataDevolucao(int qtdeDias) {
@@ -76,6 +82,7 @@ public class Pedido : BaseModel {
         }
         _items.Add(item);
         CalcularTotal();
+        RegistrarAlteracao();
 
         return true;
     }
@@ -90,6 +97,8 @@ public class Pedido : BaseModel {
             if (_items[i].Id == idItemPedido) {
                 _items[i].JogoCopia.Status = StatusJogo.Disponivel;
                 _items.RemoveAt(i);
+                CalcularTotal();
+                RegistrarAlteracao();
                 return true;
             }
         }
@@ -105,6 +114,9 @@ public class Pedido : BaseModel {
         item.JogoCopia.Status = StatusJogo.Disponivel;
         var result = _items.Remove(item);
         CalcularTotal();
+        if (result) {
+            RegistrarAlteracao();
+        }
         return result;
     }
 
@@ -115,10 +127,11 @@ public class Pedido : BaseModel {
             return false;
         }
         Status = StatusPedido.Entregue;
-        DataHoraEntrega = DateTime.UtcNow;
+        DataHoraEntrega = DateTime.Now;
         foreach (var item in _items) {
             item.JogoCopia.Status = StatusJogo.Alugado;
         }
+        RegistrarAlteracao();
         return true;
     }
 
@@ -128,25 +141,22 @@ public class Pedido : BaseModel {
         foreach (var item in _items) {
             item.JogoCopia.Status = StatusJogo.Disponivel;
         }
+        RegistrarAlteracao();
         return true;
     }
 
     public Pedido? Renovar(List<(int idItem, CategoriaPeriodo periodo)?> itensRenovar) {
         Clear();
+
         if (Status != StatusPedido.Devolvido) {
             AddNotification("ERRO", "Para renovar um pedido, ele primeiro precisa ser devolvido e então renovado");
             return null;
         }
 
-        if (!Devolver(null)) {
-            AddNotification("ERRO", "Não foi possível renovar o pedido, pois houve um problema ao processar a devolução necessária para então realizar a renovação");
-            return null;
-        }
-
         var novoPedido = new Pedido(Cliente) {
-            DataHora = DateTime.UtcNow,
+            DataHora = DateTime.Now,
             Status = StatusPedido.Pendente,
-            DataHoraEntrega = DataHora,
+            DataHoraEntrega = DateTime.Now,
             PedidoOriginal = this
         };
         foreach (var item in _items) {
@@ -157,7 +167,7 @@ public class Pedido : BaseModel {
                     JogoCopia = item.JogoCopia,
                     IdPeriodo = itemRenovar.Value.periodo.Id,
                     Valor = itemRenovar.Value.periodo.Valor,
-                    DataDevolucao = CalcularDataDevolucao(itemRenovar.Value.periodo.QuantidadeDias),
+                    DataDevolucao = novoPedido.CalcularDataDevolucao(itemRenovar.Value.periodo.QuantidadeDias),
                     Renovado = true
                 };
                 novoPedido.AdicionarItem(novoItem);
@@ -167,6 +177,7 @@ public class Pedido : BaseModel {
         novoPedido.Entregar();
 
         Status = StatusPedido.Devolvido;
+        RegistrarAlteracao();
         return novoPedido;
     }
 
@@ -186,12 +197,23 @@ public class Pedido : BaseModel {
             AddNotification("ERRO", "Nenhum item foi devolvido");
             return false;
         }
-        if (idsItemsDevolvidos is null || idsItemsDevolvidos?.Count == _items.Count()) {
+        if (idsItemsDevolvidos is null || idsItemsDevolvidos.Count == 0 || idsItemsDevolvidos?.Count == _items.Count()) {
             Status = StatusPedido.Devolvido;
         }
+        RegistrarAlteracao();
         return true;
     }
 
+
+    public void DefinirMetodos(string? metodoPagamento, string? metodoEntrega) {
+        MetodoPagamento = metodoPagamento;
+        MetodoEntrega = metodoEntrega;
+        RegistrarAlteracao();
+    }
+
+    private void RegistrarAlteracao() {
+        DataHoraAlteracao = DateTime.Now;
+    }
 
     private void CalcularTotal() {
         ValorTotal = _items.Sum(i => i.Valor);

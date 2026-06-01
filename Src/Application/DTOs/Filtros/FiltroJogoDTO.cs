@@ -16,5 +16,9 @@ public class FiltroJogoDTO {
     public short? IdadeMinima { get; set; }
     [FromQuery(Name = "qtde_jogadores")]
     public short? QtdeJogadores { get; set; }
+    [FromQuery(Name = "page")]
+    public int? Page { get; set; }
+    [FromQuery(Name = "pageSize")]
+    public int? PageSize { get; set; }
 
 }

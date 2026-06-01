@@ -36,6 +36,10 @@ public class ClienteRepository : BaseRepository, IClienteRepository {
             query = query.Where(c => c.Telefone == filtro.Telefone);
         }
 
+        if (filtro.Page.HasValue && filtro.PageSize.HasValue && filtro.Page.Value > 0 && filtro.PageSize.Value > 0) {
+            query = query.Skip((filtro.Page.Value - 1) * filtro.PageSize.Value).Take(filtro.PageSize.Value);
+        }
+
         return await query
             .AsNoTracking()
             .ToListAsync();

@@ -19,6 +19,12 @@ public record PedidoDTO {
 
     public bool Atrasado { get; set; }
 
+    public string? MetodoPagamento { get; set; }
+
+    public string? MetodoEntrega { get; set; }
+
+    public DateTime? DataHoraAlteracao { get; set; }
+
     [Required]
     public List<ItemPedidoDTO>? Items { get; set; } = [];
 
@@ -29,7 +35,10 @@ public record PedidoDTO {
             DataHora = pedido.DataHora,
             ValorTotal = pedido.ValorTotal,
             Status = pedido.Status,
-            Atrasado = pedido.Status == StatusPedido.Entregue && pedido.Items.Any(i => i.DataDevolucao.Date < DateTime.UtcNow.Date),
+            Atrasado = pedido.Status == StatusPedido.Entregue && pedido.Items.Any(i => i.DataDevolucao.Date < DateTime.Today),
+            MetodoPagamento = pedido.MetodoPagamento,
+            MetodoEntrega = pedido.MetodoEntrega,
+            DataHoraAlteracao = pedido.DataHoraAlteracao,
             Items = pedido.Items.Select(i => new ItemPedidoDTO {
                 Id = i.Id,
                 Jogo = JogoResumoDTO.FromModel(i.JogoCopia.Jogo!),
@@ -47,6 +56,12 @@ public record NovoPedidoDTO {
 
     [Required]
     public List<NovoItemPedidoDTO> Items { get; set; } = [];
+
+    public int? IdCliente { get; set; }
+
+    public string? MetodoPagamento { get; set; }
+
+    public string? MetodoEntrega { get; set; }
 }
 
 

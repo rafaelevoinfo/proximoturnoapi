@@ -17,16 +17,27 @@ public class CadastroPedido(IPedidoRepository pedidoRepository,
     ILogger<CadastroPedido> logger) : PedidoUseCaseBasico(pedidoRepository) {
 
     public async Task<int> ExecuteAsync(ClaimsPrincipal userClaim, NovoPedidoDTO novoPedidoDto) {
-        logger.LogInformation("Iniciando cadastro de novo pedido para o usuário logado.");
+        logger.LogInformation("Iniciando cadastro de novo pedido.");
         var user = await _userManager.GetUserAsync(userClaim);
-        var cliente = await _clienteRepository.GetByEmailAsync(user?.Email ?? "");
-        if (cliente is null) {
-            logger.LogWarning("Falha ao cadastrar pedido: Usuário {UserEmail} não está vinculado a nenhum cliente.", user?.Email ?? "desconhecido");
-            AddNotification(UseCaseNotification.Create(UseCaseNotificationType.Forbid, "Usuário não logado ou não vinculado a nenhum cliente."));
-            return 0;
+        Cliente? cliente = null;
+
+        if (user != null && await _userManager.IsInRoleAsync(user, Roles.Admin) && novoPedidoDto.IdCliente.HasValue) {
+            cliente = await _clienteRepository.GetByIdAsync(novoPedidoDto.IdCliente.Value);
+            if (cliente is null) {
+                logger.LogWarning("Falha ao cadastrar pedido: Cliente de ID {ClienteId} não encontrado.", novoPedidoDto.IdCliente.Value);
+                AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest, $"Cliente de ID {novoPedidoDto.IdCliente.Value} não encontrado."));
+                return 0;
+            }
+        } else {
+            cliente = await _clienteRepository.GetByEmailAsync(user?.Email ?? "");
+            if (cliente is null) {
+                logger.LogWarning("Falha ao cadastrar pedido: Usuário {UserEmail} não está vinculado a nenhum cliente.", user?.Email ?? "desconhecido");
+                AddNotification(UseCaseNotification.Create(UseCaseNotificationType.Forbid, "Usuário não logado ou não vinculado a nenhum cliente."));
+                return 0;
+            }
         }
 
-        var pedido = new Pedido(cliente);
+        var pedido = new Pedido(cliente, novoPedidoDto.MetodoPagamento, novoPedidoDto.MetodoEntrega);
         foreach (var item in novoPedidoDto.Items) {
             var resultValidacao = await ValidarAdicionarItem(item, _jogoRepository, _categoriaRepository);
             if (!IsValid) {

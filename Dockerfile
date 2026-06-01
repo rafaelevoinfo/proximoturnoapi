@@ -1,5 +1,5 @@
 # Build stage
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 
 WORKDIR /build
 
@@ -16,7 +16,7 @@ COPY . .
 RUN dotnet publish "Src/ProximoTurnoApi.csproj" -c Release -o /app/publish
 
 # Runtime stage
-FROM mcr.microsoft.com/dotnet/aspnet:8.0
+FROM mcr.microsoft.com/dotnet/aspnet:10.0
 
 WORKDIR /app
 
@@ -25,8 +25,11 @@ COPY --from=build /app/publish .
 
 # Set environment variables
 ENV ASPNETCORE_HTTP_PORTS=80
+ENV TZ=America/Sao_Paulo
 
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y tzdata curl && \
+    ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone && \
+    rm -rf /var/lib/apt/lists/*
 
 # Run the application
 ENTRYPOINT ["dotnet", "ProximoTurnoApi.dll"]
