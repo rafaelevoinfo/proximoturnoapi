@@ -16,6 +16,7 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : Identi
         ConfigurePedido(modelBuilder);
         ConfigureJogo(modelBuilder);
         ConfigureListaDesejos(modelBuilder);
+        ConfigureComentario(modelBuilder);
 
         modelBuilder.Entity<Cliente>(b => {
             b.HasIndex(c => c.Email).IsUnique();
@@ -154,6 +155,37 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : Identi
         });
     }
 
+    private static void ConfigureComentario(ModelBuilder modelBuilder) {
+        modelBuilder.Entity<Comentario>(builder => {
+            builder.ToTable("COMENTARIO");
+            builder.HasKey(c => c.Id);
+            builder.Property(c => c.Id).HasColumnName("ID");
+            builder.Property(c => c.IdPedido).HasColumnName("ID_PEDIDO");
+            builder.Property(c => c.IdJogo).HasColumnName("ID_JOGO");
+            builder.Property(c => c.IdCliente).HasColumnName("ID_CLIENTE");
+            builder.Property(c => c.Texto).HasColumnName("TEXTO").HasMaxLength(1000);
+            builder.Property(c => c.Nota).HasColumnName("NOTA");
+            builder.Property(c => c.DataHora).HasColumnName("DATA_HORA");
+
+            builder.HasOne(c => c.Pedido)
+                   .WithMany()
+                   .HasForeignKey(c => c.IdPedido)
+                   .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne(c => c.Jogo)
+                   .WithMany()
+                   .HasForeignKey(c => c.IdJogo)
+                   .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne(c => c.Cliente)
+                   .WithMany()
+                   .HasForeignKey(c => c.IdCliente)
+                   .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasIndex(c => new { c.IdPedido, c.IdJogo }).IsUnique();
+        });
+    }
+
     public DbSet<Cliente> Clientes { get; set; }
     public DbSet<Jogo> Jogos { get; set; }
     public DbSet<JogoCopia> JogoCopias { get; set; }
@@ -162,5 +194,5 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : Identi
     public DbSet<Tag> Tags { get; set; }
     public DbSet<ItemPedido> ItemPedidos { get; set; }
     public DbSet<ItemListaDesejos> ItensListaDesejos { get; set; }
-
+    public DbSet<Comentario> Comentarios { get; set; }
 }

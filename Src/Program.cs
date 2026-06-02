@@ -52,6 +52,13 @@ builder.Services.AddScoped<AtualizarPedido>();
 builder.Services.AddScoped<AtualizarStatusPedido>();
 builder.Services.AddScoped<RenovarPedido>();
 builder.Services.AddScoped<DevolverItensPedido>();
+builder.Services.AddScoped<ObterRelatorioFaturamento>();
+
+// Comentarios
+builder.Services.AddScoped<SalvarComentario>();
+builder.Services.AddScoped<ObterComentariosPedido>();
+builder.Services.AddScoped<ObterComentarioPorId>();
+builder.Services.AddScoped<ExcluirComentario>();
 
 // Categoria
 builder.Services.AddScoped<CadastroCategoria>();
