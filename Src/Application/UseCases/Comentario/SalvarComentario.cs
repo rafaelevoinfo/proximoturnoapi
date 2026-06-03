@@ -14,9 +14,9 @@ public class SalvarComentario(
     UserManager<Usuario> userManager,
     ILogger<SalvarComentario> logger) : UseCaseBasico
 {
-    public async Task<ComentarioDTO?> ExecuteAsync(ClaimsPrincipal userClaim, int pedidoId, SalvarComentarioDTO dto)
+    public async Task<ComentarioDTO?> ExecuteAsync(ClaimsPrincipal userClaim, SalvarComentarioDTO dto)
     {
-        logger.LogInformation("Iniciando salvamento de comentário para o pedido {PedidoId}, jogo {JogoId}.", pedidoId, dto.IdJogo);
+        logger.LogInformation("Iniciando salvamento de comentário para o jogo {JogoId}.", dto.IdJogo);
 
         var user = await userManager.GetUserAsync(userClaim);
         var idCliente = await clienteRepository.GetIdByEmailAsync(user?.Email ?? "");
@@ -27,38 +27,25 @@ public class SalvarComentario(
             return null;
         }
 
-        var pedido = await dbContext.Pedidos
+        var pedidosComJogo = await dbContext.Pedidos
             .Include(p => p.Cliente)
             .Include(p => p.Items)
                 .ThenInclude(i => i.JogoCopia)
-            .FirstOrDefaultAsync(p => p.Id == pedidoId);
+            .Where(p => p.Cliente.Id == idCliente.Value && p.Items.Any(i => i.JogoCopia.IdJogo == dto.IdJogo))
+            .ToListAsync();
 
-        if (pedido is null)
+        if (!pedidosComJogo.Any())
         {
-            logger.LogWarning("Pedido {PedidoId} não encontrado.", pedidoId);
-            AddNotification(UseCaseNotification.Create(UseCaseNotificationType.NotFound, $"Pedido de ID {pedidoId} não encontrado."));
+            logger.LogWarning("Jogo {JogoId} não foi alugado pelo cliente {ClienteId}.", dto.IdJogo, idCliente.Value);
+            AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest, "Você só pode comentar em jogos que já alugou."));
             return null;
         }
 
-        if (pedido.Cliente.Id != idCliente.Value)
+        var temPedidoDevolvido = pedidosComJogo.Any(p => p.Status == StatusPedido.Devolvido);
+        if (!temPedidoDevolvido)
         {
-            logger.LogWarning("Acesso negado: Pedido {PedidoId} pertence ao cliente {PedidoClienteId}, mas usuário é {UserClienteId}.", pedidoId, pedido.Cliente.Id, idCliente.Value);
-            AddNotification(UseCaseNotification.Create(UseCaseNotificationType.Forbid, "Você só pode comentar em seus próprios pedidos."));
-            return null;
-        }
-
-        if (pedido.Status != StatusPedido.Devolvido)
-        {
-            logger.LogWarning("Pedido {PedidoId} tem status {Status}. Apenas pedidos devolvidos podem receber comentários.", pedidoId, pedido.Status);
-            AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest, "Comentários são permitidos apenas para pedidos já devolvidos."));
-            return null;
-        }
-
-        var jogoAlugado = pedido.Items.Any(i => i.JogoCopia.IdJogo == dto.IdJogo);
-        if (!jogoAlugado)
-        {
-            logger.LogWarning("Jogo {JogoId} não foi alugado no pedido {PedidoId}.", dto.IdJogo, pedidoId);
-            AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest, "Este jogo não faz parte deste pedido."));
+            logger.LogWarning("Nenhum pedido do jogo {JogoId} foi devolvido ainda para o cliente {ClienteId}.", dto.IdJogo, idCliente.Value);
+            AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest, "Comentários são permitidos apenas para jogos já devolvidos."));
             return null;
         }
 
@@ -77,26 +64,27 @@ public class SalvarComentario(
         }
 
         var comentarioExistente = await dbContext.Comentarios
-            .FirstOrDefaultAsync(c => c.IdPedido == pedidoId && c.IdJogo == dto.IdJogo);
+            .FirstOrDefaultAsync(c => c.IdCliente == idCliente.Value && c.IdJogo == dto.IdJogo);
 
         if (comentarioExistente is null)
         {
             var comentario = new Comentario
             {
-                IdPedido = pedidoId,
                 IdJogo = dto.IdJogo,
                 IdCliente = idCliente.Value,
                 Texto = dto.Texto,
                 Nota = dto.Nota,
-                DataHora = DateTime.Now
+                DataHora = DateTime.Now,
+                Status = StatusComentario.Pendente
             };
 
             await dbContext.Comentarios.AddAsync(comentario);
             await dbContext.SaveChangesAsync();
 
-            // Reload to get the customer name populated
+            // Reload to get the customer name and game name populated
             var comentarioSalvo = await dbContext.Comentarios
                 .Include(c => c.Cliente)
+                .Include(c => c.Jogo)
                 .FirstAsync(c => c.Id == comentario.Id);
 
             logger.LogInformation("Novo comentário {ComentarioId} criado com sucesso.", comentario.Id);
@@ -107,13 +95,15 @@ public class SalvarComentario(
             comentarioExistente.Texto = dto.Texto;
             comentarioExistente.Nota = dto.Nota;
             comentarioExistente.DataHora = DateTime.Now;
+            comentarioExistente.Status = StatusComentario.Pendente;
 
             dbContext.Comentarios.Update(comentarioExistente);
             await dbContext.SaveChangesAsync();
 
-            // Reload to get the customer name populated
+            // Reload to get the customer name and game name populated
             var comentarioSalvo = await dbContext.Comentarios
                 .Include(c => c.Cliente)
+                .Include(c => c.Jogo)
                 .FirstAsync(c => c.Id == comentarioExistente.Id);
 
             logger.LogInformation("Comentário {ComentarioId} atualizado com sucesso.", comentarioExistente.Id);

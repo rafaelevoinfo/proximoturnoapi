@@ -56,7 +56,10 @@ builder.Services.AddScoped<ObterRelatorioFaturamento>();
 
 // Comentarios
 builder.Services.AddScoped<SalvarComentario>();
-builder.Services.AddScoped<ObterComentariosPedido>();
+builder.Services.AddScoped<PodeComentarJogo>();
+builder.Services.AddScoped<ObterComentariosJogo>();
+builder.Services.AddScoped<ObterComentariosFiltrados>();
+builder.Services.AddScoped<AtualizarStatusComentario>();
 builder.Services.AddScoped<ObterComentarioPorId>();
 builder.Services.AddScoped<ExcluirComentario>();
 

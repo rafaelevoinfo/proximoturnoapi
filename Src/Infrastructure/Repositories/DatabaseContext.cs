@@ -160,17 +160,12 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : Identi
             builder.ToTable("COMENTARIO");
             builder.HasKey(c => c.Id);
             builder.Property(c => c.Id).HasColumnName("ID");
-            builder.Property(c => c.IdPedido).HasColumnName("ID_PEDIDO");
             builder.Property(c => c.IdJogo).HasColumnName("ID_JOGO");
             builder.Property(c => c.IdCliente).HasColumnName("ID_CLIENTE");
             builder.Property(c => c.Texto).HasColumnName("TEXTO").HasMaxLength(1000);
-            builder.Property(c => c.Nota).HasColumnName("NOTA");
+            builder.Property(c => c.Nota).HasColumnName("NOTA").HasColumnType("smallint");
             builder.Property(c => c.DataHora).HasColumnName("DATA_HORA");
-
-            builder.HasOne(c => c.Pedido)
-                   .WithMany()
-                   .HasForeignKey(c => c.IdPedido)
-                   .OnDelete(DeleteBehavior.Restrict);
+            builder.Property(c => c.Status).HasColumnName("STATUS").HasDefaultValue(StatusComentario.Pendente);
 
             builder.HasOne(c => c.Jogo)
                    .WithMany()
@@ -182,7 +177,7 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : Identi
                    .HasForeignKey(c => c.IdCliente)
                    .OnDelete(DeleteBehavior.Restrict);
 
-            builder.HasIndex(c => new { c.IdPedido, c.IdJogo }).IsUnique();
+            builder.HasIndex(c => new { c.IdCliente, c.IdJogo }).IsUnique();
         });
     }
 

@@ -19,6 +19,7 @@ public class ObterComentarioPorId(
 
         var comentario = await dbContext.Comentarios
             .Include(c => c.Cliente)
+            .Include(c => c.Jogo)
             .FirstOrDefaultAsync(c => c.Id == id);
 
         if (comentario is null)
