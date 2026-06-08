@@ -14,6 +14,7 @@ public record JogoPublicDTO {
     public decimal? Complexidade { get; set; }
     public StatusJogo Status { get; set; }
     public TimeOnly? TempoEstimadoDeJogo { get; set; }
+    public short? MediaAvaliacoes { get; set; }
     public List<TagDTO>? Tags { get; set; }
     public List<JogoLinkDTO>? Links { get; set; }
     public List<JogoFotoDTO>? Fotos { get; set; }

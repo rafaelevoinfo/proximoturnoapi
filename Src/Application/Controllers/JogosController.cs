@@ -12,7 +12,8 @@ namespace ProximoTurnoApi.Application.Controllers;
 public class JogosController(ILogger<ControllerBasico> logger,
                              IJogoRepository _repository,
                              CadastroJogo _cadastroJogoUseCase,
-                             AtualizarJogo _atualizarJogoUseCase) : ControllerBasico(logger) {
+                             AtualizarJogo _atualizarJogoUseCase,
+                             ObterJogo _obterJogoUseCase) : ControllerBasico(logger) {
 
     [HttpGet]
     public async Task<IActionResult> GetJogos([FromQuery] FiltroJogoDTO filtro) {
@@ -35,11 +36,12 @@ public class JogosController(ILogger<ControllerBasico> logger,
     [HttpGet("{id:int}")]
     public async Task<IActionResult> GetJogo([FromRoute] int id) {
         return await EncapsulateRequestAsync(async () => {
-            var jogo = await _repository.GetByIdAsync(id);
+            var jogo = await _obterJogoUseCase.ObterJogoAsync(id);
             if (jogo == null) {
                 return NotFound(ApiResultDTO<JogoPublicDTO>.CreateFailureResult($"Jogo de id {id} não encontrado."));
             }
-            return Ok(ApiResultDTO<JogoPublicDTO>.CreateSuccessResult(JogoPublicDTO.FromModel(jogo), "Jogo recuperado com sucesso."));
+
+            return Ok(ApiResultDTO<JogoPublicDTO>.CreateSuccessResult(jogo, "Jogo recuperado com sucesso."));
         });
     }
 

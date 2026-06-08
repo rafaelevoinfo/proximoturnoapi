@@ -74,6 +74,7 @@ builder.Services.AddScoped<AtualizarCliente>();
 // Jogo
 builder.Services.AddScoped<CadastroJogo>();
 builder.Services.AddScoped<AtualizarJogo>();
+builder.Services.AddScoped<ObterJogo>();
 
 // Tag
 builder.Services.AddScoped<CadastroTag>();
