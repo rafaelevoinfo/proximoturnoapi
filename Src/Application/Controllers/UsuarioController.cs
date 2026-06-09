@@ -4,13 +4,14 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using ProximoTurnoApi.Application.DTOs;
 using ProximoTurnoApi.Infrastructure.Models;
+using ProximoTurnoApi.Infrastructure.Repositories;
 
 namespace ProximoTurnoApi.Application.Controllers;
 
 [Route("api/usuarios")]
 [ApiController]
 [Authorize]
-public class UsuarioController(ILogger<ControllerBasico> logger, UserManager<Usuario> _userManager) : ControllerBasico(logger) {
+public class UsuarioController(ILogger<ControllerBasico> logger, UserManager<Usuario> _userManager, IClienteRepository _clienteRepository) : ControllerBasico(logger) {
 
     [HttpGet("logado")]
     [Authorize]
@@ -22,12 +23,14 @@ public class UsuarioController(ILogger<ControllerBasico> logger, UserManager<Usu
                 return NotFound();
             }
 
+            var idCliente = await _clienteRepository.GetIdByEmailAsync(user.Email ?? "");
+
             var usuarioDto = new UsuarioDTO() {
                 Id = user.Id,
                 Nome = user.Nome ?? user.Email ?? "",
                 Email = user.Email ?? "",
-                IsAdmin = await _userManager.IsInRoleAsync(user, Roles.Admin)
-
+                IsAdmin = await _userManager.IsInRoleAsync(user, Roles.Admin),
+                IdCliente = idCliente
             };
             return Ok(ApiResultDTO<UsuarioDTO>.CreateSuccessResult(usuarioDto));
         });

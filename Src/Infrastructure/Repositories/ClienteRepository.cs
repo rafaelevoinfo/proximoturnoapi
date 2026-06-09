@@ -52,9 +52,12 @@ public class ClienteRepository : BaseRepository, IClienteRepository {
     }
 
     public async Task<int?> GetIdByEmailAsync(string email) {
+        if (string.IsNullOrEmpty(email)) {
+            return null;
+        }
         return await _dbContext.Clientes
             .Where(c => c.Email == email.ToLowerInvariant())
-            .Select(c => c.Id)
+            .Select(c => (int?)c.Id)
             .FirstOrDefaultAsync();
     }
 

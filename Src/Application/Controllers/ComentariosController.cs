@@ -23,16 +23,16 @@ public class ComentariosController(
     [HttpPost]
     public async Task<IActionResult> SalvarComentario([FromBody] SalvarComentarioDTO dto) {
         return await EncapsulateRequestAsync(async () => {
-            var res = await salvarComentarioUseCase.ExecuteAsync(User, dto);
+            var id = await salvarComentarioUseCase.ExecuteAsync(User, dto);
             if (!salvarComentarioUseCase.IsValid) {
                 var errorNotification = salvarComentarioUseCase.Notifications.First();
                 return errorNotification.Type switch {
-                    UseCaseNotificationType.NotFound => NotFound(ApiResultDTO<ComentarioDTO>.CreateFailureResult(salvarComentarioUseCase.AggregateErrors())),
+                    UseCaseNotificationType.NotFound => NotFound(ApiResultDTO<int?>.CreateFailureResult(salvarComentarioUseCase.AggregateErrors())),
                     UseCaseNotificationType.Forbid => Forbid(),
-                    _ => BadRequest(ApiResultDTO<ComentarioDTO>.CreateFailureResult(salvarComentarioUseCase.AggregateErrors()))
+                    _ => BadRequest(ApiResultDTO<int?>.CreateFailureResult(salvarComentarioUseCase.AggregateErrors()))
                 };
             }
-            return Ok(ApiResultDTO<ComentarioDTO>.CreateSuccessResult(res, "Comentário enviado para análise"));
+            return Ok(ApiResultDTO<int?>.CreateSuccessResult(id, "Comentário enviado para análise"));
         });
     }
 

@@ -30,6 +30,9 @@ public class PodeComentarJogo(
                            p.Status == StatusPedido.Devolvido &&
                            p.Items.Any(i => i.JogoCopia.IdJogo == jogoId));
 
-        return jaDevolveu;
+        var jaComentou = await dbContext.Comentarios
+            .AnyAsync(c => c.IdCliente == idCliente.Value && c.IdJogo == jogoId);
+
+        return jaDevolveu && !jaComentou;
     }
 }
