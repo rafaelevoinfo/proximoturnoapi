@@ -1,3 +1,4 @@
+using System;
 using ProximoTurnoApi.Infrastructure.Models;
 
 namespace ProximoTurnoApi.Domain;
@@ -17,12 +18,13 @@ public class Pedido : BaseModel {
     public DateTime? DataHoraEntrega { get; private set; }
     private decimal _valorTotal;
     public decimal ValorTotal {
-        get {
-            _valorTotal = Items.Sum(i => i.Valor);
-            return _valorTotal;
-        }
+        get => _valorTotal;
         private set => _valorTotal = value;
     }
+
+    public int? IdCupom { get; private set; }
+
+    public decimal ValorDesconto { get; private set; } = 0;
     public StatusPedido Status { get; private set; }
     public string? MetodoPagamento { get; private set; }
     public string? MetodoEntrega { get; private set; }
@@ -215,7 +217,18 @@ public class Pedido : BaseModel {
         DataHoraAlteracao = DateTime.Now;
     }
 
-    private void CalcularTotal() {
-        ValorTotal = _items.Sum(i => i.Valor);
+    public void AplicarCupom(int idCupom, decimal valorDesconto) {
+        if (IdCupom != null) {
+            AddNotification("PEDIDO", "Já existe um cupom aplicado a este pedido.");
+            return;
+        }
+        IdCupom = idCupom;
+        ValorDesconto = valorDesconto;
+        CalcularTotal();
+        RegistrarAlteracao();
+    }
+
+    public void CalcularTotal() {
+        _valorTotal = Math.Max(0, _items.Sum(i => i.Valor) - ValorDesconto);
     }
 }

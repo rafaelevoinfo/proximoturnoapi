@@ -17,6 +17,7 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : Identi
         ConfigureJogo(modelBuilder);
         ConfigureListaDesejos(modelBuilder);
         ConfigureComentario(modelBuilder);
+        ConfigureCupom(modelBuilder);
 
         modelBuilder.Entity<Cliente>(b => {
             b.HasIndex(c => c.Email).IsUnique();
@@ -116,6 +117,8 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : Identi
             builder.Property(p => p.MetodoPagamento).HasColumnName("METODO_PAGAMENTO").HasMaxLength(50).IsRequired(false);
             builder.Property(p => p.MetodoEntrega).HasColumnName("METODO_ENTREGA").HasMaxLength(50).IsRequired(false);
             builder.Property(p => p.DataHoraAlteracao).HasColumnName("DATA_HORA_ALTERACAO").IsRequired(false);
+            builder.Property(p => p.IdCupom).HasColumnName("ID_CUPOM").IsRequired(false);
+            builder.Property(p => p.ValorDesconto).HasColumnName("VALOR_DESCONTO").HasPrecision(18, 2);
 
             builder.HasOne(p => p.Cliente)
                    .WithMany()
@@ -125,6 +128,11 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : Identi
             builder.HasOne(p => p.PedidoOriginal)
                    .WithMany()
                    .HasForeignKey("ID_PEDIDO_ORIGINAL")
+                   .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasOne<Cupom>()
+                   .WithMany()
+                   .HasForeignKey(p => p.IdCupom)
                    .OnDelete(DeleteBehavior.Restrict);
 
             builder.HasMany(p => p.Items)
@@ -181,6 +189,26 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : Identi
         });
     }
 
+    private static void ConfigureCupom(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Cupom>(entity =>
+        {
+            entity.ToTable("CUPOM");
+            entity.HasKey(c => c.Id);
+            entity.Property(c => c.Id).HasColumnName("ID");
+            entity.Property(c => c.Codigo).HasColumnName("CODIGO").HasMaxLength(50).IsRequired();
+            entity.HasIndex(c => c.Codigo).IsUnique();
+            entity.Property(c => c.TipoDesconto).HasColumnName("TIPO_DESCONTO").HasConversion<short>().IsRequired();
+            entity.Property(c => c.ValorDesconto).HasColumnName("VALOR_DESCONTO").HasPrecision(18, 2).IsRequired();
+            entity.Property(c => c.DataInicio).HasColumnName("DATA_INICIO");
+            entity.Property(c => c.DataFim).HasColumnName("DATA_FIM");
+            entity.Property(c => c.LimiteUsoGlobal).HasColumnName("LIMITE_USO_GLOBAL");
+            entity.Property(c => c.LimiteUsoCliente).HasColumnName("LIMITE_USO_CLIENTE");
+            entity.Property(c => c.Condicao).HasColumnName("CONDICAO").HasMaxLength(500);
+            entity.Property(c => c.Ativo).HasColumnName("ATIVO").IsRequired();
+        });
+    }
+
     public DbSet<Cliente> Clientes { get; set; }
     public DbSet<Jogo> Jogos { get; set; }
     public DbSet<JogoCopia> JogoCopias { get; set; }
@@ -190,4 +218,5 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : Identi
     public DbSet<ItemPedido> ItemPedidos { get; set; }
     public DbSet<ItemListaDesejos> ItensListaDesejos { get; set; }
     public DbSet<Comentario> Comentarios { get; set; }
+    public DbSet<Cupom> Cupons { get; set; }
 }
