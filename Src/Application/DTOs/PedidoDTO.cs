@@ -14,6 +14,9 @@ public record PedidoDTO {
 
     public decimal ValorTotal { get; set; }
 
+    public int? IdCupom { get; set; }
+
+    public decimal ValorDesconto { get; set; }
 
     public StatusPedido Status { get; set; }
 
@@ -34,6 +37,8 @@ public record PedidoDTO {
             Cliente = ClienteResumoDTO.FromModel(pedido.Cliente!),
             DataHora = pedido.DataHora,
             ValorTotal = pedido.ValorTotal,
+            IdCupom = pedido.IdCupom,
+            ValorDesconto = pedido.ValorDesconto,
             Status = pedido.Status,
             Atrasado = pedido.Status == StatusPedido.Entregue && pedido.Items.Any(i => i.DataDevolucao.Date < DateTime.Today),
             MetodoPagamento = pedido.MetodoPagamento,
@@ -62,6 +67,8 @@ public record NovoPedidoDTO {
     public string? MetodoPagamento { get; set; }
 
     public string? MetodoEntrega { get; set; }
+
+    public string? CupomCodigo { get; set; }
 }
 
 

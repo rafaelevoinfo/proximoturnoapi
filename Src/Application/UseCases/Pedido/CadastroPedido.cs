@@ -14,6 +14,7 @@ public class CadastroPedido(IPedidoRepository pedidoRepository,
     IClienteRepository _clienteRepository,
     ICategoriaRepository _categoriaRepository,
     UserManager<Usuario> _userManager,
+    ValidarCupom _validarCupom,
     ILogger<CadastroPedido> logger) : PedidoUseCaseBasico(pedidoRepository) {
 
     public async Task<int> ExecuteAsync(ClaimsPrincipal userClaim, NovoPedidoDTO novoPedidoDto) {
@@ -56,6 +57,46 @@ public class CadastroPedido(IPedidoRepository pedidoRepository,
                 logger.LogWarning("Regra de negócio impediu adição de item ao pedido: {Errors}", string.Join(", ", pedido.Notifications.Select(n => n.Message)));
                 var notifications = pedido.Notifications.Select(n => UseCaseNotification.Create(UseCaseNotificationType.BadRequest, n.Message)).ToList();
                 AddNotifications((IList<UseCaseNotification>)notifications);
+                return 0;
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(novoPedidoDto.CupomCodigo))
+        {
+            var validacao = await _validarCupom.ExecuteAsync(new ValidarCupomDTO
+            {
+                Codigo = novoPedidoDto.CupomCodigo,
+                IdCliente = cliente.Id,
+                Itens = novoPedidoDto.Items.Select(i => new ItemCupomValidacaoDTO
+                {
+                    IdJogo = i.IdJogo,
+                    IdPeriodo = i.IdPeriodo
+                }).ToList()
+            });
+
+            if (!validacao.Valido)
+            {
+                logger.LogWarning("Falha ao aplicar cupom no pedido: {Mensagem}", validacao.Mensagem);
+                AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest, validacao.Mensagem ?? "Cupom inválido."));
+                return 0;
+            }
+
+            if (validacao.IdCupom.HasValue)
+            {
+                pedido.AplicarCupom(validacao.IdCupom.Value, validacao.ValorDescontoCalculado);
+
+                if (!pedido.IsValid)
+                {
+                    logger.LogWarning("Falha ao aplicar regras de negócio do cupom: {Errors}", string.Join(", ", pedido.Notifications.Select(n => n.Message)));
+                    var notifications = pedido.Notifications.Select(n => UseCaseNotification.Create(UseCaseNotificationType.BadRequest, n.Message)).ToList();
+                    AddNotifications((IList<UseCaseNotification>)notifications);
+                    return 0;
+                }
+            }
+            else
+            {
+                logger.LogWarning("Validação do cupom retornou sucesso mas ID do cupom está ausente.");
+                AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest, "Erro ao associar o cupom."));
                 return 0;
             }
         }

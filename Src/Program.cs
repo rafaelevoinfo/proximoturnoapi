@@ -39,6 +39,7 @@ builder.Services.AddScoped<ICategoriaRepository, CategoriaRepository>();
 builder.Services.AddScoped<IPedidoRepository, PedidoRepository>();
 builder.Services.AddScoped<ITagRepository, TagRepository>();
 builder.Services.AddScoped<IListaDesejosRepository, ListaDesejosRepository>();
+builder.Services.AddScoped<ICupomRepository, CupomRepository>();
 builder.Services.AddSingleton<CloudinaryService>();
 
 // Use Cases
@@ -79,6 +80,12 @@ builder.Services.AddScoped<ObterJogo>();
 // Tag
 builder.Services.AddScoped<CadastroTag>();
 builder.Services.AddScoped<AtualizarTag>();
+
+// Cupom
+builder.Services.AddScoped<ValidarCupom>();
+builder.Services.AddScoped<CadastroCupom>();
+builder.Services.AddScoped<AtualizarCupom>();
+builder.Services.AddScoped<ListarCupons>();
 
 builder.Services.AddIdentityUser();
 builder.Services.AddDocumentation();

@@ -122,7 +122,8 @@ public class ValidarCupom(
             Mensagem = "Cupom aplicado com sucesso.",
             ValorDescontoCalculado = valorDescontoCalculado,
             TipoDesconto = cupom.TipoDesconto,
-            ValorDescontoOriginal = cupom.ValorDesconto
+            ValorDescontoOriginal = cupom.ValorDesconto,
+            IdCupom = cupom.Id
         };
     }
 }

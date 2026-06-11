@@ -94,4 +94,5 @@ public record ValidacaoCupomResultadoDTO
     public decimal ValorDescontoCalculado { get; set; }
     public TipoDesconto? TipoDesconto { get; set; }
     public decimal? ValorDescontoOriginal { get; set; }
+    public int? IdCupom { get; set; }
 }
