@@ -5,7 +5,6 @@ using ProximoTurnoApi.Application.DTOs;
 using ProximoTurnoApi.Domain;
 using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Infrastructure.Repositories;
-using Sprache;
 
 namespace ProximoTurnoApi.Application.UseCases;
 
@@ -55,8 +54,8 @@ public class CadastroPedido(IPedidoRepository pedidoRepository,
 
             if (!pedido.AdicionarItem(itemPedido)) {
                 logger.LogWarning("Regra de negócio impediu adição de item ao pedido: {Errors}", string.Join(", ", pedido.Notifications.Select(n => n.Message)));
-                var notifications = pedido.Notifications.Select(n => UseCaseNotification.Create(UseCaseNotificationType.BadRequest, n.Message)).ToList();
-                AddNotifications((IList<UseCaseNotification>)notifications);
+                IReadOnlyCollection<UseCaseNotification> notifications = pedido.Notifications.Select(n => UseCaseNotification.Create(UseCaseNotificationType.BadRequest, n.Message)).ToList();
+                AddNotifications(notifications);
                 return 0;
             }
         }
@@ -88,8 +87,8 @@ public class CadastroPedido(IPedidoRepository pedidoRepository,
                 if (!pedido.IsValid)
                 {
                     logger.LogWarning("Falha ao aplicar regras de negócio do cupom: {Errors}", string.Join(", ", pedido.Notifications.Select(n => n.Message)));
-                    var notifications = pedido.Notifications.Select(n => UseCaseNotification.Create(UseCaseNotificationType.BadRequest, n.Message)).ToList();
-                    AddNotifications((IList<UseCaseNotification>)notifications);
+                    IReadOnlyCollection<UseCaseNotification> notifications = pedido.Notifications.Select(n => UseCaseNotification.Create(UseCaseNotificationType.BadRequest, n.Message)).ToList();
+                    AddNotifications(notifications);
                     return 0;
                 }
             }

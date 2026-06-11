@@ -22,6 +22,13 @@ public class AtualizarCupom(ICupomRepository _repository, ILogger<AtualizarCupom
             return null;
         }
 
+        if (dto.TipoDesconto == null)
+        {
+            logger.LogWarning("Falha ao atualizar: O tipo de desconto é obrigatório.");
+            AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest, "O tipo de desconto é obrigatório."));
+            return null;
+        }
+
         string? newCodigo = dto.Codigo?.Trim().ToUpperInvariant();
         if (string.IsNullOrWhiteSpace(newCodigo))
         {

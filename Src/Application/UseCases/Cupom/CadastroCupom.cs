@@ -15,6 +15,13 @@ public class CadastroCupom(ICupomRepository _repository, ILogger<CadastroCupom> 
     {
         logger.LogInformation("Iniciando cadastro de novo cupom. Código fornecido: '{Codigo}'", dto.Codigo);
 
+        if (dto.TipoDesconto == null)
+        {
+            logger.LogWarning("Falha ao cadastrar cupom: O tipo de desconto é obrigatório.");
+            AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest, "O tipo de desconto é obrigatório."));
+            return null;
+        }
+
         string codigo;
         if (string.IsNullOrWhiteSpace(dto.Codigo))
         {
