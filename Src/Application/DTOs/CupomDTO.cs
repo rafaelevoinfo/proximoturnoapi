@@ -41,8 +41,8 @@ public record NovoCupomDTO
 {
     public int? Id { get; set; }
 
-    [Required, MaxLength(50)]
-    public string Codigo { get; set; } = string.Empty;
+    [MaxLength(50)]
+    public string? Codigo { get; set; }
 
     [Required(ErrorMessage = "O tipo de desconto é obrigatório.")]
     public TipoDesconto? TipoDesconto { get; set; }
@@ -68,7 +68,7 @@ public record NovoCupomDTO
 
 public record ValidarCupomDTO
 {
-    [Required]
+    [Required, MaxLength(50)]
     public string Codigo { get; set; } = string.Empty;
 
     [Required]

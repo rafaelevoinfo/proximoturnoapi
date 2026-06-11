@@ -30,6 +30,31 @@ public static class ConditionEvaluator
         }
     }
 
+    public static bool TryValidate(string? condition, out string? errorMessage)
+    {
+        errorMessage = null;
+        if (string.IsNullOrWhiteSpace(condition))
+            return true;
+
+        try
+        {
+            var tokens = Tokenize(condition);
+            int index = 0;
+            // Evaluate using mock values to check for parse/syntax errors
+            ParseOr(tokens, ref index, 100m, new List<int> { 1 });
+            if (index < tokens.Count)
+            {
+                throw new Exception($"Unexpected extra tokens starting with '{tokens[index]}' at position {index}");
+            }
+            return true;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+            return false;
+        }
+    }
+
     private static List<string> Tokenize(string expr)
     {
         var tokens = new List<string>();

@@ -59,4 +59,9 @@ public class CupomRepository(DatabaseContext dbContext) : BaseRepository(dbConte
         return await _dbContext.Pedidos
             .CountAsync(p => p.IdCupom == cupomId && p.Cliente.Id == clienteId && p.Status != StatusPedido.Cancelado);
     }
+
+    public async Task SaveAsync(Cupom cupom, bool commit = true)
+    {
+        await SaveChangesAsync(_dbContext.Cupons, cupom, commit);
+    }
 }

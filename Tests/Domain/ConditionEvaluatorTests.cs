@@ -31,4 +31,29 @@ public class ConditionEvaluatorTests
         bool result = ConditionEvaluator.Evaluate(condicao, totalPedido, cats);
         Assert.Equal(expected, result);
     }
+
+    [Theory]
+    [InlineData(null, true)]
+    [InlineData("", true)]
+    [InlineData("<TOTAL_ORDER> > 50", true)]
+    [InlineData("<TOTAL_ORDER> > 50.12.34", false)]
+    [InlineData("(<TOTAL_ORDER> > 50", false)]
+    [InlineData("<MY_TAG> = 10", false)]
+    [InlineData("<TOTAL_ORDER> > 50 )", false)]
+    [InlineData("<GAME_CATEGORY> > 10", false)]
+    [InlineData("<TOTAL_ORDER> > 50 @", false)]
+    [InlineData("<TOTAL_ORDER", false)]
+    public void TryValidate_ShouldMatchExpectedResult(string? condicao, bool expected)
+    {
+        bool result = ConditionEvaluator.TryValidate(condicao, out var error);
+        Assert.Equal(expected, result);
+        if (expected)
+        {
+            Assert.Null(error);
+        }
+        else
+        {
+            Assert.NotNull(error);
+        }
+    }
 }

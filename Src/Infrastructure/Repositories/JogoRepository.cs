@@ -135,7 +135,8 @@ public class JogoRepository : BaseRepository, IJogoRepository {
             //Nao quero carregar todos os dados do jogo
             .Select(j => new Jogo {
                 Id = j.Id,
-                Nome = j.Nome
+                Nome = j.Nome,
+                IdCategoria = j.IdCategoria
             })
             .AsTracking()
             .ToListAsync();

@@ -12,4 +12,5 @@ public interface ICupomRepository : IBaseRepository
     Task<List<Cupom>> GetAllAsync(FiltroCupomDTO filtro);
     Task<int> GetUsoCountGlobalAsync(int cupomId);
     Task<int> GetUsoCountClienteAsync(int cupomId, int clienteId);
+    Task SaveAsync(Cupom cupom, bool commit = true);
 }
