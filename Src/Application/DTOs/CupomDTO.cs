@@ -74,6 +74,8 @@ public record ValidarCupomDTO
     [Required]
     public int IdCliente { get; set; }
 
+    public int? IdPedido { get; set; }
+
     [Required]
     public List<ItemCupomValidacaoDTO> Itens { get; set; } = [];
 }

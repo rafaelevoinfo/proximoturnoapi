@@ -17,6 +17,7 @@ public class PedidoRepository(DatabaseContext dbContext) : BaseRepository(dbCont
     public async Task<List<Pedido>> GetAllAsync(FiltroPedidoDTO filtro) {
         var query = _dbContext.Pedidos
             .Include(p => p.Cliente)
+            .Include(p => p.Cupom)
             .Include(p => p.Items)!
                 .ThenInclude(j => j.JogoCopia)
                     .ThenInclude(jc => jc.Jogo)
@@ -54,6 +55,7 @@ public class PedidoRepository(DatabaseContext dbContext) : BaseRepository(dbCont
     public async Task<Pedido?> GetByIdAsync(int id) {
         return await _dbContext.Pedidos
             .Include(p => p.Cliente)
+            .Include(p => p.Cupom)
             .Include(p => p.Items)!
                 .ThenInclude(j => j.JogoCopia)
                     .ThenInclude(jc => jc.Jogo)

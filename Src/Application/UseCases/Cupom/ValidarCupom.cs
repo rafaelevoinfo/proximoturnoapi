@@ -48,7 +48,7 @@ public class ValidarCupom(
 
         if (cupom.LimiteUsoGlobal.HasValue)
         {
-            int usosGlobal = await _repository.GetUsoCountGlobalAsync(cupom.Id);
+            int usosGlobal = await _repository.GetUsoCountGlobalAsync(cupom.Id, dto.IdPedido);
             if (usosGlobal >= cupom.LimiteUsoGlobal.Value)
             {
                 logger.LogWarning("Validação falhou: Cupom '{Codigo}' atingiu o limite de uso global ({LimiteUsoGlobal}).", cupom.Codigo, cupom.LimiteUsoGlobal);
@@ -58,7 +58,7 @@ public class ValidarCupom(
 
         if (cupom.LimiteUsoCliente.HasValue)
         {
-            int usosCliente = await _repository.GetUsoCountClienteAsync(cupom.Id, dto.IdCliente);
+            int usosCliente = await _repository.GetUsoCountClienteAsync(cupom.Id, dto.IdCliente, dto.IdPedido);
             if (usosCliente >= cupom.LimiteUsoCliente.Value)
             {
                 logger.LogWarning("Validação falhou: Cupom '{Codigo}' atingiu o limite de uso do cliente ID {IdCliente} ({LimiteUsoCliente}).", cupom.Codigo, dto.IdCliente, cupom.LimiteUsoCliente);

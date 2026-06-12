@@ -10,7 +10,7 @@ public interface ICupomRepository : IBaseRepository
     Task<Cupom?> GetByIdAsync(int id);
     Task<Cupom?> GetByCodigoAsync(string codigo);
     Task<List<Cupom>> GetAllAsync(FiltroCupomDTO filtro);
-    Task<int> GetUsoCountGlobalAsync(int cupomId);
-    Task<int> GetUsoCountClienteAsync(int cupomId, int clienteId);
+    Task<int> GetUsoCountGlobalAsync(int cupomId, int? idPedidoExcluir = null);
+    Task<int> GetUsoCountClienteAsync(int cupomId, int clienteId, int? idPedidoExcluir = null);
     Task SaveAsync(Cupom cupom, bool commit = true);
 }

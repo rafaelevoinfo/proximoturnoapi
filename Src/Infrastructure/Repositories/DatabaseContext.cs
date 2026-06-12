@@ -130,7 +130,7 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : Identi
                    .HasForeignKey("ID_PEDIDO_ORIGINAL")
                    .OnDelete(DeleteBehavior.Restrict);
 
-            builder.HasOne<Cupom>()
+            builder.HasOne(p => p.Cupom)
                    .WithMany()
                    .HasForeignKey(p => p.IdCupom)
                    .OnDelete(DeleteBehavior.Restrict);

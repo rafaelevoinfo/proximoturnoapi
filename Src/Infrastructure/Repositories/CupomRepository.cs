@@ -48,16 +48,24 @@ public class CupomRepository(DatabaseContext dbContext) : BaseRepository(dbConte
             .ToListAsync();
     }
 
-    public async Task<int> GetUsoCountGlobalAsync(int cupomId)
+    public async Task<int> GetUsoCountGlobalAsync(int cupomId, int? idPedidoExcluir = null)
     {
-        return await _dbContext.Pedidos
-            .CountAsync(p => p.IdCupom == cupomId && p.Status != StatusPedido.Cancelado);
+        var query = _dbContext.Pedidos.AsNoTracking().Where(p => p.IdCupom == cupomId && p.Status != StatusPedido.Cancelado);
+        if (idPedidoExcluir.HasValue)
+        {
+            query = query.Where(p => p.Id != idPedidoExcluir.Value);
+        }
+        return await query.CountAsync();
     }
 
-    public async Task<int> GetUsoCountClienteAsync(int cupomId, int clienteId)
+    public async Task<int> GetUsoCountClienteAsync(int cupomId, int clienteId, int? idPedidoExcluir = null)
     {
-        return await _dbContext.Pedidos
-            .CountAsync(p => p.IdCupom == cupomId && p.Cliente.Id == clienteId && p.Status != StatusPedido.Cancelado);
+        var query = _dbContext.Pedidos.AsNoTracking().Where(p => p.IdCupom == cupomId && p.Cliente.Id == clienteId && p.Status != StatusPedido.Cancelado);
+        if (idPedidoExcluir.HasValue)
+        {
+            query = query.Where(p => p.Id != idPedidoExcluir.Value);
+        }
+        return await query.CountAsync();
     }
 
     public async Task SaveAsync(Cupom cupom, bool commit = true)

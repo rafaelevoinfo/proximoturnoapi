@@ -7,6 +7,7 @@ namespace ProximoTurnoApi.Application.UseCases;
 public class AtualizarPedido(IPedidoRepository pedidoRepository,
     IJogoRepository _jogoRepository,
     ICategoriaRepository _categoriaRepository,
+    ValidarCupom _validarCupom,
     ILogger<AtualizarPedido> logger) : PedidoUseCaseBasico(pedidoRepository) {
 
     public async Task ExecuteAsync(NovoPedidoDTO novoPedidoDto) {
@@ -18,6 +19,7 @@ public class AtualizarPedido(IPedidoRepository pedidoRepository,
             return;
         }
 
+        pedido.RemoverCupom();
         pedido.DefinirMetodos(novoPedidoDto.MetodoPagamento, novoPedidoDto.MetodoEntrega);
 
         for (var i = pedido.Items.Count - 1; i >= 0; i--) {
@@ -58,6 +60,47 @@ public class AtualizarPedido(IPedidoRepository pedidoRepository,
                 logger.LogWarning("Regra de negócio impediu adição de item ao pedido {PedidoId} durante atualização: {Errors}", pedido.Id, string.Join(", ", pedido.Notifications.Select(n => n.Message)));
                 var notifications = pedido.Notifications.Select(n => UseCaseNotification.Create(UseCaseNotificationType.BadRequest, n.Message)).ToList();
                 AddNotifications((IList<UseCaseNotification>)notifications);
+                return;
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(novoPedidoDto.CupomCodigo))
+        {
+            var validacao = await _validarCupom.ExecuteAsync(new ValidarCupomDTO
+            {
+                Codigo = novoPedidoDto.CupomCodigo,
+                IdCliente = pedido.Cliente.Id,
+                IdPedido = pedido.Id,
+                Itens = novoPedidoDto.Items.Select(i => new ItemCupomValidacaoDTO
+                {
+                    IdJogo = i.IdJogo,
+                    IdPeriodo = i.IdPeriodo
+                }).ToList()
+            });
+
+            if (!validacao.Valido)
+            {
+                logger.LogWarning("Falha ao aplicar cupom no pedido {PedidoId}: {Mensagem}", pedido.Id, validacao.Mensagem);
+                AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest, validacao.Mensagem ?? "Cupom inválido."));
+                return;
+            }
+
+            if (validacao.IdCupom.HasValue)
+            {
+                pedido.AplicarCupom(validacao.IdCupom.Value, validacao.ValorDescontoCalculado);
+
+                if (!pedido.IsValid)
+                {
+                    logger.LogWarning("Falha ao aplicar regras de negócio do cupom no pedido {PedidoId}: {Errors}", pedido.Id, string.Join(", ", pedido.Notifications.Select(n => n.Message)));
+                    IReadOnlyCollection<UseCaseNotification> notifications = pedido.Notifications.Select(n => UseCaseNotification.Create(UseCaseNotificationType.BadRequest, n.Message)).ToList();
+                    AddNotifications(notifications);
+                    return;
+                }
+            }
+            else
+            {
+                logger.LogWarning("Validação do cupom retornou sucesso mas ID do cupom está ausente para o pedido {PedidoId}.", pedido.Id);
+                AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest, "Erro ao associar o cupom."));
                 return;
             }
         }

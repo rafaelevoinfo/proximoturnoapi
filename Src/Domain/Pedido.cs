@@ -23,6 +23,7 @@ public class Pedido : BaseModel {
     }
 
     public int? IdCupom { get; private set; }
+    public Cupom? Cupom { get; private set; }
 
     public decimal ValorDesconto { get; private set; } = 0;
     public StatusPedido Status { get; private set; }
@@ -210,6 +211,7 @@ public class Pedido : BaseModel {
     public void DefinirMetodos(string? metodoPagamento, string? metodoEntrega) {
         MetodoPagamento = metodoPagamento;
         MetodoEntrega = metodoEntrega;
+        CalcularTotal();
         RegistrarAlteracao();
     }
 
@@ -228,7 +230,17 @@ public class Pedido : BaseModel {
         RegistrarAlteracao();
     }
 
+    public void RemoverCupom() {
+        IdCupom = null;
+        ValorDesconto = 0;
+        CalcularTotal();
+        RegistrarAlteracao();
+    }
+
+    public const decimal TAXA_ENTREGA = 8.0m;
+
     public void CalcularTotal() {
-        _valorTotal = Math.Max(0, _items.Sum(i => i.Valor) - ValorDesconto);
+        decimal taxa = string.Equals(MetodoEntrega, "entrega", StringComparison.OrdinalIgnoreCase) ? TAXA_ENTREGA : 0;
+        _valorTotal = Math.Max(0, _items.Sum(i => i.Valor) + taxa - ValorDesconto);
     }
 }
