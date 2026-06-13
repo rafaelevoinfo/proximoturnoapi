@@ -72,4 +72,16 @@ public class CupomRepository(DatabaseContext dbContext) : BaseRepository(dbConte
     {
         await SaveChangesAsync(_dbContext.Cupons, cupom, commit);
     }
+
+    public async Task<bool> IsUsedInPedidoAsync(int id)
+    {
+        return await _dbContext.Pedidos.AnyAsync(p => p.IdCupom == id);
+    }
+
+    public async Task<bool> DeleteAsync(int id)
+    {
+        return await _dbContext.Cupons
+            .Where(c => c.Id == id)
+            .ExecuteDeleteAsync() > 0;
+    }
 }

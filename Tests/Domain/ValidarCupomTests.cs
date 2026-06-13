@@ -52,6 +52,17 @@ public class ValidarCupomTests
         }
 
         public Task SaveAsync(Cupom cupom, bool commit = true) => throw new NotImplementedException();
+        public Task<bool> DeleteAsync(int id)
+        {
+            var cupom = Cupons.FirstOrDefault(c => c.Id == id);
+            if (cupom == null) return Task.FromResult(false);
+            Cupons.Remove(cupom);
+            return Task.FromResult(true);
+        }
+        public Task<bool> IsUsedInPedidoAsync(int id)
+        {
+            return Task.FromResult(Pedidos.Any(p => p.IdCupom == id));
+        }
         public Task SaveChangesAsync() => throw new NotImplementedException();
         public Task StartTransactionAsync() => throw new NotImplementedException();
         public Task CommitTransactionAsync() => throw new NotImplementedException();

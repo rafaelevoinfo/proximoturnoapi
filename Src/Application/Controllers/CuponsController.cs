@@ -17,7 +17,8 @@ public class CuponsController(
     ListarCupons _listarCupons,
     CadastroCupom _cadastroCupom,
     AtualizarCupom _atualizarCupom,
-    ValidarCupom _validarCupom) : ControllerBasico(logger)
+    ValidarCupom _validarCupom,
+    ExcluirCupom _excluirCupom) : ControllerBasico(logger)
 {
     [HttpGet]
     [Authorize(Roles = Roles.Admin)]
@@ -64,5 +65,23 @@ public class CuponsController(
         {
             var result = await _validarCupom.ExecuteAsync(dto);
             return Ok(ApiResultDTO<object>.CreateSuccessResult(result, "Validação concluída."));
+        });
+
+    [HttpDelete("{id:int}")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<IActionResult> Delete([FromRoute] int id) =>
+        await EncapsulateRequestAsync(async () =>
+        {
+            var result = await _excluirCupom.ExecuteAsync(id);
+            if (!_excluirCupom.IsValid)
+            {
+                var notification = _excluirCupom.Notifications.FirstOrDefault();
+                if (notification?.Type == UseCaseNotificationType.NotFound)
+                    return NotFound(ApiResultDTO<object>.CreateFailureResult(_excluirCupom.AggregateErrors()));
+
+                return BadRequest(ApiResultDTO<object>.CreateFailureResult(_excluirCupom.AggregateErrors()));
+            }
+
+            return Ok(ApiResultDTO<object>.CreateSuccessResult(null, "Cupom excluído com sucesso."));
         });
 }

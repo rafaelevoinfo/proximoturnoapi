@@ -13,4 +13,6 @@ public interface ICupomRepository : IBaseRepository
     Task<int> GetUsoCountGlobalAsync(int cupomId, int? idPedidoExcluir = null);
     Task<int> GetUsoCountClienteAsync(int cupomId, int clienteId, int? idPedidoExcluir = null);
     Task SaveAsync(Cupom cupom, bool commit = true);
+    Task<bool> DeleteAsync(int id);
+    Task<bool> IsUsedInPedidoAsync(int id);
 }

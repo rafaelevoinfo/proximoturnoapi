@@ -86,6 +86,8 @@ builder.Services.AddScoped<ValidarCupom>();
 builder.Services.AddScoped<CadastroCupom>();
 builder.Services.AddScoped<AtualizarCupom>();
 builder.Services.AddScoped<ListarCupons>();
+builder.Services.AddScoped<ExcluirCupom>();
+
 
 builder.Services.AddIdentityUser();
 builder.Services.AddDocumentation();
