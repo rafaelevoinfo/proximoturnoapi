@@ -42,7 +42,7 @@ builder.Services.AddScoped<IListaDesejosRepository, ListaDesejosRepository>();
 builder.Services.AddScoped<ICupomRepository, CupomRepository>();
 builder.Services.AddSingleton<CloudinaryService>();
 builder.Services.AddSingleton<IEmailService, EmailService>();
-builder.Services.AddScoped<IEmailSender<Usuario>, IdentityEmailSender>();
+builder.Services.AddTransient<IEmailSender<Usuario>, IdentityEmailSender>();
 
 // Use Cases
 // Wishlist
