@@ -40,8 +40,14 @@ public class CadastroCliente(IClienteRepository _repository, UserManager<Usuario
             var usuario = new Usuario() {
                 UserName = cliente.Email,
                 Email = cliente.Email,
-                Nome = cliente.Nome
+                Nome = cliente.Nome,
+                EmailConfirmed = true
             };
+
+            _userManager.Options.Password.RequiredLength = 6;
+            _userManager.Options.Password.RequireUppercase = false;
+            _userManager.Options.Password.RequireNonAlphanumeric = false;
+            _userManager.Options.Password.RequireLowercase = false;
 
             var result = await _userManager.CreateAsync(usuario, clienteDto.Senha);
             if (!result.Succeeded) {

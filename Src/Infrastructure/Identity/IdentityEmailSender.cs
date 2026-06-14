@@ -4,17 +4,14 @@ using ProximoTurnoApi.Infrastructure.Services;
 
 namespace ProximoTurnoApi.Infrastructure.Identity;
 
-public class IdentityEmailSender : IEmailSender<Usuario>
-{
+public class IdentityEmailSender : IEmailSender<Usuario> {
     private readonly IEmailService _emailService;
 
-    public IdentityEmailSender(IEmailService emailService)
-    {
+    public IdentityEmailSender(IEmailService emailService) {
         _emailService = emailService;
     }
 
-    public async Task SendPasswordResetLinkAsync(Usuario user, string email, string resetLink)
-    {
+    public async Task SendPasswordResetLinkAsync(Usuario user, string email, string resetLink) {
         var body = $@"
             <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;'>
                 <h2 style='color: #581c87; text-align: center;'>Recuperação de Senha - Próximo Turno</h2>
@@ -30,8 +27,7 @@ public class IdentityEmailSender : IEmailSender<Usuario>
         await _emailService.SendEmailAsync(email, "Recuperação de Senha - Próximo Turno", body, isHtml: true);
     }
 
-    public async Task SendPasswordResetCodeAsync(Usuario user, string email, string resetCode)
-    {
+    public async Task SendPasswordResetCodeAsync(Usuario user, string email, string resetCode) {
         var body = $@"
             <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;'>
                 <h2 style='color: #581c87; text-align: center;'>Recuperação de Senha - Próximo Turno</h2>
@@ -47,8 +43,7 @@ public class IdentityEmailSender : IEmailSender<Usuario>
         await _emailService.SendEmailAsync(email, "Recuperação de Senha - Próximo Turno", body, isHtml: true);
     }
 
-    public async Task SendConfirmationLinkAsync(Usuario user, string email, string confirmationLink)
-    {
+    public async Task SendConfirmationLinkAsync(Usuario user, string email, string confirmationLink) {
         var body = $@"
             <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;'>
                 <h2 style='color: #581c87; text-align: center;'>Bem-vindo ao Próximo Turno!</h2>

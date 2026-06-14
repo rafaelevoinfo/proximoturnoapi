@@ -157,7 +157,8 @@ if (app.Environment.IsDevelopment()) {
         admin = new Usuario() {
             Nome = "Rafael",
             UserName = adminEmail,
-            Email = adminEmail
+            Email = adminEmail,
+            EmailConfirmed = true
         };
         userManager.Options.Password.RequiredLength = 1;
         userManager.Options.Password.RequireUppercase = false;
