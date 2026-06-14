@@ -43,6 +43,12 @@ services:
     environment:
       ConnectionStrings__DefaultConnection: Server=proximoturno-mysql;Port=3306;Database=${MYSQL_DATABASE};User=${MYSQL_USER};Password=${MYSQL_PASSWORD};      
       CLOUDINARY_URL: ${CLOUDINARY_URL}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USERNAME: ${SMTP_USERNAME}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_USE_SSL: ${SMTP_USE_SSL}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME}
     healthcheck:
         test: ["CMD-SHELL", "curl -f http://localhost/health || exit 1"]
         interval: 30s
