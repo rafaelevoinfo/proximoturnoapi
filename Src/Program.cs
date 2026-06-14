@@ -41,6 +41,8 @@ builder.Services.AddScoped<ITagRepository, TagRepository>();
 builder.Services.AddScoped<IListaDesejosRepository, ListaDesejosRepository>();
 builder.Services.AddScoped<ICupomRepository, CupomRepository>();
 builder.Services.AddSingleton<CloudinaryService>();
+builder.Services.AddSingleton<IEmailService, EmailService>();
+builder.Services.AddScoped<IEmailSender<Usuario>, IdentityEmailSender>();
 
 // Use Cases
 // Wishlist
@@ -196,7 +198,8 @@ static class Extensions {
             .AddRoles<IdentityRole>()
             .AddErrorDescriber<PortugueseIdentityErrorDescriber>()
             .AddApiEndpoints()
-            .AddEntityFrameworkStores<DatabaseContext>();
+            .AddEntityFrameworkStores<DatabaseContext>()
+            .AddDefaultTokenProviders();
     }
 
     public static void AddDocumentation(this IServiceCollection services) {
