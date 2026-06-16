@@ -44,11 +44,6 @@ public class CadastroCliente(IClienteRepository _repository, UserManager<Usuario
                 EmailConfirmed = true
             };
 
-            _userManager.Options.Password.RequiredLength = 6;
-            _userManager.Options.Password.RequireUppercase = false;
-            _userManager.Options.Password.RequireNonAlphanumeric = false;
-            _userManager.Options.Password.RequireLowercase = false;
-
             var result = await _userManager.CreateAsync(usuario, clienteDto.Senha);
             if (!result.Succeeded) {
                 logger.LogWarning("Falha ao criar usuário Identity para o cliente {Email}: {Errors}", cliente.Email, string.Join(", ", result.Errors.Select(e => e.Description)));

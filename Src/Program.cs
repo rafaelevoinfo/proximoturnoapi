@@ -161,9 +161,6 @@ if (app.Environment.IsDevelopment()) {
             EmailConfirmed = true
         };
         userManager.Options.Password.RequiredLength = 1;
-        userManager.Options.Password.RequireUppercase = false;
-        userManager.Options.Password.RequireNonAlphanumeric = false;
-        userManager.Options.Password.RequireLowercase = false;
         var result = await userManager.CreateAsync(admin, "1");
         if (!result.Succeeded) {
             throw new Exception("Failed to create admin user: " + string.Join(", ", result.Errors.Select(e => e.Description)));
@@ -191,10 +188,10 @@ static class Extensions {
         // })
         services.AddIdentityCore<Usuario>(options => {
             options.User.RequireUniqueEmail = true;
-            // options.Password.RequiredLength = 6;
-            // options.Password.RequireNonAlphanumeric = false;
-            // options.Password.RequireUppercase = false;
-            // options.Password.RequireLowercase = false;
+            options.Password.RequiredLength = 6;
+            options.Password.RequireNonAlphanumeric = false;
+            options.Password.RequireUppercase = false;
+            options.Password.RequireLowercase = false;
         })
             .AddRoles<IdentityRole>()
             .AddErrorDescriber<PortugueseIdentityErrorDescriber>()
