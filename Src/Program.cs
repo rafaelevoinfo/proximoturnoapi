@@ -40,9 +40,13 @@ builder.Services.AddScoped<IPedidoRepository, PedidoRepository>();
 builder.Services.AddScoped<ITagRepository, TagRepository>();
 builder.Services.AddScoped<IListaDesejosRepository, ListaDesejosRepository>();
 builder.Services.AddScoped<ICupomRepository, CupomRepository>();
+builder.Services.AddScoped<IContratoRepository, ContratoRepository>();
 builder.Services.AddSingleton<CloudinaryService>();
 builder.Services.AddSingleton<IEmailService, EmailService>();
 builder.Services.AddTransient<IEmailSender<Usuario>, IdentityEmailSender>();
+builder.Services.AddHttpClient();
+builder.Services.AddScoped<IAutentiqueService, AutentiqueService>();
+builder.Services.AddScoped<IContratoPdfService, ContratoPdfService>();
 
 // Use Cases
 // Wishlist
@@ -89,6 +93,11 @@ builder.Services.AddScoped<CadastroCupom>();
 builder.Services.AddScoped<AtualizarCupom>();
 builder.Services.AddScoped<ListarCupons>();
 builder.Services.AddScoped<ExcluirCupom>();
+
+// Contrato Use Cases
+builder.Services.AddScoped<GerarContratoPedido>();
+builder.Services.AddScoped<ConsultarContratoPedido>();
+builder.Services.AddScoped<ProcessarWebhookAutentique>();
 
 
 builder.Services.AddIdentityUser();

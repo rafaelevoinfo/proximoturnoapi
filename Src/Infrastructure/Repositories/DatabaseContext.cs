@@ -18,6 +18,7 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : Identi
         ConfigureListaDesejos(modelBuilder);
         ConfigureComentario(modelBuilder);
         ConfigureCupom(modelBuilder);
+        ConfigureContratoAutentique(modelBuilder);
 
         modelBuilder.Entity<Cliente>(b => {
             b.HasIndex(c => c.Email).IsUnique();
@@ -209,6 +210,23 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : Identi
         });
     }
 
+    private static void ConfigureContratoAutentique(ModelBuilder modelBuilder) {
+        modelBuilder.Entity<ContratoAutentique>(builder => {
+            builder.ToTable("CONTRATO_AUTENTIQUE");
+            builder.HasKey(c => c.Id);
+            builder.Property(c => c.Id).HasColumnName("ID");
+            builder.Property(c => c.Status).HasColumnName("STATUS").HasConversion<short>();
+
+            builder.HasOne(c => c.Pedido)
+                   .WithMany()
+                   .HasForeignKey(c => c.IdPedido)
+                   .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasIndex(c => c.IdPedido).IsUnique();
+            builder.HasIndex(c => c.AutentiqueDocumentId).IsUnique();
+        });
+    }
+
     public DbSet<Cliente> Clientes { get; set; }
     public DbSet<Jogo> Jogos { get; set; }
     public DbSet<JogoCopia> JogoCopias { get; set; }
@@ -219,4 +237,5 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : Identi
     public DbSet<ItemListaDesejos> ItensListaDesejos { get; set; }
     public DbSet<Comentario> Comentarios { get; set; }
     public DbSet<Cupom> Cupons { get; set; }
+    public DbSet<ContratoAutentique> ContratosAutentique { get; set; }
 }
