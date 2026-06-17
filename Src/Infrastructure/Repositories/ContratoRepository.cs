@@ -7,6 +7,7 @@ public interface IContratoRepository : IBaseRepository {
     Task SaveAsync(ContratoAutentique contrato, bool commit = true);
     Task<ContratoAutentique?> GetByPedidoIdAsync(int idPedido);
     Task<ContratoAutentique?> GetByAutentiqueDocumentIdAsync(string autentiqueDocumentId);
+    Task InativarContratosPorPedidoIdAsync(int idPedido);
 }
 
 public class ContratoRepository(DatabaseContext dbContext) : BaseRepository(dbContext), IContratoRepository {
@@ -17,14 +18,19 @@ public class ContratoRepository(DatabaseContext dbContext) : BaseRepository(dbCo
 
     public async Task<ContratoAutentique?> GetByPedidoIdAsync(int idPedido) {
         return await _dbContext.ContratosAutentique
-            .Include(c => c.Pedido)
             .AsTracking()
-            .FirstOrDefaultAsync(c => c.IdPedido == idPedido);
+            .FirstOrDefaultAsync(c => c.IdPedido == idPedido && c.Ativo);
     }
 
     public async Task<ContratoAutentique?> GetByAutentiqueDocumentIdAsync(string autentiqueDocumentId) {
         return await _dbContext.ContratosAutentique
             .AsTracking()
             .FirstOrDefaultAsync(c => c.AutentiqueDocumentId == autentiqueDocumentId);
+    }
+
+    public async Task InativarContratosPorPedidoIdAsync(int idPedido) {
+        await _dbContext.ContratosAutentique
+            .Where(c => c.IdPedido == idPedido && c.Ativo)
+            .ExecuteUpdateAsync(s => s.SetProperty(c => c.Ativo, false));
     }
 }

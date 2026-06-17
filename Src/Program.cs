@@ -41,6 +41,8 @@ builder.Services.AddScoped<ITagRepository, TagRepository>();
 builder.Services.AddScoped<IListaDesejosRepository, ListaDesejosRepository>();
 builder.Services.AddScoped<ICupomRepository, CupomRepository>();
 builder.Services.AddScoped<IContratoRepository, ContratoRepository>();
+builder.Services.AddSingleton<IContratoQueue, ContratoQueue>();
+builder.Services.AddHostedService<ContratoQueueBackgroundService>();
 builder.Services.AddSingleton<CloudinaryService>();
 builder.Services.AddSingleton<IEmailService, EmailService>();
 builder.Services.AddTransient<IEmailSender<Usuario>, IdentityEmailSender>();

@@ -14,6 +14,7 @@ public class CadastroPedido(IPedidoRepository pedidoRepository,
     ICategoriaRepository _categoriaRepository,
     UserManager<Usuario> _userManager,
     ValidarCupom _validarCupom,
+    IContratoQueue _contratoQueue,
     ILogger<CadastroPedido> logger) : PedidoUseCaseBasico(pedidoRepository) {
 
     public async Task<int> ExecuteAsync(ClaimsPrincipal userClaim, NovoPedidoDTO novoPedidoDto) {
@@ -60,40 +61,32 @@ public class CadastroPedido(IPedidoRepository pedidoRepository,
             }
         }
 
-        if (!string.IsNullOrWhiteSpace(novoPedidoDto.CupomCodigo))
-        {
-            var validacao = await _validarCupom.ExecuteAsync(new ValidarCupomDTO
-            {
+        if (!string.IsNullOrWhiteSpace(novoPedidoDto.CupomCodigo)) {
+            var validacao = await _validarCupom.ExecuteAsync(new ValidarCupomDTO {
                 Codigo = novoPedidoDto.CupomCodigo,
                 IdCliente = cliente.Id,
-                Itens = novoPedidoDto.Items.Select(i => new ItemCupomValidacaoDTO
-                {
+                Itens = novoPedidoDto.Items.Select(i => new ItemCupomValidacaoDTO {
                     IdJogo = i.IdJogo,
                     IdPeriodo = i.IdPeriodo
                 }).ToList()
             });
 
-            if (!validacao.Valido)
-            {
+            if (!validacao.Valido) {
                 logger.LogWarning("Falha ao aplicar cupom no pedido: {Mensagem}", validacao.Mensagem);
                 AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest, validacao.Mensagem ?? "Cupom inválido."));
                 return 0;
             }
 
-            if (validacao.IdCupom.HasValue)
-            {
+            if (validacao.IdCupom.HasValue) {
                 pedido.AplicarCupom(validacao.IdCupom.Value, validacao.ValorDescontoCalculado);
 
-                if (!pedido.IsValid)
-                {
+                if (!pedido.IsValid) {
                     logger.LogWarning("Falha ao aplicar regras de negócio do cupom: {Errors}", string.Join(", ", pedido.Notifications.Select(n => n.Message)));
                     IReadOnlyCollection<UseCaseNotification> notifications = pedido.Notifications.Select(n => UseCaseNotification.Create(UseCaseNotificationType.BadRequest, n.Message)).ToList();
                     AddNotifications(notifications);
                     return 0;
                 }
-            }
-            else
-            {
+            } else {
                 logger.LogWarning("Validação do cupom retornou sucesso mas ID do cupom está ausente.");
                 AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest, "Erro ao associar o cupom."));
                 return 0;
@@ -103,6 +96,10 @@ public class CadastroPedido(IPedidoRepository pedidoRepository,
         try {
             await _pedidoRepository.SaveAsync(pedido);
             logger.LogInformation("Pedido {PedidoId} cadastrado com sucesso para o cliente {ClienteId}.", pedido.Id, cliente.Id);
+            
+            // Enfileira a geração de contrato de forma assíncrona
+            _contratoQueue.Enfileirar(pedido.Id);
+            
             return pedido.Id;
         } catch (Exception ex) {
             logger.LogError(ex, "Erro fatal ao salvar o pedido no banco de dados.");

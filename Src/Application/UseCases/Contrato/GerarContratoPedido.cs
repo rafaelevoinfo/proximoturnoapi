@@ -23,6 +23,7 @@ public class GerarContratoPedido(
         // 1. Verificar se já existe contrato para este pedido
         var contratoExistente = await contratoRepository.GetByPedidoIdAsync(idPedido);
         if (contratoExistente is not null) {
+            logger.LogWarning("Tentativa de gerar contrato para o pedido {IdPedido}, mas já existe um contrato com ID {IdContrato}", idPedido, contratoExistente.Id);
             AddNotification(UseCaseNotification.Create(
                 UseCaseNotificationType.BadRequest,
                 "Já existe um contrato gerado para este pedido."));
@@ -32,6 +33,7 @@ public class GerarContratoPedido(
         // 2. Buscar o pedido completo
         var pedido = await pedidoRepository.GetByIdAsync(idPedido);
         if (pedido is null) {
+            logger.LogWarning("Pedido com ID {IdPedido} não encontrado para geração de contrato.", idPedido);
             AddNotification(UseCaseNotification.Create(
                 UseCaseNotificationType.NotFound,
                 "Pedido não encontrado."));
@@ -39,6 +41,7 @@ public class GerarContratoPedido(
         }
 
         if (pedido.Status != StatusPedido.Pendente && pedido.Status != StatusPedido.Entregue) {
+            logger.LogWarning("Pedido com ID {IdPedido} tem status {Status}, não é permitido gerar contrato.", idPedido, pedido.Status);
             AddNotification(UseCaseNotification.Create(
                 UseCaseNotificationType.BadRequest,
                 "Contrato só pode ser gerado para pedidos com status 'Pendente' ou 'Entregue'."));
@@ -46,6 +49,7 @@ public class GerarContratoPedido(
         }
 
         if (pedido.Items.Count == 0) {
+            logger.LogWarning("Pedido com ID {IdPedido} não possui itens, não é possível gerar contrato.", idPedido);
             AddNotification(UseCaseNotification.Create(
                 UseCaseNotificationType.BadRequest,
                 "Não é possível gerar contrato para um pedido sem itens."));

@@ -33,4 +33,7 @@ public class ContratoAutentique : BaseModel {
 
     [Column("DATA_ASSINATURA")]
     public DateTime? DataAssinatura { get; set; }
+
+    [Column("ATIVO")]
+    public bool Ativo { get; set; } = true;
 }

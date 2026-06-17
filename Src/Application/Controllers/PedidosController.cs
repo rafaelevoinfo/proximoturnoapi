@@ -59,6 +59,7 @@ public class PedidosController(ILogger<ControllerBasico> logger,
             if (novoPedidoId == 0) {
                 return BadRequest(ApiResultDTO<PedidoDTO>.CreateFailureResult(_cadastroPedidoUseCase.AggregateErrors()));
             }
+
             return Ok(ApiResultDTO<PedidoDTO>.CreateSuccessResult(new PedidoDTO() { Id = novoPedidoId }, "Pedido realizado com sucesso"));
         });
     }

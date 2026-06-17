@@ -8,6 +8,7 @@ public class AtualizarPedido(IPedidoRepository pedidoRepository,
     IJogoRepository _jogoRepository,
     ICategoriaRepository _categoriaRepository,
     ValidarCupom _validarCupom,
+    IContratoQueue _contratoQueue,
     ILogger<AtualizarPedido> logger) : PedidoUseCaseBasico(pedidoRepository) {
 
     public async Task ExecuteAsync(NovoPedidoDTO novoPedidoDto) {
@@ -108,6 +109,9 @@ public class AtualizarPedido(IPedidoRepository pedidoRepository,
         try {
             await _pedidoRepository.SaveAsync(pedido);
             logger.LogInformation("Pedido {PedidoId} atualizado com sucesso.", pedido.Id);
+            
+            // Enfileira a nova geração de contrato inativando os anteriores
+            _contratoQueue.Enfileirar(pedido.Id, inativarExistente: true);
         } catch (Exception ex) {
             logger.LogError(ex, "Erro fatal ao atualizar o pedido {PedidoId} no banco de dados.", pedido.Id);
             throw;

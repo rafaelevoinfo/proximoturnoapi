@@ -7,6 +7,7 @@ namespace ProximoTurnoApi.Application.UseCases;
 public class RenovarPedido(IPedidoRepository pedidoRepository,
 
                            ICategoriaRepository _categoriaRepository,
+                           IContratoQueue _contratoQueue,
                            ILogger<RenovarPedido> logger) : PedidoUseCaseBasico(pedidoRepository) {
     public async Task ExecuteAsync(int idPedido, List<ItemPedidoRenovarDTO> itens) {
         logger.LogInformation("Iniciando renovação para o pedido {PedidoId} com {ItemCount} itens.", idPedido, itens.Count);
@@ -65,6 +66,8 @@ public class RenovarPedido(IPedidoRepository pedidoRepository,
             await _pedidoRepository.SaveAsync(pedidoExistente, false);
             await _pedidoRepository.SaveAsync(novoPedido);
             logger.LogInformation("Renovação do pedido {PedidoId} concluída. Novo pedido gerado: {NovoPedidoId}.", idPedido, novoPedido.Id);
+
+            _contratoQueue.Enfileirar(novoPedido.Id);
         } catch (Exception ex) {
             logger.LogError(ex, "Erro fatal ao salvar renovação do pedido {PedidoId}.", idPedido);
             throw;

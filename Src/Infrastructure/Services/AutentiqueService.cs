@@ -96,14 +96,15 @@ public class AutentiqueService(IConfiguration configuration, IHttpClientFactory 
     public async Task<AutentiqueDocumentResult> CriarDocumentoAsync(byte[] pdfBytes, string nomeDocumento, string nomeSignatario, bool sandbox) {
         logger.LogInformation("Criando documento no Autentique: {Nome}, Sandbox: {Sandbox}", nomeDocumento, sandbox);
 
-        const string mutation = """
+        var sandboxValue = sandbox ? "true" : "false";
+        var mutation = $$"""
             mutation CreateDocumentMutation(
                 $document: DocumentInput!,
                 $signers: [SignerInput!]!,
                 $file: Upload!
             ) {
                 createDocument(
-                    sandbox: true,
+                    sandbox: {{sandboxValue}},
                     document: $document,
                     signers: $signers,
                     file: $file

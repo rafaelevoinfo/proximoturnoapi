@@ -216,13 +216,14 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : Identi
             builder.HasKey(c => c.Id);
             builder.Property(c => c.Id).HasColumnName("ID");
             builder.Property(c => c.Status).HasColumnName("STATUS").HasConversion<short>();
+            builder.Property(c => c.Ativo).HasColumnName("ATIVO").HasDefaultValue(true);
 
             builder.HasOne(c => c.Pedido)
                    .WithMany()
                    .HasForeignKey(c => c.IdPedido)
                    .OnDelete(DeleteBehavior.Restrict);
 
-            builder.HasIndex(c => c.IdPedido).IsUnique();
+            builder.HasIndex(c => c.IdPedido);
             builder.HasIndex(c => c.AutentiqueDocumentId).IsUnique();
         });
     }
