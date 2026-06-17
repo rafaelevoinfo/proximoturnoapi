@@ -6,7 +6,13 @@ using ProximoTurnoApi.Infrastructure.Repositories;
 
 namespace ProximoTurnoApi.Application.UseCases;
 
-public class BuscarPedidos(IPedidoRepository pedidoRepository, IClienteRepository _clienteRepository, UserManager<Usuario> _userManager, ILogger<BuscarPedidos> logger) : PedidoUseCaseBasico(pedidoRepository) {
+public class BuscarPedidos(
+    IPedidoRepository pedidoRepository,
+    IClienteRepository _clienteRepository,
+    IContratoRepository _contratoRepository,
+    UserManager<Usuario> _userManager,
+    ILogger<BuscarPedidos> logger) : PedidoUseCaseBasico(pedidoRepository) {
+
     public async Task<List<PedidoDTO>> ExecuteAsync(ClaimsPrincipal user, FiltroPedidoDTO filtro) {
         logger.LogInformation("Buscando lista de pedidos com filtros: {@Filtro}", filtro);
         if (!await AdicionarFiltroPorCliente(user, _clienteRepository, filtro)) {
@@ -15,9 +21,21 @@ public class BuscarPedidos(IPedidoRepository pedidoRepository, IClienteRepositor
             return [];
         }
 
-        var pedidos = (await _pedidoRepository.GetAllAsync(filtro))
-                .Select(PedidoDTO.FromModel)
-                .ToList();
+        var pedidosModels = await _pedidoRepository.GetAllAsync(filtro);
+        var pedidos = pedidosModels.Select(PedidoDTO.FromModel).ToList();
+
+        if (pedidos.Count > 0) {
+            var pedidoIds = pedidos.Select(p => p.Id).ToList();
+            var contratos = await _contratoRepository.GetActiveByPedidoIdsAsync(pedidoIds);
+            var contratosDict = contratos.ToDictionary(c => c.IdPedido);
+
+            foreach (var p in pedidos) {
+                if (contratosDict.TryGetValue(p.Id, out var contrato)) {
+                    p.ContratoStatus = contrato.Status.ToString();
+                    p.ContratoLink = contrato.LinkAssinatura;
+                }
+            }
+        }
 
         logger.LogInformation("{Count} pedidos encontrados para os critérios informados.", pedidos.Count);
         return pedidos;
@@ -41,7 +59,14 @@ public class BuscarPedidos(IPedidoRepository pedidoRepository, IClienteRepositor
             }
         }
 
-        return PedidoDTO.FromModel(pedido);
+        var dto = PedidoDTO.FromModel(pedido);
+        var contrato = await _contratoRepository.GetByPedidoIdAsync(idPedido);
+        if (contrato is not null) {
+            dto.ContratoStatus = contrato.Status.ToString();
+            dto.ContratoLink = contrato.LinkAssinatura;
+        }
+
+        return dto;
     }
 
     private async Task<bool> AdicionarFiltroPorCliente(ClaimsPrincipal userClaim, IClienteRepository clienteRepository, FiltroPedidoDTO filtro) {

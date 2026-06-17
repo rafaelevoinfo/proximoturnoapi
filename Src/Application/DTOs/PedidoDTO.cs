@@ -28,6 +28,9 @@ public record PedidoDTO {
 
     public DateTime? DataHoraAlteracao { get; set; }
 
+    public string? ContratoStatus { get; set; }
+    public string? ContratoLink { get; set; }
+
     [Required]
     public List<ItemPedidoDTO>? Items { get; set; } = [];
 

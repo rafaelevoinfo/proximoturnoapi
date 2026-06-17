@@ -117,6 +117,7 @@ public class ContratoQueueBackgroundServiceTests
         public Task SaveAsync(ContratoAutentique contrato, bool commit = true) => Task.CompletedTask;
         public Task<ContratoAutentique?> GetByPedidoIdAsync(int idPedido) => Task.FromResult<ContratoAutentique?>(null);
         public Task<ContratoAutentique?> GetByAutentiqueDocumentIdAsync(string id) => Task.FromResult<ContratoAutentique?>(null);
+        public Task<List<ContratoAutentique>> GetActiveByPedidoIdsAsync(List<int> idPedidos) => Task.FromResult(new List<ContratoAutentique>());
         public Task SaveChangesAsync() => Task.CompletedTask;
         public Task StartTransactionAsync() => Task.CompletedTask;
         public Task CommitTransactionAsync() => Task.CompletedTask;

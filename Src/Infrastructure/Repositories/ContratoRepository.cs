@@ -7,6 +7,7 @@ public interface IContratoRepository : IBaseRepository {
     Task SaveAsync(ContratoAutentique contrato, bool commit = true);
     Task<ContratoAutentique?> GetByPedidoIdAsync(int idPedido);
     Task<ContratoAutentique?> GetByAutentiqueDocumentIdAsync(string autentiqueDocumentId);
+    Task<List<ContratoAutentique>> GetActiveByPedidoIdsAsync(List<int> idPedidos);
     Task InativarContratosPorPedidoIdAsync(int idPedido);
 }
 
@@ -26,6 +27,16 @@ public class ContratoRepository(DatabaseContext dbContext) : BaseRepository(dbCo
         return await _dbContext.ContratosAutentique
             .AsTracking()
             .FirstOrDefaultAsync(c => c.AutentiqueDocumentId == autentiqueDocumentId);
+    }
+
+    public async Task<List<ContratoAutentique>> GetActiveByPedidoIdsAsync(List<int> idPedidos) {
+        if (idPedidos == null || idPedidos.Count == 0) {
+            return [];
+        }
+        return await _dbContext.ContratosAutentique
+            .AsNoTracking()
+            .Where(c => idPedidos.Contains(c.IdPedido) && c.Ativo)
+            .ToListAsync();
     }
 
     public async Task InativarContratosPorPedidoIdAsync(int idPedido) {
