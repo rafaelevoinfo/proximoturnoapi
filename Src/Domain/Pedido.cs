@@ -165,6 +165,7 @@ public class Pedido : BaseModel {
         foreach (var item in _items) {
             var itemRenovar = itensRenovar.FirstOrDefault(i => i.HasValue && i.Value.idItem == item.Id);
             if (itemRenovar is not null) {
+                item.JogoCopia.Status = StatusJogo.Disponivel; // Permite que AdicionarItem valide e reserve a cópia
                 var novoItem = new ItemPedido() {
                     IdJogoCopia = item.IdJogoCopia,
                     JogoCopia = item.JogoCopia,
@@ -179,7 +180,6 @@ public class Pedido : BaseModel {
         novoPedido.CalcularTotal();
         novoPedido.Entregar();
 
-        Status = StatusPedido.Devolvido;
         RegistrarAlteracao();
         return novoPedido;
     }

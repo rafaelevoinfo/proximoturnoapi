@@ -56,9 +56,14 @@ public class RenovarPedido(IPedidoRepository pedidoRepository,
         }
 
         var novoPedido = pedidoExistente.Renovar(itensNovoPedido);
-        if (novoPedido is null || !pedidoExistente.IsValid) {
-            logger.LogWarning("Regra de negócio impediu renovação do pedido {PedidoId}: {Errors}", idPedido, string.Join(", ", pedidoExistente.Notifications.Select(n => n.Message)));
-            AddNotifications((IList<UseCaseNotification>)pedidoExistente.Notifications.Select(n => UseCaseNotification.Create(UseCaseNotificationType.BadRequest, n.Message)).ToList());
+        if (novoPedido is null || !pedidoExistente.IsValid || !novoPedido.IsValid) {
+            var errors = string.Join(", ", pedidoExistente.Notifications.Concat(novoPedido?.Notifications ?? []).Select(n => n.Message));
+            logger.LogWarning("Regra de negócio impediu renovação do pedido {PedidoId}: {Errors}", idPedido, errors);
+            var notifications = pedidoExistente.Notifications
+                .Concat(novoPedido?.Notifications ?? [])
+                .Select(n => UseCaseNotification.Create(UseCaseNotificationType.BadRequest, n.Message))
+                .ToList();
+            AddNotifications((IList<UseCaseNotification>)notifications);
             return;
         }
 
