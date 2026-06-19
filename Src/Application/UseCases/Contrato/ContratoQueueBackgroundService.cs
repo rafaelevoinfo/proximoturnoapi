@@ -1,10 +1,12 @@
 using System;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Infrastructure.Repositories;
 
 namespace ProximoTurnoApi.Application.UseCases;
@@ -85,7 +87,13 @@ public class ContratoQueueBackgroundService : BackgroundService
 
             var gerarContratoUseCase = scope.ServiceProvider.GetRequiredService<GerarContratoPedido>();
 
-            var contrato = await gerarContratoUseCase.ExecuteAsync(job.IdPedido);
+            var adminClaims = new ClaimsPrincipal(
+                new ClaimsIdentity(
+                    new[] { new Claim(ClaimTypes.Role, Roles.Admin) },
+                    "SystemAuth"
+                )
+            );
+            var contrato = await gerarContratoUseCase.ExecuteAsync(adminClaims, job.IdPedido);
 
             if (!gerarContratoUseCase.IsValid)
             {

@@ -13,7 +13,15 @@ public class ProcessarWebhookAutentique(
 
     /// <summary>
     /// Processa um evento de webhook recebido do Autentique.
-    /// O payload exato pode variar; fazemos parsing defensivo e logamos o body cru.
+    /// A estrutura do payload segue a documentação oficial:
+    /// https://docs.autentique.com.br/api/integration-basics/webhooks
+    ///
+    /// Payload raiz contém: id, object, name, format, url, event { id, object, organization, type, data, previous_attributes, created_at }
+    ///
+    /// Eventos tratados:
+    /// - signature.accepted: signatário assinou o documento
+    /// - signature.rejected: signatário recusou o documento
+    /// - document.finished: todos os signatários concluíram (todas assinaturas finalizadas)
     /// </summary>
     public async Task ExecuteAsync(string rawBody) {
         logger.LogInformation("Webhook Autentique recebido: {Body}", rawBody);
@@ -22,32 +30,32 @@ public class ProcessarWebhookAutentique(
             using var doc = JsonDocument.Parse(rawBody);
             var root = doc.RootElement;
 
-            // Tenta extrair o document ID do payload
-            // A estrutura exata do webhook deve ser validada durante testes com o Autentique
-            string? documentId = null;
-            string? eventType = null;
-
-            if (root.TryGetProperty("document", out var documentEl)) {
-                if (documentEl.TryGetProperty("id", out var idEl)) {
-                    documentId = idEl.GetString();
-                }
-            }
-
-            if (root.TryGetProperty("event", out var eventEl)) {
-                eventType = eventEl.GetString();
-            }
-
-            // Fallback: tenta pegar de outros formatos possíveis
-            if (documentId is null && root.TryGetProperty("document_id", out var docIdEl)) {
-                documentId = docIdEl.GetString();
-            }
-
-            if (documentId is null) {
-                logger.LogWarning("Webhook recebido sem document ID identificável");
+            // Extrair o evento conforme estrutura documentada: root.event
+            if (!root.TryGetProperty("event", out var eventEl)) {
+                logger.LogWarning("Webhook recebido sem objeto 'event'");
                 return;
             }
 
-            logger.LogInformation("Processando webhook: DocumentId={DocId}, Event={Event}", documentId, eventType);
+            // Extrair tipo do evento: event.type
+            string? eventType = null;
+            if (eventEl.TryGetProperty("type", out var typeEl)) {
+                eventType = typeEl.GetString();
+            }
+
+            if (string.IsNullOrEmpty(eventType)) {
+                logger.LogWarning("Webhook recebido sem event.type");
+                return;
+            }
+
+            // Extrair o document ID dependendo do tipo de evento
+            string? documentId = ExtrairDocumentId(eventEl, eventType);
+
+            if (string.IsNullOrEmpty(documentId)) {
+                logger.LogWarning("Webhook recebido sem document ID identificável. EventType={EventType}", eventType);
+                return;
+            }
+
+            logger.LogInformation("Processando webhook: DocumentId={DocId}, EventType={EventType}", documentId, eventType);
 
             var contrato = await contratoRepository.GetByAutentiqueDocumentIdAsync(documentId);
             if (contrato is null) {
@@ -61,23 +69,67 @@ public class ProcessarWebhookAutentique(
                 return;
             }
 
-            // Determina ação baseada no evento
-            var eventLower = eventType?.ToLowerInvariant() ?? "";
-            if (eventLower.Contains("accepted") || eventLower.Contains("finished") || eventLower.Contains("signed")) {
-                contrato.Status = StatusContrato.Assinado;
-                contrato.DataAssinatura = DateTime.Now;
-                await contratoRepository.SaveAsync(contrato);
-                logger.LogInformation("Contrato do pedido {IdPedido} marcado como ASSINADO via webhook", contrato.IdPedido);
-            } else if (eventLower.Contains("rejected")) {
-                contrato.Status = StatusContrato.Rejeitado;
-                await contratoRepository.SaveAsync(contrato);
-                logger.LogInformation("Contrato do pedido {IdPedido} marcado como REJEITADO via webhook", contrato.IdPedido);
-            } else {
-                logger.LogInformation("Evento de webhook não alterou status: {Event}", eventType);
+            // Determina ação baseada no tipo do evento
+            switch (eventType) {
+                case "signature.accepted":
+                case "document.finished":
+                    contrato.Status = StatusContrato.Assinado;
+                    contrato.DataAssinatura = DateTime.Now;
+                    await contratoRepository.SaveAsync(contrato);
+                    logger.LogInformation("Contrato do pedido {IdPedido} marcado como ASSINADO via webhook (evento: {EventType})",
+                        contrato.IdPedido, eventType);
+                    break;
+
+                case "signature.rejected":
+                    contrato.Status = StatusContrato.Rejeitado;
+                    await contratoRepository.SaveAsync(contrato);
+                    logger.LogInformation("Contrato do pedido {IdPedido} marcado como REJEITADO via webhook (evento: {EventType})",
+                        contrato.IdPedido, eventType);
+                    break;
+
+                default:
+                    logger.LogInformation("Evento de webhook não alterou status do contrato: {EventType}", eventType);
+                    break;
             }
 
         } catch (JsonException ex) {
             logger.LogError(ex, "Erro ao parsear payload do webhook");
         }
+    }
+
+    /// <summary>
+    /// Extrai o document ID do payload do evento, de acordo com o tipo de evento.
+    ///
+    /// Para eventos de signature (signature.*): event.data.document contém o hash ID do documento.
+    /// Para eventos de document (document.*): event.data.id contém o hash ID do documento.
+    /// </summary>
+    private static string? ExtrairDocumentId(JsonElement eventEl, string eventType) {
+        if (!eventEl.TryGetProperty("data", out var dataEl)) {
+            return null;
+        }
+
+        if (eventType.StartsWith("signature.", StringComparison.OrdinalIgnoreCase)) {
+            // Evento de assinatura: event.data.document = "hash_do_documento"
+            if (dataEl.TryGetProperty("document", out var docEl) && docEl.ValueKind == JsonValueKind.String) {
+                return docEl.GetString();
+            }
+        }
+
+        if (eventType.StartsWith("document.", StringComparison.OrdinalIgnoreCase)) {
+            // Evento de documento: event.data.id = "hash_do_documento"
+            if (dataEl.TryGetProperty("id", out var idEl) && idEl.ValueKind == JsonValueKind.String) {
+                return idEl.GetString();
+            }
+        }
+
+        // Fallback: tenta ambos os caminhos
+        if (dataEl.TryGetProperty("document", out var fallbackDocEl) && fallbackDocEl.ValueKind == JsonValueKind.String) {
+            return fallbackDocEl.GetString();
+        }
+        if (dataEl.TryGetProperty("id", out var fallbackIdEl) && fallbackIdEl.ValueKind == JsonValueKind.String) {
+            return fallbackIdEl.GetString();
+        }
+
+        return null;
     }
 }

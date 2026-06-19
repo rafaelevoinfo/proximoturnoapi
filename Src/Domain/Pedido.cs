@@ -200,9 +200,9 @@ public class Pedido : BaseModel {
             AddNotification("ERRO", "Nenhum item foi devolvido");
             return false;
         }
-        if (idsItemsDevolvidos is null || idsItemsDevolvidos.Count == 0 || idsItemsDevolvidos?.Count == _items.Count()) {
-            Status = StatusPedido.Devolvido;
-        }
+
+        Status = StatusPedido.Devolvido;
+
         RegistrarAlteracao();
         return true;
     }

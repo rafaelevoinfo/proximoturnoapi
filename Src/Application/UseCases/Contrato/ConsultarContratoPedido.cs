@@ -1,5 +1,7 @@
 using System;
+using System.Security.Claims;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Infrastructure.Repositories;
@@ -10,19 +12,36 @@ namespace ProximoTurnoApi.Application.UseCases;
 public class ConsultarContratoPedido(
     IContratoRepository contratoRepository,
     IAutentiqueService autentiqueService,
+    UserManager<Usuario> userManager,
+    IClienteRepository clienteRepository,
+    IPedidoRepository pedidoRepository,
     ILogger<ConsultarContratoPedido> logger) : UseCaseBasico {
 
     /// <summary>
     /// Consulta o contrato de um pedido. Se o contrato estiver pendente, consulta o status
     /// atualizado no Autentique e atualiza o registro local se necessário.
     /// </summary>
-    public async Task<ContratoAutentique?> ExecuteAsync(int idPedido) {
+    public async Task<ContratoAutentique?> ExecuteAsync(ClaimsPrincipal userClaim, int idPedido) {
         var contrato = await contratoRepository.GetByPedidoIdAsync(idPedido);
         if (contrato is null) {
             AddNotification(UseCaseNotification.Create(
                 UseCaseNotificationType.NotFound,
                 "Nenhum contrato encontrado para este pedido."));
             return null;
+        }
+
+        if (!userClaim.IsInRole(Roles.Admin)) {
+            var user = await userManager.GetUserAsync(userClaim);
+            var idCliente = await clienteRepository.GetIdByEmailAsync(user?.Email ?? "");
+            
+            var pedido = contrato.Pedido ?? await pedidoRepository.GetByIdAsync(idPedido);
+            if (pedido == null || idCliente is null || idCliente.Value != pedido.Cliente?.Id) {
+                logger.LogWarning("Acesso negado: Usuário {UserEmail} tentou acessar o contrato do pedido {PedidoId}.", user?.Email, idPedido);
+                AddNotification(UseCaseNotification.Create(
+                    UseCaseNotificationType.Forbid,
+                    "Acesso negado: você não tem permissão para visualizar o contrato deste pedido."));
+                return null;
+            }
         }
 
         // Se já está em estado final, retorna direto

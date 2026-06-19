@@ -47,6 +47,10 @@ public class ContratoPdfService(ILogger<ContratoPdfService> logger, IWebHostEnvi
             index++;
         }
 
+        var enderecoPreamulo = !string.IsNullOrWhiteSpace(cliente.Endereco)
+            ? $", residente em {cliente.Endereco}"
+            : string.Empty;
+
         return html
             .Replace("{{NUMERO_PEDIDO}}", pedido.Id.ToString())
             .Replace("{{DATA_PEDIDO}}", pedido.DataHora.ToString("dd/MM/yyyy", PtBr))
@@ -54,6 +58,7 @@ public class ContratoPdfService(ILogger<ContratoPdfService> logger, IWebHostEnvi
             .Replace("{{TELEFONE_CLIENTE}}", cliente.Telefone)
             .Replace("{{EMAIL_CLIENTE}}", cliente.Email)
             .Replace("{{ENDERECO_CLIENTE}}", cliente.Endereco)
+            .Replace("{{ENDERECO_CLIENTE_PREAMBULO}}", enderecoPreamulo)
             .Replace("{{TABELA_ITENS}}", tabelaItens.ToString())
             .Replace("{{VALOR_TOTAL}}", pedido.ValorTotal.ToString("N2", PtBr))
             .Replace("{{VALOR_DESCONTO}}", pedido.ValorDesconto.ToString("N2", PtBr))

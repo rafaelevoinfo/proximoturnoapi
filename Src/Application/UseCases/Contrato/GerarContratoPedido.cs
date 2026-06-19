@@ -1,7 +1,9 @@
 using System;
 using System.Globalization;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using ProximoTurnoApi.Domain;
@@ -17,12 +19,28 @@ public class GerarContratoPedido(
     IContratoPdfService contratoPdfService,
     IAutentiqueService autentiqueService,
     IConfiguration configuration,
+    UserManager<Usuario> userManager,
+    IClienteRepository clienteRepository,
     ILogger<GerarContratoPedido> logger) : UseCaseBasico {
 
-    public async Task<ContratoAutentique?> ExecuteAsync(int idPedido) {
+    public async Task<ContratoAutentique?> ExecuteAsync(ClaimsPrincipal userClaim, int idPedido) {
         // 1. Verificar se já existe contrato para este pedido
         var contratoExistente = await contratoRepository.GetByPedidoIdAsync(idPedido);
         if (contratoExistente is not null) {
+            // Validação de proprietário mesmo que já exista contrato
+            if (!userClaim.IsInRole(Roles.Admin)) {
+                var user = await userManager.GetUserAsync(userClaim);
+                var idCliente = await clienteRepository.GetIdByEmailAsync(user?.Email ?? "");
+                
+                var pedidoExistente = contratoExistente.Pedido ?? await pedidoRepository.GetByIdAsync(idPedido);
+                if (pedidoExistente == null || idCliente is null || idCliente.Value != pedidoExistente.Cliente?.Id) {
+                    logger.LogWarning("Acesso negado: Usuário {UserEmail} tentou gerar contrato para o pedido {PedidoId}.", user?.Email, idPedido);
+                    AddNotification(UseCaseNotification.Create(
+                        UseCaseNotificationType.Forbid,
+                        "Acesso negado: você não tem permissão para visualizar o contrato deste pedido."));
+                    return null;
+                }
+            }
             logger.LogWarning("Tentativa de gerar contrato para o pedido {IdPedido}, mas já existe um contrato com ID {IdContrato}", idPedido, contratoExistente.Id);
             AddNotification(UseCaseNotification.Create(
                 UseCaseNotificationType.BadRequest,
@@ -38,6 +56,19 @@ public class GerarContratoPedido(
                 UseCaseNotificationType.NotFound,
                 "Pedido não encontrado."));
             return null;
+        }
+
+        // Validação de proprietário do pedido
+        if (!userClaim.IsInRole(Roles.Admin)) {
+            var user = await userManager.GetUserAsync(userClaim);
+            var idCliente = await clienteRepository.GetIdByEmailAsync(user?.Email ?? "");
+            if (idCliente is null || idCliente.Value != pedido.Cliente?.Id) {
+                logger.LogWarning("Acesso negado: Usuário {UserEmail} tentou gerar contrato para o pedido {PedidoId}.", user?.Email, idPedido);
+                AddNotification(UseCaseNotification.Create(
+                    UseCaseNotificationType.Forbid,
+                    "Acesso negado: você não tem permissão para visualizar o contrato deste pedido."));
+                return null;
+            }
         }
 
         if (pedido.Status != StatusPedido.Pendente && pedido.Status != StatusPedido.Entregue) {

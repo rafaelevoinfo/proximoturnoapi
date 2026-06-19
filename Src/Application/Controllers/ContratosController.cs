@@ -24,11 +24,13 @@ public class ContratosController(
     [HttpPost("pedido/{idPedido:int}")]
     public async Task<IActionResult> GerarContrato([FromRoute] int idPedido) {
         return await EncapsulateRequestAsync(async () => {
-            var contrato = await _gerarContratoUseCase.ExecuteAsync(idPedido);
+            var contrato = await _gerarContratoUseCase.ExecuteAsync(User, idPedido);
 
             if (!_gerarContratoUseCase.IsValid) {
                 var notification = _gerarContratoUseCase.Notifications.FirstOrDefault();
                 return notification?.Type switch {
+                    UseCaseNotificationType.Forbid =>
+                        Forbid(),
                     UseCaseNotificationType.NotFound =>
                         NotFound(ApiResultDTO<ContratoDTO>.CreateFailureResult(_gerarContratoUseCase.AggregateErrors())),
                     UseCaseNotificationType.Error =>
@@ -53,9 +55,13 @@ public class ContratosController(
     [HttpGet("pedido/{idPedido:int}")]
     public async Task<IActionResult> ConsultarContrato([FromRoute] int idPedido) {
         return await EncapsulateRequestAsync(async () => {
-            var contrato = await _consultarContratoUseCase.ExecuteAsync(idPedido);
+            var contrato = await _consultarContratoUseCase.ExecuteAsync(User, idPedido);
 
             if (!_consultarContratoUseCase.IsValid) {
+                var notification = _consultarContratoUseCase.Notifications.FirstOrDefault();
+                if (notification?.Type == UseCaseNotificationType.Forbid) {
+                    return Forbid();
+                }
                 return NotFound(ApiResultDTO<ContratoDTO>.CreateFailureResult(_consultarContratoUseCase.AggregateErrors()));
             }
 
