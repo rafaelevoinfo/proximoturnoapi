@@ -19,7 +19,7 @@ services:
       retries: 10
       interval: 5s
     networks:
-      - proximoturno-network
+      - dokploy-network
 
   migrations:
     build:
@@ -32,7 +32,7 @@ services:
       mysql:
         condition: service_healthy
     networks:
-      - proximoturno-network
+      - dokploy-network
 
   api:
     build:
@@ -61,12 +61,12 @@ services:
       mysql:
         condition: service_healthy
     networks:
-      - proximoturno-network
+      - dokploy-network
 
 volumes:
   mysql_data:
     driver: local
 
 networks:
-  proximoturno-network:
-    driver: bridge
+  dokploy-network:
+    external: true
