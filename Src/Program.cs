@@ -165,37 +165,36 @@ app.MapGroup("/api")
 
 app.MapControllers();
 
-if (app.Environment.IsDevelopment()) {
-    using var scope = app.Services.CreateScope();
-    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
 
-    if (!await roleManager.RoleExistsAsync(Roles.Admin)) {
-        await roleManager.CreateAsync(new IdentityRole(Roles.Admin));
-    }
+using var scope = app.Services.CreateScope();
+var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
 
-    if (!await roleManager.RoleExistsAsync(Roles.Member)) {
-        await roleManager.CreateAsync(new IdentityRole(Roles.Member));
-    }
+if (!await roleManager.RoleExistsAsync(Roles.Admin)) {
+    await roleManager.CreateAsync(new IdentityRole(Roles.Admin));
+}
 
-    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<Usuario>>();
-    var admin = await userManager.FindByEmailAsync("contato@proximoturno.com.br");
-    if (admin is null) {
-        var adminEmail = "contato@proximoturno.com.br";
-        admin = new Usuario() {
-            Nome = "Rafael",
-            UserName = adminEmail,
-            Email = adminEmail,
-            EmailConfirmed = true
-        };
-        userManager.Options.Password.RequiredLength = 1;
-        var result = await userManager.CreateAsync(admin, "1");
-        if (!result.Succeeded) {
-            throw new Exception("Failed to create admin user: " + string.Join(", ", result.Errors.Select(e => e.Description)));
-        }
+if (!await roleManager.RoleExistsAsync(Roles.Member)) {
+    await roleManager.CreateAsync(new IdentityRole(Roles.Member));
+}
+
+var userManager = scope.ServiceProvider.GetRequiredService<UserManager<Usuario>>();
+var admin = await userManager.FindByEmailAsync("contato@proximoturno.com.br");
+if (admin is null) {
+    var adminEmail = "contato@proximoturno.com.br";
+    admin = new Usuario() {
+        Nome = "Rafael",
+        UserName = adminEmail,
+        Email = adminEmail,
+        EmailConfirmed = true
+    };
+    userManager.Options.Password.RequiredLength = 1;
+    var result = await userManager.CreateAsync(admin, "admin");
+    if (!result.Succeeded) {
+        throw new Exception("Failed to create admin user: " + string.Join(", ", result.Errors.Select(e => e.Description)));
     }
-    if (!await userManager.IsInRoleAsync(admin, Roles.Admin)) {
-        await userManager.AddToRoleAsync(admin, Roles.Admin);
-    }
+}
+if (!await userManager.IsInRoleAsync(admin, Roles.Admin)) {
+    await userManager.AddToRoleAsync(admin, Roles.Admin);
 }
 
 app.Run();
