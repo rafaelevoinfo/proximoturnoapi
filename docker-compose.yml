@@ -62,9 +62,13 @@ services:
         condition: service_healthy
     networks:
       - proximoturno-network
+    volumes:
+      - api_uploads:/app/wwwroot/uploads
 
 volumes:
   mysql_data:
+    driver: local
+  api_uploads:
     driver: local
 
 networks:

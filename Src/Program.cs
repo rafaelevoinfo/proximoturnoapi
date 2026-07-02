@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi;
+using Microsoft.Extensions.FileProviders;
+using System.IO;
 using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Infrastructure.Repositories;
 using ProximoTurnoApi.Infrastructure.Identity;
@@ -81,6 +83,9 @@ builder.Services.AddScoped<CadastroCliente>();
 builder.Services.AddScoped<AtualizarCliente>();
 builder.Services.AddScoped<AtualizarStatusCliente>();
 
+// Upload
+builder.Services.AddScoped<UploadManual>();
+
 // Jogo
 builder.Services.AddScoped<CadastroJogo>();
 builder.Services.AddScoped<AtualizarJogo>();
@@ -142,6 +147,16 @@ if (app.Environment.IsDevelopment()) {
 }
 
 app.UseCors();
+
+var uploadsPath = Path.Combine(app.Environment.ContentRootPath, "wwwroot", "uploads");
+if (!Directory.Exists(uploadsPath)) {
+    Directory.CreateDirectory(uploadsPath);
+}
+
+app.UseStaticFiles(new StaticFileOptions {
+    FileProvider = new PhysicalFileProvider(uploadsPath),
+    RequestPath = "/uploads"
+});
 
 app.MapHealthChecks("/health");
 
