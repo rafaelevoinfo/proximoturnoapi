@@ -31,5 +31,8 @@ public class Cliente : BaseModel {
 
     [Column("ACEITA_RECEBER_OFERTAS")]
     public bool AceitaReceberOfertas { get; set; }
+
+    [Column("ATIVO")]
+    public bool Ativo { get; set; } = true;
 }
 

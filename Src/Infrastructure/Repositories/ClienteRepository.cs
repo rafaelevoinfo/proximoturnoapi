@@ -36,6 +36,10 @@ public class ClienteRepository : BaseRepository, IClienteRepository {
             query = query.Where(c => c.Telefone == filtro.Telefone);
         }
 
+        if (filtro.ApenasAtivos.HasValue && filtro.ApenasAtivos.Value) {
+            query = query.Where(c => c.Ativo);
+        }
+
         if (filtro.Page.HasValue && filtro.PageSize.HasValue && filtro.Page.Value > 0 && filtro.PageSize.Value > 0) {
             query = query.Skip((filtro.Page.Value - 1) * filtro.PageSize.Value).Take(filtro.PageSize.Value);
         }
@@ -80,7 +84,7 @@ public class ClienteRepository : BaseRepository, IClienteRepository {
     public async Task<bool> DeleteAsync(int id) {
         return await _dbContext.Clientes
             .Where(c => c.Id == id)
-            .ExecuteDeleteAsync() > 0;
+            .ExecuteUpdateAsync(s => s.SetProperty(c => c.Ativo, false)) > 0;
     }
 
     public Task<bool> ExistsAsync(int id) {

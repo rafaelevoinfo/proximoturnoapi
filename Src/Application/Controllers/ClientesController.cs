@@ -13,7 +13,8 @@ namespace ProximoTurnoApi.Application.Controllers;
 public class ClientesController(ILogger<ControllerBasico> logger,
                             IClienteRepository _repository,
                             CadastroCliente _cadastroClienteUseCase,
-                            AtualizarCliente _atualizarClienteUseCase) : ControllerBasico(logger) {
+                            AtualizarCliente _atualizarClienteUseCase,
+                            AtualizarStatusCliente _atualizarStatusClienteUseCase) : ControllerBasico(logger) {
 
     [HttpGet]
     [Authorize(Roles = Roles.Admin)]
@@ -67,10 +68,23 @@ public class ClientesController(ILogger<ControllerBasico> logger,
     [Authorize(Roles = Roles.Admin)]
     public async Task<IActionResult> DeleteCliente([FromRoute] int id) {
         return await EncapsulateRequestAsync(async () => {
-            if (!await _repository.DeleteAsync(id)) {
-                return NotFound(ApiResultDTO<ClienteDTO>.CreateFailureResult($"Cliente de id {id} não encontrado."));
+            var result = await _atualizarStatusClienteUseCase.ExecuteAsync(id, false);
+            if (!result) {
+                return NotFound(ApiResultDTO<ClienteDTO>.CreateFailureResult(_atualizarStatusClienteUseCase.AggregateErrors()));
             }
-            return Ok(ApiResultDTO<ClienteDTO>.CreateSuccessResult(null, "Cliente excluído com sucesso."));
+            return Ok(ApiResultDTO<ClienteDTO>.CreateSuccessResult(null, "Cliente inativado com sucesso."));
+        });
+    }
+
+    [HttpPost("{id:int}/ativar")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<IActionResult> AtivarCliente([FromRoute] int id) {
+        return await EncapsulateRequestAsync(async () => {
+            var result = await _atualizarStatusClienteUseCase.ExecuteAsync(id, true);
+            if (!result) {
+                return NotFound(ApiResultDTO<ClienteDTO>.CreateFailureResult(_atualizarStatusClienteUseCase.AggregateErrors()));
+            }
+            return Ok(ApiResultDTO<ClienteDTO>.CreateSuccessResult(null, "Cliente ativado com sucesso."));
         });
     }
 

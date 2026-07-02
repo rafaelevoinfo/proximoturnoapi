@@ -32,13 +32,14 @@ public record ClienteDTO {
     [EmailAddress(ErrorMessage = "O e-mail informado não é válido.")]
     public string Email { get; set; } = string.Empty;
 
-    [Required, MaxLength(100)]
-    public string Senha { get; set; } = string.Empty;
+    [MaxLength(100)]
+    public string? Senha { get; set; } = string.Empty;
 
     public DateOnly? DataNascimento { get; set; }
 
     public string? ComoNosConheceu { get; set; }
     public bool AceitaReceberOfertas { get; set; }
+    public bool Ativo { get; set; } = true;
 
     public Cliente ToModel() {
         return new Cliente {
@@ -49,7 +50,8 @@ public record ClienteDTO {
             Email = Email,
             DataNascimento = DataNascimento,
             ComoNosConheceu = ComoNosConheceu,
-            AceitaReceberOfertas = AceitaReceberOfertas
+            AceitaReceberOfertas = AceitaReceberOfertas,
+            Ativo = Ativo
         };
     }
 
@@ -71,7 +73,8 @@ public record ClienteDTO {
             Email = cliente.Email,
             DataNascimento = cliente.DataNascimento,
             ComoNosConheceu = cliente.ComoNosConheceu,
-            AceitaReceberOfertas = cliente.AceitaReceberOfertas
+            AceitaReceberOfertas = cliente.AceitaReceberOfertas,
+            Ativo = cliente.Ativo
         };
     }
 }

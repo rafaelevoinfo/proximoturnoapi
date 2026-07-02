@@ -23,6 +23,7 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : Identi
         modelBuilder.Entity<Cliente>(b => {
             b.HasIndex(c => c.Email).IsUnique();
             b.HasIndex(c => c.Telefone).IsUnique();
+            b.Property(c => c.Ativo).HasDefaultValue(true);
         });
 
         modelBuilder.Entity<Categoria>(b => {

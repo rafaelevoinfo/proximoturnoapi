@@ -79,6 +79,7 @@ builder.Services.AddScoped<AtualizarCategoria>();
 // Cliente
 builder.Services.AddScoped<CadastroCliente>();
 builder.Services.AddScoped<AtualizarCliente>();
+builder.Services.AddScoped<AtualizarStatusCliente>();
 
 // Jogo
 builder.Services.AddScoped<CadastroJogo>();
@@ -191,7 +192,10 @@ static class Extensions {
                 .AddAuthentication()
                 //In case you are working with cookies
                 //.AddCookie(IdentityConstants.ApplicationScheme);
-                .AddBearerToken(IdentityConstants.BearerScheme);
+                .AddBearerToken(IdentityConstants.BearerScheme, options => {
+                    options.BearerTokenExpiration = TimeSpan.FromHours(1);
+                    options.RefreshTokenExpiration = TimeSpan.FromDays(14);
+                });
 
 
         // services.AddIdentity<Usuario, IdentityRole>(op => {
