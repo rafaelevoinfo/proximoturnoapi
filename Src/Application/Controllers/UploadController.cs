@@ -13,11 +13,11 @@ namespace ProximoTurnoApi.Application.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize(Roles = Roles.Admin)]
-public class UploadController(ILogger<UploadController> logger, 
-                            CloudinaryService _cloudinaryService, 
+public class UploadController(ILogger<UploadController> logger,
+                            CloudinaryService _cloudinaryService,
                             IWebHostEnvironment _env,
                             UploadManual _uploadManualUseCase) : ControllerBasico(logger) {
-    
+
     [HttpGet("signature")]
     public IActionResult GetSignature([FromQuery] string? tipo = null) {
         var baseFolder = _env.IsDevelopment() ? "proximoturno/jogos_debug" : "proximoturno/jogos";
@@ -32,12 +32,15 @@ public class UploadController(ILogger<UploadController> logger,
     public async Task<IActionResult> UploadManual(IFormFile file) {
         var request = HttpContext.Request;
         var baseUrl = $"{request.Scheme}://{request.Host}{request.PathBase}";
-        
+        if (_env.IsProduction()) {
+            baseUrl = $"https://api.proximoturno.com.br";
+        }
+
         var fileUrl = await _uploadManualUseCase.ExecuteAsync(file, baseUrl);
         if (fileUrl == null) {
             return BadRequest(ApiResultDTO<string>.CreateFailureResult(_uploadManualUseCase.AggregateErrors()));
         }
-        
+
         return Ok(ApiResultDTO<string>.CreateSuccessResult(fileUrl, "Upload realizado com sucesso."));
     }
 }
