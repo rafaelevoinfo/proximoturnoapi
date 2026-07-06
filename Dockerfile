@@ -20,9 +20,6 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0
 
 WORKDIR /app
 
-# Copy published files from build stage
-COPY --from=build /app/publish .
-
 # Set environment variables
 ENV ASPNETCORE_HTTP_PORTS=80
 ENV TZ=America/Sao_Paulo
@@ -39,6 +36,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     rm google-chrome-stable_current_amd64.deb && \
     ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone && \
     rm -rf /var/lib/apt/lists/*
+
+# Copy published files from build stage
+COPY --from=build /app/publish .
 
 # Run the application
 ENTRYPOINT ["dotnet", "ProximoTurnoApi.dll"]
