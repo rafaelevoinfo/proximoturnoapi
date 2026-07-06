@@ -51,9 +51,7 @@ services:
       SMTP_FROM_NAME: ${SMTP_FROM_NAME}
       AUTENTIQUE_API_TOKEN: ${AUTENTIQUE_API_TOKEN}
       AUTENTIQUE_SANDBOX: ${AUTENTIQUE_SANDBOX}
-      AUTENTIQUE_WEBHOOK_SECRET: ${AUTENTIQUE_WEBHOOK_SECRET}
-    env_file:
-      - Src/.env
+      AUTENTIQUE_WEBHOOK_SECRET: ${AUTENTIQUE_WEBHOOK_SECRET}    
     healthcheck:
         test: ["CMD-SHELL", "curl -f http://localhost/health || exit 1"]
         interval: 30s
