@@ -19,8 +19,7 @@ namespace ProximoTurnoApi.Application.Controllers;
 [ApiController]
 public class WebhooksController(
     ILogger<ControllerBasico> logger,
-    ProcessarWebhookAutentique _webhookUseCase,
-    IConfiguration configuration) : ControllerBasico(logger) {
+    ProcessarWebhookAutentique _webhookUseCase) : ControllerBasico(logger) {
 
     [HttpPost("autentique")]
     public async Task<IActionResult> ReceberWebhookAutentique() {
@@ -32,44 +31,17 @@ public class WebhooksController(
                 return BadRequest("Body vazio");
             }
 
-            // Validação HMAC via header x-autentique-signature (conforme documentação oficial)
-            var webhookSecret = configuration["AUTENTIQUE_WEBHOOK_SECRET"];
-            if (!string.IsNullOrEmpty(webhookSecret)) {
-                var signature = Request.Headers["x-autentique-signature"].ToString();
+            var signature = Request.Headers["x-autentique-signature"].ToString();
 
-                if (string.IsNullOrEmpty(signature)) {
-                    _logger.LogWarning("Webhook Autentique recebido sem header x-autentique-signature");
-                    return Unauthorized();
-                }
-
-                var calculatedSignature = CalcularHmacSha256(body, webhookSecret);
-
-                if (!CryptographicOperations.FixedTimeEquals(
-                    Encoding.UTF8.GetBytes(calculatedSignature),
-                    Encoding.UTF8.GetBytes(signature))) {
-                    _logger.LogWarning("Webhook Autentique recebido com assinatura HMAC inválida");
-                    return Unauthorized();
-                }
+            try {
+                await _webhookUseCase.ExecuteAsync(body, signature);
+            } catch (UnauthorizedAccessException ex) {
+                _logger.LogWarning(ex, "Assinatura do webhook inválida ou não autorizada");
+                return Unauthorized();
             }
-
-            await _webhookUseCase.ExecuteAsync(body);
 
             // Sempre retorna 200 para o Autentique não reenviar
             return Ok();
         });
-    }
-
-    /// <summary>
-    /// Calcula o HMAC-SHA256 do payload usando o webhook secret.
-    /// Conforme documentação do Autentique: hash_hmac('sha256', payload, secret)
-    /// </summary>
-    private static string CalcularHmacSha256(string payload, string secret) {
-        var keyBytes = Encoding.UTF8.GetBytes(secret);
-        var payloadBytes = Encoding.UTF8.GetBytes(payload);
-
-        using var hmac = new HMACSHA256(keyBytes);
-        var hashBytes = hmac.ComputeHash(payloadBytes);
-
-        return Convert.ToHexStringLower(hashBytes);
     }
 }

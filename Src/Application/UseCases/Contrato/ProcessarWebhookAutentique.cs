@@ -1,15 +1,33 @@
 using System;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Infrastructure.Repositories;
 
 namespace ProximoTurnoApi.Application.UseCases;
 
-public class ProcessarWebhookAutentique(
-    IContratoRepository contratoRepository,
-    ILogger<ProcessarWebhookAutentique> logger) : UseCaseBasico {
+public class ProcessarWebhookAutentique : UseCaseBasico {
+    private readonly IContratoRepository contratoRepository;
+    private readonly IConfiguration? configuration;
+    private readonly ILogger<ProcessarWebhookAutentique> logger;
+
+    public ProcessarWebhookAutentique(
+        IContratoRepository contratoRepository,
+        ILogger<ProcessarWebhookAutentique> logger)
+        : this(contratoRepository, null, logger) { }
+
+    public ProcessarWebhookAutentique(
+        IContratoRepository contratoRepository,
+        IConfiguration? configuration,
+        ILogger<ProcessarWebhookAutentique> logger) {
+        this.contratoRepository = contratoRepository;
+        this.configuration = configuration;
+        this.logger = logger;
+    }
 
     /// <summary>
     /// Processa um evento de webhook recebido do Autentique.
@@ -23,8 +41,29 @@ public class ProcessarWebhookAutentique(
     /// - signature.rejected: signatário recusou o documento
     /// - document.finished: todos os signatários concluíram (todas assinaturas finalizadas)
     /// </summary>
-    public async Task ExecuteAsync(string rawBody) {
+    public async Task ExecuteAsync(string rawBody, string? signatureHeader = null) {
         logger.LogInformation("Webhook Autentique recebido: {Body}", rawBody);
+
+        var webhookSecret = configuration?["AUTENTIQUE_WEBHOOK_SECRET"];
+        logger.LogInformation("Configuração - AUTENTIQUE_WEBHOOK_SECRET: '{Secret}'", webhookSecret);
+        logger.LogInformation("Header recebido - x-autentique-signature: '{Signature}'", signatureHeader);
+
+        if (!string.IsNullOrEmpty(webhookSecret)) {
+            if (string.IsNullOrEmpty(signatureHeader)) {
+                logger.LogWarning("Webhook Autentique recebido sem header x-autentique-signature");
+                throw new UnauthorizedAccessException("Webhook recebido sem cabeçalho de assinatura.");
+            }
+
+            var calculatedSignature = CalcularHmacSha256(rawBody, webhookSecret);
+            logger.LogInformation("Assinatura calculada: '{Calculated}'", calculatedSignature);
+
+            if (!CryptographicOperations.FixedTimeEquals(
+                Encoding.UTF8.GetBytes(calculatedSignature),
+                Encoding.UTF8.GetBytes(signatureHeader))) {
+                logger.LogWarning("Webhook Autentique recebido com assinatura HMAC inválida");
+                throw new UnauthorizedAccessException("Assinatura HMAC inválida.");
+            }
+        }
 
         try {
             using var doc = JsonDocument.Parse(rawBody);
@@ -93,7 +132,7 @@ public class ProcessarWebhookAutentique(
             }
 
         } catch (JsonException ex) {
-            logger.LogError(ex, "Erro ao parsear payload do webhook");
+            logger.LogError(ex, "Erro ao processar o payload do webhook");
         }
     }
 
@@ -131,5 +170,15 @@ public class ProcessarWebhookAutentique(
         }
 
         return null;
+    }
+
+    private static string CalcularHmacSha256(string payload, string secret) {
+        var keyBytes = Encoding.UTF8.GetBytes(secret);
+        var payloadBytes = Encoding.UTF8.GetBytes(payload);
+
+        using var hmac = new HMACSHA256(keyBytes);
+        var hashBytes = hmac.ComputeHash(payloadBytes);
+
+        return Convert.ToHexStringLower(hashBytes);
     }
 }
