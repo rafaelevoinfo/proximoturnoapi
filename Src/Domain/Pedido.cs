@@ -140,6 +140,10 @@ public class Pedido : BaseModel {
 
     public bool Cancelar() {
         Clear();
+        if (Status != StatusPedido.Pendente) {
+            AddNotification("ERRO", $"Somente um pedido no status {StatusPedido.Pendente} pode ser cancelado.");
+            return false;
+        }
         Status = StatusPedido.Cancelado;
         foreach (var item in _items) {
             item.JogoCopia.Status = StatusJogo.Disponivel;
