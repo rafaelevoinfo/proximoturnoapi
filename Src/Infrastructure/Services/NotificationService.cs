@@ -46,10 +46,24 @@ public class NotificationService : INotificationService
         var valorFormatado = pedido.ValorTotal.ToString("C2", CultureInfo.GetCultureInfo("pt-BR"));
         var dataPedido = pedido.DataHora.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture);
 
+        var listagemJogos = "";
+        if (pedido.Items != null && pedido.Items.Count > 0)
+        {
+            listagemJogos += "<p><strong>Jogos Alugados:</strong></p><ul>";
+            foreach (var item in pedido.Items)
+            {
+                var nomeJogo = item.JogoCopia?.Jogo?.Nome ?? "Jogo Desconhecido";
+                var valorItem = item.Valor.ToString("C2", CultureInfo.GetCultureInfo("pt-BR"));
+                listagemJogos += $"<li>{nomeJogo} ({valorItem})</li>";
+            }
+            listagemJogos += "</ul>";
+        }
+
         var body = $@"
             <h2>Novo Pedido Cadastrado no Sistema</h2>
             <p><strong>ID do Pedido:</strong> #{pedido.Id}</p>
             <p><strong>Cliente:</strong> {pedido.Cliente?.Nome} ({pedido.Cliente?.Email})</p>
+            {listagemJogos}
             <p><strong>Valor Total:</strong> {valorFormatado}</p>
             <p><strong>Método de Pagamento:</strong> {pedido.MetodoPagamento}</p>
             <p><strong>Método de Entrega:</strong> {pedido.MetodoEntrega}</p>

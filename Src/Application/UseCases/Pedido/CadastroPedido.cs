@@ -100,7 +100,8 @@ public class CadastroPedido(IPedidoRepository pedidoRepository,
             logger.LogInformation("Pedido {PedidoId} cadastrado com sucesso para o cliente {ClienteId}.", pedido.Id, cliente.Id);
             
             try {
-                await _notificationService.EnviarNotificacaoNovoPedidoAsync(pedido);
+                var pedidoCompleto = await _pedidoRepository.GetByIdAsync(pedido.Id) ?? pedido;
+                await _notificationService.EnviarNotificacaoNovoPedidoAsync(pedidoCompleto);
             } catch (Exception ex) {
                 logger.LogError(ex, "Erro inesperado ao despachar notificações do novo pedido {PedidoId}.", pedido.Id);
             }
