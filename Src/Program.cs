@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.AspNetCore.DataProtection;
 using System.IO;
 using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Infrastructure.Repositories;
@@ -202,6 +203,9 @@ app.Run();
 
 static class Extensions {
     public static void AddIdentityUser(this IServiceCollection services) {
+        services.AddDataProtection()
+                .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(AppContext.BaseDirectory, "keys")));
+
         services.AddAuthorization()
                 .AddAuthentication()
                 //In case you are working with cookies

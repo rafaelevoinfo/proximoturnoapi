@@ -67,11 +67,14 @@ services:
       - proximoturno-network
     volumes:
       - api_uploads:/app/wwwroot/uploads
+      - api_keys:/app/keys
 
 volumes:
   mysql_data:
     driver: local
   api_uploads:
+    driver: local
+  api_keys:
     driver: local
 
 networks:
