@@ -14,7 +14,8 @@ public class ClientesController(ILogger<ControllerBasico> logger,
                             IClienteRepository _repository,
                             CadastroCliente _cadastroClienteUseCase,
                             AtualizarCliente _atualizarClienteUseCase,
-                            AtualizarStatusCliente _atualizarStatusClienteUseCase) : ControllerBasico(logger) {
+                            AtualizarStatusCliente _atualizarStatusClienteUseCase,
+                            UserManager<Usuario> _userManager) : ControllerBasico(logger) {
 
     [HttpGet]
     [Authorize(Roles = Roles.Admin)]
@@ -34,6 +35,29 @@ public class ClientesController(ILogger<ControllerBasico> logger,
             if (cliente == null) {
                 return NotFound(ApiResultDTO<ClienteDTO>.CreateFailureResult($"Cliente de id {id} não encontrado."));
             }
+            return Ok(ApiResultDTO<ClienteDTO>.CreateSuccessResult(ClienteDTO.FromModel(cliente), "Cliente recuperado com sucesso."));
+        });
+    }
+
+    [HttpGet("{id:int}/perfil")]
+    [Authorize]
+    public async Task<IActionResult> GetPerfilCliente([FromRoute] int id) {
+        return await EncapsulateRequestAsync(async () => {
+            var user = await _userManager.GetUserAsync(User);
+            if (user is null) {
+                _logger.LogWarning("Usuário logado não encontrado.");
+                return NotFound();
+            }
+            var idCliente = await _repository.GetIdByEmailAsync(user.Email ?? "");
+            if (idCliente != id && !await _userManager.IsInRoleAsync(user, Roles.Admin)) {
+                _logger.LogWarning("Usuário logado tentou acessar o perfil de outro cliente.");
+                return Forbid();
+            }
+            var cliente = await _repository.GetByIdAsync(id);
+            if (cliente == null) {
+                return NotFound(ApiResultDTO<ClienteDTO>.CreateFailureResult($"Cliente de id {id} não encontrado."));
+            }
+            //Futuramente podemos ter um outro DTO para diferenciar o perfil do cliente usado por um admin e o perfil do cliente usado pelo próprio cliente
             return Ok(ApiResultDTO<ClienteDTO>.CreateSuccessResult(ClienteDTO.FromModel(cliente), "Cliente recuperado com sucesso."));
         });
     }
