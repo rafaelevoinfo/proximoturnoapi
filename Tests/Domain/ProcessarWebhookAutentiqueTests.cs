@@ -10,32 +10,26 @@ using Xunit;
 
 namespace ProximoTurnoApi.Tests.Domain;
 
-public class ProcessarWebhookAutentiqueTests
-{
-    private class FakeContratoRepository : IContratoRepository
-    {
+public class ProcessarWebhookAutentiqueTests {
+    private class FakeContratoRepository : IContratoRepository {
         public List<ContratoAutentique> Contratos { get; set; } = new();
         public bool SaveCalled { get; private set; }
 
-        public Task SaveAsync(ContratoAutentique contrato, bool commit = true)
-        {
+        public Task SaveAsync(ContratoAutentique contrato, bool commit = true) {
             SaveCalled = true;
             var existing = Contratos.FirstOrDefault(c => c.Id == contrato.Id);
-            if (existing != null)
-            {
+            if (existing != null) {
                 Contratos.Remove(existing);
             }
             Contratos.Add(contrato);
             return Task.CompletedTask;
         }
 
-        public Task<ContratoAutentique?> GetByPedidoIdAsync(int idPedido)
-        {
+        public Task<ContratoAutentique?> GetByPedidoIdAsync(int idPedido) {
             return Task.FromResult(Contratos.FirstOrDefault(c => c.IdPedido == idPedido && c.Ativo));
         }
 
-        public Task<ContratoAutentique?> GetByAutentiqueDocumentIdAsync(string autentiqueDocumentId)
-        {
+        public Task<ContratoAutentique?> GetByAutentiqueDocumentIdAsync(string autentiqueDocumentId) {
             return Task.FromResult(Contratos.FirstOrDefault(c => c.AutentiqueDocumentId == autentiqueDocumentId && c.Ativo));
         }
 
@@ -47,24 +41,20 @@ public class ProcessarWebhookAutentiqueTests
         public Task RollbackTransactionAsync() => Task.CompletedTask;
     }
 
-    private class FakeLogger : ILogger<ProcessarWebhookAutentique>
-    {
+    private class FakeLogger : ILogger<ProcessarWebhookAutentique> {
         public List<string> LoggedMessages { get; } = new();
 
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
         public bool IsEnabled(LogLevel logLevel) => true;
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
-        {
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) {
             LoggedMessages.Add(formatter(state, exception));
         }
     }
 
     [Fact]
-    public async Task ExecuteAsync_WhenSignatureAccepted_ShouldUpdateStatusToAssinadoAndSetDataAssinatura()
-    {
+    public async Task ExecuteAsync_WhenSignatureAccepted_ShouldUpdateStatusToAssinadoAndSetDataAssinatura() {
         // Arrange
-        var contrato = new ContratoAutentique
-        {
+        var contrato = new ContratoAutentique {
             Id = 1,
             IdPedido = 100,
             Status = StatusContrato.Pendente,
@@ -99,11 +89,9 @@ public class ProcessarWebhookAutentiqueTests
     }
 
     [Fact]
-    public async Task ExecuteAsync_WhenDocumentFinished_ShouldUpdateStatusToAssinadoAndSetDataAssinatura()
-    {
+    public async Task ExecuteAsync_WhenDocumentFinished_ShouldUpdateStatusToAssinadoAndSetDataAssinatura() {
         // Arrange
-        var contrato = new ContratoAutentique
-        {
+        var contrato = new ContratoAutentique {
             Id = 1,
             IdPedido = 100,
             Status = StatusContrato.Pendente,
@@ -137,11 +125,9 @@ public class ProcessarWebhookAutentiqueTests
     }
 
     [Fact]
-    public async Task ExecuteAsync_WhenSignatureRejected_ShouldUpdateStatusToRejeitado()
-    {
+    public async Task ExecuteAsync_WhenSignatureRejected_ShouldUpdateStatusToRejeitado() {
         // Arrange
-        var contrato = new ContratoAutentique
-        {
+        var contrato = new ContratoAutentique {
             Id = 1,
             IdPedido = 100,
             Status = StatusContrato.Pendente,
@@ -175,11 +161,9 @@ public class ProcessarWebhookAutentiqueTests
     }
 
     [Fact]
-    public async Task ExecuteAsync_WhenContratoIsNotPendente_ShouldIgnoreWebhook()
-    {
+    public async Task ExecuteAsync_WhenContratoIsNotPendente_ShouldIgnoreWebhook() {
         // Arrange
-        var contrato = new ContratoAutentique
-        {
+        var contrato = new ContratoAutentique {
             Id = 1,
             IdPedido = 100,
             Status = StatusContrato.Assinado,
@@ -213,8 +197,7 @@ public class ProcessarWebhookAutentiqueTests
     }
 
     [Fact]
-    public async Task ExecuteAsync_WhenContratoNotFound_ShouldLogWarningAndReturn()
-    {
+    public async Task ExecuteAsync_WhenContratoNotFound_ShouldLogWarningAndReturn() {
         // Arrange
         var repo = new FakeContratoRepository();
         var logger = new FakeLogger();
@@ -239,8 +222,7 @@ public class ProcessarWebhookAutentiqueTests
     }
 
     [Fact]
-    public async Task ExecuteAsync_WhenPayloadHasNoEventObject_ShouldLogWarningAndReturn()
-    {
+    public async Task ExecuteAsync_WhenPayloadHasNoEventObject_ShouldLogWarningAndReturn() {
         // Arrange
         var repo = new FakeContratoRepository();
         var logger = new FakeLogger();
@@ -257,8 +239,7 @@ public class ProcessarWebhookAutentiqueTests
     }
 
     [Fact]
-    public async Task ExecuteAsync_WhenPayloadHasNoDocumentId_ShouldLogWarningAndReturn()
-    {
+    public async Task ExecuteAsync_WhenPayloadHasNoDocumentId_ShouldLogWarningAndReturn() {
         // Arrange
         var repo = new FakeContratoRepository();
         var logger = new FakeLogger();
@@ -281,8 +262,7 @@ public class ProcessarWebhookAutentiqueTests
     }
 
     [Fact]
-    public async Task ExecuteAsync_WhenJsonIsInvalid_ShouldLogErrorAndGracefullyHandle()
-    {
+    public async Task ExecuteAsync_WhenJsonIsInvalid_ShouldLogErrorAndGracefullyHandle() {
         // Arrange
         var repo = new FakeContratoRepository();
         var logger = new FakeLogger();
@@ -293,6 +273,6 @@ public class ProcessarWebhookAutentiqueTests
         // Act & Assert (Should not throw exception)
         var exception = await Record.ExceptionAsync(() => useCase.ExecuteAsync(payload));
         Assert.Null(exception);
-        Assert.Contains("Erro ao parsear payload do webhook", logger.LoggedMessages.Any(m => m.Contains("Erro ao parsear")) ? logger.LoggedMessages.First(m => m.Contains("Erro ao parsear")) : "");
+        Assert.Contains("Erro ao processar o payload do webhook", logger.LoggedMessages.FirstOrDefault(m => m.Contains("Erro ao processar")));
     }
 }
