@@ -5,6 +5,7 @@ using ProximoTurnoApi.Application.DTOs;
 using ProximoTurnoApi.Domain;
 using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Infrastructure.Repositories;
+using ProximoTurnoApi.Infrastructure.Services;
 
 namespace ProximoTurnoApi.Application.UseCases;
 
@@ -15,6 +16,7 @@ public class CadastroPedido(IPedidoRepository pedidoRepository,
     UserManager<Usuario> _userManager,
     ValidarCupom _validarCupom,
     IContratoQueue _contratoQueue,
+    INotificationService _notificationService,
     ILogger<CadastroPedido> logger) : PedidoUseCaseBasico(pedidoRepository) {
 
     public async Task<int> ExecuteAsync(ClaimsPrincipal userClaim, NovoPedidoDTO novoPedidoDto) {
@@ -97,6 +99,12 @@ public class CadastroPedido(IPedidoRepository pedidoRepository,
             await _pedidoRepository.SaveAsync(pedido);
             logger.LogInformation("Pedido {PedidoId} cadastrado com sucesso para o cliente {ClienteId}.", pedido.Id, cliente.Id);
             
+            try {
+                await _notificationService.EnviarNotificacaoNovoPedidoAsync(pedido);
+            } catch (Exception ex) {
+                logger.LogError(ex, "Erro inesperado ao despachar notificações do novo pedido {PedidoId}.", pedido.Id);
+            }
+
             // Enfileira a geração de contrato de forma assíncrona
             _contratoQueue.Enfileirar(pedido.Id);
             

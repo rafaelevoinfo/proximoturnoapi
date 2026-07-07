@@ -52,6 +52,7 @@ builder.Services.AddTransient<IEmailSender<Usuario>, IdentityEmailSender>();
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<IAutentiqueService, AutentiqueService>();
 builder.Services.AddScoped<IContratoPdfService, ContratoPdfService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 
 // Use Cases
 // Wishlist
