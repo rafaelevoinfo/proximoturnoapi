@@ -32,9 +32,6 @@ public record ClienteDTO {
     [EmailAddress(ErrorMessage = "O e-mail informado não é válido.")]
     public string Email { get; set; } = string.Empty;
 
-    [MaxLength(100)]
-    public string? Senha { get; set; } = string.Empty;
-
     public DateOnly? DataNascimento { get; set; }
 
     public string? ComoNosConheceu { get; set; }

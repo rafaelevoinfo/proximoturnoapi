@@ -1,13 +1,19 @@
-using System.Transactions;
+using System.Web;
 using Flunt.Notifications;
 using Microsoft.AspNetCore.Identity;
 using ProximoTurnoApi.Application.DTOs;
 using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Infrastructure.Repositories;
+using ProximoTurnoApi.Infrastructure.Services;
 
 namespace ProximoTurnoApi.Application.UseCases;
 
-public class CadastroCliente(IClienteRepository _repository, UserManager<Usuario> _userManager, ILogger<CadastroCliente> logger) : UseCaseBasico {
+public class CadastroCliente(
+    IClienteRepository _repository,
+    UserManager<Usuario> _userManager,
+    IResetSenhaLinkService _resetSenhaLinkService,
+    IEmailService _emailService,
+    ILogger<CadastroCliente> logger) : UseCaseBasico {
     public async Task<int> ExecuteAsync(ClienteDTO clienteDto) {
         logger.LogInformation("Iniciando cadastro de novo cliente: {Nome} ({Email})", clienteDto.Nome, clienteDto.Email);
         var filtro = new FiltroClienteDTO {
@@ -37,6 +43,9 @@ public class CadastroCliente(IClienteRepository _repository, UserManager<Usuario
         await _repository.StartTransactionAsync();
         try {
             await _repository.AddAsync(cliente);
+
+            // Usuário é criado sem senha: a conta fica inutilizável até o cliente
+            // definir a senha através do link de ativação enviado por email.
             var usuario = new Usuario() {
                 UserName = cliente.Email,
                 Email = cliente.Email,
@@ -44,11 +53,7 @@ public class CadastroCliente(IClienteRepository _repository, UserManager<Usuario
                 EmailConfirmed = true
             };
 
-            var senha = "SenhaPadrao123!";
-            if (!string.IsNullOrWhiteSpace(clienteDto.Senha)) {
-                senha = clienteDto.Senha;
-            }
-            var result = await _userManager.CreateAsync(usuario, senha);
+            var result = await _userManager.CreateAsync(usuario);
             if (!result.Succeeded) {
                 logger.LogWarning("Falha ao criar usuário Identity para o cliente {Email}: {Errors}", cliente.Email, string.Join(", ", result.Errors.Select(e => e.Description)));
                 foreach (var error in result.Errors) {
@@ -75,6 +80,36 @@ public class CadastroCliente(IClienteRepository _repository, UserManager<Usuario
             await _repository.RollbackTransactionAsync();
             throw;
         }
+
+        await EnviarEmailAtivacaoAsync(cliente);
+
         return cliente.Id;
+    }
+
+    private async Task EnviarEmailAtivacaoAsync(Cliente cliente) {
+        try {
+            var link = await _resetSenhaLinkService.GerarLinkAsync(cliente.Email, "/ativar-conta");
+            if (link == null) {
+                logger.LogWarning("Não foi possível gerar o link de ativação para {Email}.", cliente.Email);
+                return;
+            }
+
+            var displayName = HttpUtility.HtmlEncode(cliente.Nome);
+            var encodedLink = HttpUtility.HtmlEncode(link);
+            var body = $@"
+                <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;'>
+                    <h2 style='color: #581c87; text-align: center;'>Bem-vindo à Próximo Turno!</h2>
+                    <p>Olá, <strong>{displayName}</strong>,</p>
+                    <p>Seu cadastro foi realizado com sucesso. Para ativar sua conta e criar sua senha de acesso, clique no botão abaixo:</p>
+                    <div style='text-align: center; margin: 30px 0;'>
+                        <a href='{encodedLink}' style='background-color: #581c87; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;'>Ativar Conta</a>
+                    </div>
+                    <p style='color: #666; font-size: 12px; text-align: center;'>Se você não solicitou este cadastro, desconsidere este e-mail.</p>
+                </div>";
+
+            await _emailService.SendEmailAsync(cliente.Email, "Ative sua Conta - Próximo Turno", body, isHtml: true);
+        } catch (Exception ex) {
+            logger.LogError(ex, "Falha ao enviar e-mail de ativação para {Email}.", cliente.Email);
+        }
     }
 }

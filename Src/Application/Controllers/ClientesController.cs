@@ -93,7 +93,7 @@ public class ClientesController(ILogger<ControllerBasico> logger,
     [Authorize(Roles = Roles.Admin)]
     public async Task<IActionResult> DeleteCliente([FromRoute] int id) {
         return await EncapsulateRequestAsync(async () => {
-            var result = await _atualizarStatusClienteUseCase.ExecuteAsync(id, false);
+            var result = await _atualizarStatusClienteUseCase.ExecuteAsync(id, false, User);
             if (!result) {
                 return NotFound(ApiResultDTO<ClienteDTO>.CreateFailureResult(_atualizarStatusClienteUseCase.AggregateErrors()));
             }
@@ -105,7 +105,7 @@ public class ClientesController(ILogger<ControllerBasico> logger,
     [Authorize(Roles = Roles.Admin)]
     public async Task<IActionResult> AtivarCliente([FromRoute] int id) {
         return await EncapsulateRequestAsync(async () => {
-            var result = await _atualizarStatusClienteUseCase.ExecuteAsync(id, true);
+            var result = await _atualizarStatusClienteUseCase.ExecuteAsync(id, true, User);
             if (!result) {
                 return NotFound(ApiResultDTO<ClienteDTO>.CreateFailureResult(_atualizarStatusClienteUseCase.AggregateErrors()));
             }

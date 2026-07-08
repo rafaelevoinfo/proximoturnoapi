@@ -11,9 +11,9 @@ public class ResetSenhaLinkService(
     IConfiguration _configuration,
     ILogger<ResetSenhaLinkService> logger) : IResetSenhaLinkService
 {
-    public async Task<string?> GerarLinkAsync(string email)
+    public async Task<string?> GerarLinkAsync(string email, string path = "/resetar-senha")
     {
-        logger.LogInformation("Gerando link de reset de senha para {Email}.", email);
+        logger.LogInformation("Gerando link de definição de senha para {Email}.", email);
 
         var user = await _userManager.FindByEmailAsync(email);
         if (user == null)
@@ -26,9 +26,9 @@ public class ResetSenhaLinkService(
         var frontendUrl = string.IsNullOrWhiteSpace(configuredUrl) ? "http://localhost:3000" : configuredUrl;
         var token = await _userManager.GeneratePasswordResetTokenAsync(user);
         var encodedToken = Microsoft.AspNetCore.WebUtilities.WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
-        var resetLink = $"{frontendUrl.TrimEnd('/')}/resetar-senha?token={encodedToken}&email={HttpUtility.UrlEncode(email)}";
+        var link = $"{frontendUrl.TrimEnd('/')}{path}?token={encodedToken}&email={HttpUtility.UrlEncode(email)}";
 
-        logger.LogInformation("Link de reset gerado com sucesso para {Email}.", email);
-        return resetLink;
+        logger.LogInformation("Link gerado com sucesso para {Email}.", email);
+        return link;
     }
 }
