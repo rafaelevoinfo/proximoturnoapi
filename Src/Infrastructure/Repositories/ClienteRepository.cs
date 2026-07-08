@@ -6,6 +6,7 @@ namespace ProximoTurnoApi.Infrastructure.Repositories;
 
 public interface IClienteRepository : IBaseRepository {
     Task<List<Cliente>> GetAllAsync(FiltroClienteDTO filtro);
+    Task<List<Cliente>> GetAllByIdsAsync(List<int> ids);
     Task<Cliente?> GetByIdAsync(int id);
     Task<int?> GetIdByEmailAsync(string email);
     Task<Cliente?> GetByEmailAsync(string email);
@@ -46,6 +47,14 @@ public class ClienteRepository : BaseRepository, IClienteRepository {
 
         return await query
             .AsNoTracking()
+            .ToListAsync();
+    }
+
+    public async Task<List<Cliente>> GetAllByIdsAsync(List<int> ids)
+    {
+        return await _dbContext.Clientes
+            .AsNoTracking()
+            .Where(c => ids.Contains(c.Id))
             .ToListAsync();
     }
 

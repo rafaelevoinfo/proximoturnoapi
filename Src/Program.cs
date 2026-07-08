@@ -53,6 +53,7 @@ builder.Services.AddHttpClient();
 builder.Services.AddScoped<IAutentiqueService, AutentiqueService>();
 builder.Services.AddScoped<IContratoPdfService, ContratoPdfService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<IResetSenhaLinkService, ResetSenhaLinkService>();
 
 // Use Cases
 // Wishlist
@@ -84,6 +85,7 @@ builder.Services.AddScoped<AtualizarCategoria>();
 builder.Services.AddScoped<CadastroCliente>();
 builder.Services.AddScoped<AtualizarCliente>();
 builder.Services.AddScoped<AtualizarStatusCliente>();
+builder.Services.AddScoped<EnviarEmailsClientes>();
 
 // Upload
 builder.Services.AddScoped<UploadManual>();

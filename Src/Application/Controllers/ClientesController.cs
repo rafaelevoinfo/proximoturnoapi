@@ -15,6 +15,7 @@ public class ClientesController(ILogger<ControllerBasico> logger,
                             CadastroCliente _cadastroClienteUseCase,
                             AtualizarCliente _atualizarClienteUseCase,
                             AtualizarStatusCliente _atualizarStatusClienteUseCase,
+                            EnviarEmailsClientes _enviarEmailsClientes,
                             UserManager<Usuario> _userManager) : ControllerBasico(logger) {
 
     [HttpGet]
@@ -112,5 +113,19 @@ public class ClientesController(ILogger<ControllerBasico> logger,
         });
     }
 
+    [HttpPost("enviar-email")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<IActionResult> EnviarEmail([FromBody] EnviarEmailsClientesRequest dto) =>
+        await EncapsulateRequestAsync(async () => {
+            var result = await _enviarEmailsClientes.ExecuteAsync(dto);
+            if (!_enviarEmailsClientes.IsValid) {
+                var notification = _enviarEmailsClientes.Notifications.FirstOrDefault();
+                if (notification?.Type == UseCaseNotificationType.NotFound)
+                    return NotFound(ApiResultDTO<object>.CreateFailureResult(_enviarEmailsClientes.AggregateErrors()));
 
+                return BadRequest(ApiResultDTO<object>.CreateFailureResult(_enviarEmailsClientes.AggregateErrors()));
+            }
+
+            return Ok(ApiResultDTO<object>.CreateSuccessResult(null, "Emails enviados com sucesso."));
+        });
 }

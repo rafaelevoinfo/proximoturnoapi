@@ -1,4 +1,4 @@
-# GEMINI.md - Próximo Turno API
+# CLAUDE.md - Próximo Turno API
 
 ## Project Overview
 **Próximo Turno API** is a backend system for managing board game rentals. It is built using **.NET 10.0** and follows a clean, layered architecture designed for maintainability and scalability.
