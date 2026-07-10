@@ -11,6 +11,9 @@ public class EnviarEmailsClientes(
     IResetSenhaLinkService _resetSenhaLinkService,
     ILogger<EnviarEmailsClientes> logger) : UseCaseBasico
 {
+    private const string PlaceholderResetSenha = "{link_resetar_senha}";
+    private const string PlaceholderAtivarConta = "{link_ativar_conta}";
+
     public async Task<bool> ExecuteAsync(EnviarEmailsClientesRequest request)
     {
         logger.LogInformation("Iniciando envio de email para {Count} clientes.", request.ClienteIds.Count);
@@ -26,18 +29,32 @@ public class EnviarEmailsClientes(
         var enviados = 0;
         var falhas = 0;
 
+        var usaResetSenha = request.Conteudo.Contains(PlaceholderResetSenha);
+        var usaAtivarConta = request.Conteudo.Contains(PlaceholderAtivarConta);
+
         foreach (var cliente in clientes)
         {
             try
             {
-                var resetLink = await _resetSenhaLinkService.GerarLinkAsync(cliente.Email);
+                var resetLink = usaResetSenha ? await _resetSenhaLinkService.GerarLinkAsync(cliente.Email) : null;
+                var ativarLink = usaAtivarConta ? await _resetSenhaLinkService.GerarLinkAsync(cliente.Email, "/ativar-conta") : null;
+
+                // Sem o link, o placeholder viraria string vazia e o cliente receberia um botão morto.
+                // Preferimos não enviar e contabilizar como falha, para que o problema apareça no log.
+                if ((usaResetSenha && resetLink is null) || (usaAtivarConta && ativarLink is null))
+                {
+                    falhas++;
+                    logger.LogWarning("Email não enviado para {Email} (cliente {ClienteId}): não foi possível gerar o link solicitado.", cliente.Email, cliente.Id);
+                    continue;
+                }
 
                 var titulo = request.Titulo
                     .Replace("{cliente_nome}", cliente.Nome);
 
                 var conteudo = request.Conteudo
                     .Replace("{cliente_nome}", cliente.Nome)
-                    .Replace("{link_resetar_senha}", resetLink ?? "");
+                    .Replace(PlaceholderResetSenha, resetLink ?? "")
+                    .Replace(PlaceholderAtivarConta, ativarLink ?? "");
 
                 await _emailService.SendEmailAsync(cliente.Email, titulo, conteudo, true);
                 enviados++;
