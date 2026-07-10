@@ -43,6 +43,12 @@ public record ClienteDTO {
     public bool AceitaReceberOfertas { get; set; }
     public bool Ativo { get; set; } = true;
 
+    /// <summary>
+    /// Indica se o usuário do Identity consegue efetuar login: existe, já definiu uma senha
+    /// e não está bloqueado por lockout. Preenchido pelo controller, não pelo repositório.
+    /// </summary>
+    public bool LoginAtivo { get; set; }
+
     public Cliente ToModel() {
         return new Cliente {
             Id = Id ?? 0,

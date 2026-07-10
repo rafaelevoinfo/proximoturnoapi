@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using ProximoTurnoApi.Application.DTOs;
 using ProximoTurnoApi.Application.UseCases;
 using ProximoTurnoApi.Infrastructure.Models;
@@ -18,13 +19,50 @@ public class ClientesController(ILogger<ControllerBasico> logger,
                             EnviarEmailsClientes _enviarEmailsClientes,
                             UserManager<Usuario> _userManager) : ControllerBasico(logger) {
 
+    /// <summary>
+    /// Um usuário consegue logar quando já definiu uma senha e não está bloqueado por lockout.
+    /// Clientes importados possuem usuário sem senha, então aparecem como login inativo.
+    /// </summary>
+    private static bool PodeLogar(Usuario? usuario) =>
+        usuario is not null
+        && usuario.PasswordHash is not null
+        && !(usuario.LockoutEnabled && usuario.LockoutEnd > DateTimeOffset.UtcNow);
+
+    /// <summary>Resolve o login de vários clientes de uma vez, evitando uma consulta por linha do grid.</summary>
+    private async Task<Dictionary<string, bool>> ObterLoginAtivoPorEmailAsync(IEnumerable<string> emails) {
+        var normalizados = emails.Select(e => e.ToUpperInvariant()).ToHashSet();
+
+        // O filtro é aplicado em memória porque o provider MySQL não traduz um Contains sobre
+        // coleção ("Expression '@normalizados' ... does not have a type mapping assigned").
+        // Só as quatro colunas necessárias são trazidas, e a tabela tem a ordem de grandeza da
+        // própria lista de clientes que o grid já carrega.
+        var usuarios = await _userManager.Users
+            .Select(u => new { u.NormalizedEmail, u.PasswordHash, u.LockoutEnabled, u.LockoutEnd })
+            .ToListAsync();
+
+        var agora = DateTimeOffset.UtcNow;
+        return usuarios
+            .Where(u => u.NormalizedEmail is not null && normalizados.Contains(u.NormalizedEmail))
+            .ToDictionary(
+                u => u.NormalizedEmail!,
+                u => u.PasswordHash is not null && !(u.LockoutEnabled && u.LockoutEnd > agora));
+    }
+
     [HttpGet]
     [Authorize(Roles = Roles.Admin)]
     public async Task<IActionResult> GetClientes(FiltroClienteDTO filtro) {
         _logger.LogInformation("Recuperando clientes.");
         return await EncapsulateRequestAsync(async () => {
             var clientes = await _repository.GetAllAsync(filtro);
-            return Ok(ApiResultDTO<List<ClienteDTO>>.CreateSuccessResult([.. clientes.Select(ClienteDTO.FromModel)], "Clientes recuperados com sucesso."));
+            var loginAtivo = await ObterLoginAtivoPorEmailAsync(clientes.Select(c => c.Email));
+
+            var dtos = clientes.Select(c => {
+                var dto = ClienteDTO.FromModel(c);
+                dto.LoginAtivo = loginAtivo.GetValueOrDefault(c.Email.ToUpperInvariant());
+                return dto;
+            }).ToList();
+
+            return Ok(ApiResultDTO<List<ClienteDTO>>.CreateSuccessResult(dtos, "Clientes recuperados com sucesso."));
         });
     }
 
@@ -36,7 +74,10 @@ public class ClientesController(ILogger<ControllerBasico> logger,
             if (cliente == null) {
                 return NotFound(ApiResultDTO<ClienteDTO>.CreateFailureResult($"Cliente de id {id} não encontrado."));
             }
-            return Ok(ApiResultDTO<ClienteDTO>.CreateSuccessResult(ClienteDTO.FromModel(cliente), "Cliente recuperado com sucesso."));
+            var dto = ClienteDTO.FromModel(cliente);
+            dto.LoginAtivo = PodeLogar(await _userManager.FindByEmailAsync(cliente.Email));
+
+            return Ok(ApiResultDTO<ClienteDTO>.CreateSuccessResult(dto, "Cliente recuperado com sucesso."));
         });
     }
 
