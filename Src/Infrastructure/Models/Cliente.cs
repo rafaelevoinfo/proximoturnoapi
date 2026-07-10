@@ -23,6 +23,10 @@ public class Cliente : BaseModel {
     [Column("EMAIL"), MaxLength(100)]
     public required string Email { get => _email; set => _email = value.ToLowerInvariant(); }
 
+    /// <summary>Armazenado apenas com os 11 dígitos, sem máscara. Opcional: clientes antigos não possuem.</summary>
+    [Column("CPF"), MaxLength(11)]
+    public string? Cpf { get; set; }
+
     [Column("DATA_NASCIMENTO")]
     public DateOnly? DataNascimento { get; set; }
 

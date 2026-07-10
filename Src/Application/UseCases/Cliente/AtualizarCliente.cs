@@ -39,6 +39,20 @@ public class AtualizarCliente(IClienteRepository _repository, ILogger<AtualizarC
             AddNotification(UseCaseNotification.Create(UseCaseNotificationType.Error, "Já existe um cliente com o mesmo telefone."));
         }
 
+        // O CPF é opcional, então só é comparado quando informado: sem isso, todos os clientes
+        // antigos (que têm CPF nulo) colidiriam entre si.
+        if (!string.IsNullOrEmpty(clienteDto.Cpf)) {
+            filtro = new FiltroClienteDTO {
+                Cpf = clienteDto.Cpf
+            };
+
+            clientesExistentes = await _repository.GetAllAsync(filtro);
+            if (clientesExistentes.Any(c => c.Id != clienteDto.Id)) {
+                logger.LogWarning("Falha ao atualizar cliente ID {ClienteId}: O CPF já está em uso por outro cliente.", clienteDto.Id);
+                AddNotification(UseCaseNotification.Create(UseCaseNotificationType.Error, "Já existe um cliente com o mesmo CPF."));
+            }
+        }
+
         if (!IsValid)
             return false;
 

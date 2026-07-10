@@ -79,9 +79,13 @@ public class ClientesController(ILogger<ControllerBasico> logger,
     }
 
     [HttpPost]
-    public async Task<IActionResult> PostCliente([FromBody] ClienteDTO clienteDto) {
+    public async Task<IActionResult> PostCliente([FromBody] ClienteDTO clienteDto, [FromQuery] bool enviarEmail = true) {
         return await EncapsulateRequestAsync(async () => {
-            var idCliente = await _cadastroClienteUseCase.ExecuteAsync(clienteDto);
+            // Endpoint anônimo: apenas um Admin pode suprimir o e-mail de ativação, caso contrário
+            // seria possível criar contas em nome de terceiros sem que o dono do e-mail seja avisado.
+            var enviarEmailAtivacao = enviarEmail || !User.IsInRole(Roles.Admin);
+
+            var idCliente = await _cadastroClienteUseCase.ExecuteAsync(clienteDto, enviarEmailAtivacao);
             if (idCliente == 0) {
                 return BadRequest(ApiResultDTO<ClienteDTO>.CreateFailureResult(_cadastroClienteUseCase.AggregateErrors()));
             }

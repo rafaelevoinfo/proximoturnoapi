@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using ProximoTurnoApi.Infrastructure.Repositories;
 
@@ -10,9 +11,11 @@ using ProximoTurnoApi.Infrastructure.Repositories;
 namespace ProximoTurnoApi.Migrations
 {
     [DbContext(typeof(DatabaseContext))]
-    partial class DatabaseContextModelSnapshot : ModelSnapshot
+    [Migration("20260709233034_AddCpfToCliente")]
+    partial class AddCpfToCliente
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -330,9 +333,6 @@ namespace ProximoTurnoApi.Migrations
                         .HasColumnName("TELEFONE");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("Cpf")
-                        .IsUnique();
 
                     b.HasIndex("Email")
                         .IsUnique();

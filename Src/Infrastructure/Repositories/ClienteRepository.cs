@@ -37,6 +37,11 @@ public class ClienteRepository : BaseRepository, IClienteRepository {
             query = query.Where(c => c.Telefone == filtro.Telefone);
         }
 
+        if (!string.IsNullOrEmpty(filtro.Cpf)) {
+            var cpf = CpfUtils.Normalizar(filtro.Cpf);
+            query = query.Where(c => c.Cpf == cpf);
+        }
+
         if (filtro.ApenasAtivos.HasValue && filtro.ApenasAtivos.Value) {
             query = query.Where(c => c.Ativo);
         }

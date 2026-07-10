@@ -17,6 +17,7 @@ public record ClienteResumoDTO {
 
 public record ClienteDTO {
     private string _nome = null!;
+    private string? _cpf;
     public int? Id { get; set; }
 
     [Required, MaxLength(100)]
@@ -32,6 +33,10 @@ public record ClienteDTO {
     [EmailAddress(ErrorMessage = "O e-mail informado não é válido.")]
     public string Email { get; set; } = string.Empty;
 
+    /// <summary>Aceita com ou sem máscara; é sempre persistido apenas com os 11 dígitos.</summary>
+    [CpfValido(ErrorMessage = "O CPF informado não é válido.")]
+    public string? Cpf { get => _cpf; set => _cpf = CpfUtils.Normalizar(value); }
+
     public DateOnly? DataNascimento { get; set; }
 
     public string? ComoNosConheceu { get; set; }
@@ -45,6 +50,7 @@ public record ClienteDTO {
             Telefone = Telefone,
             Endereco = Endereco,
             Email = Email,
+            Cpf = Cpf,
             DataNascimento = DataNascimento,
             ComoNosConheceu = ComoNosConheceu,
             AceitaReceberOfertas = AceitaReceberOfertas,
@@ -56,6 +62,7 @@ public record ClienteDTO {
         cliente.Nome = Nome;
         cliente.Telefone = Telefone;
         cliente.Endereco = Endereco;
+        cliente.Cpf = Cpf;
         cliente.DataNascimento = DataNascimento;
         cliente.ComoNosConheceu = ComoNosConheceu;
         cliente.AceitaReceberOfertas = AceitaReceberOfertas;
@@ -68,6 +75,7 @@ public record ClienteDTO {
             Telefone = cliente.Telefone,
             Endereco = cliente.Endereco,
             Email = cliente.Email,
+            Cpf = cliente.Cpf,
             DataNascimento = cliente.DataNascimento,
             ComoNosConheceu = cliente.ComoNosConheceu,
             AceitaReceberOfertas = cliente.AceitaReceberOfertas,

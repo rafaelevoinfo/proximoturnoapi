@@ -14,7 +14,7 @@ public class CadastroCliente(
     IResetSenhaLinkService _resetSenhaLinkService,
     IEmailService _emailService,
     ILogger<CadastroCliente> logger) : UseCaseBasico {
-    public async Task<int> ExecuteAsync(ClienteDTO clienteDto) {
+    public async Task<int> ExecuteAsync(ClienteDTO clienteDto, bool enviarEmailAtivacao = true) {
         logger.LogInformation("Iniciando cadastro de novo cliente: {Nome} ({Email})", clienteDto.Nome, clienteDto.Email);
         var filtro = new FiltroClienteDTO {
             Email = clienteDto.Email
@@ -34,6 +34,20 @@ public class CadastroCliente(
         if (clientesExistentes.Count > 0) {
             logger.LogWarning("Falha ao cadastrar cliente {Email}: Já existe um cliente com o telefone {Telefone}.", clienteDto.Email, clienteDto.Telefone);
             AddNotification(UseCaseNotification.Create(UseCaseNotificationType.Error, "Já existe um cliente com o mesmo telefone."));
+        }
+
+        // O CPF é opcional, então só é comparado quando informado: sem isso, todos os clientes
+        // antigos (que têm CPF nulo) colidiriam entre si.
+        if (!string.IsNullOrEmpty(clienteDto.Cpf)) {
+            filtro = new FiltroClienteDTO {
+                Cpf = clienteDto.Cpf
+            };
+
+            clientesExistentes = await _repository.GetAllAsync(filtro);
+            if (clientesExistentes.Count > 0) {
+                logger.LogWarning("Falha ao cadastrar cliente {Email}: Já existe um cliente com o CPF informado.", clienteDto.Email);
+                AddNotification(UseCaseNotification.Create(UseCaseNotificationType.Error, "Já existe um cliente com o mesmo CPF."));
+            }
         }
 
         if (!IsValid)
@@ -81,7 +95,13 @@ public class CadastroCliente(
             throw;
         }
 
-        await EnviarEmailAtivacaoAsync(cliente);
+        if (enviarEmailAtivacao) {
+            await EnviarEmailAtivacaoAsync(cliente);
+        } else {
+            // Sem o e-mail, a conta permanece sem senha: o cliente só consegue acessá-la
+            // solicitando "esqueci minha senha" ou recebendo um novo link de ativação.
+            logger.LogInformation("E-mail de ativação suprimido para o cliente {ClienteId} ({Email}).", cliente.Id, cliente.Email);
+        }
 
         return cliente.Id;
     }

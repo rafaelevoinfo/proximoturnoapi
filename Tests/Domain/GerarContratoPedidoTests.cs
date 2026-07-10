@@ -53,6 +53,9 @@ public class GerarContratoPedidoTests
     {
         public List<Cliente> Clientes { get; set; } = new();
 
+        public Task<List<Cliente>> GetAllByIdsAsync(List<int> ids)
+            => Task.FromResult(Clientes.Where(c => ids.Contains(c.Id)).ToList());
+
         public Task<int?> GetIdByEmailAsync(string email)
         {
             var cliente = Clientes.FirstOrDefault(c => c.Email == email);
