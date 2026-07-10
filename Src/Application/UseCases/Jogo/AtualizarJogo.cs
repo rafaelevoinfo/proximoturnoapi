@@ -17,8 +17,9 @@ public class AtualizarJogo(IJogoRepository _jogoRepository, ITagRepository _tagR
             return false;
         }
 
-        var jogosExistentes = await _jogoRepository.GetAllAsync(new FiltroJogoDTO { Nome = jogoDto.Nome });
-        if (jogosExistentes.Any(j => j.Id != jogoDto.Id)) {
+        var nome = jogoDto.Nome?.Trim();
+        var jogosExistentes = await _jogoRepository.GetAllAsync(new FiltroJogoDTO { Nome = nome });
+        if (jogosExistentes.Any(j => j.Id != jogoDto.Id && string.Equals(j.Nome?.Trim(), nome, StringComparison.OrdinalIgnoreCase))) {
             _logger.LogWarning("Falha ao atualizar jogo {JogoId}: Já existe outro jogo com o nome {Nome}.", jogoDto.Id, jogoDto.Nome);
             AddNotification(UseCaseNotification.Create(UseCaseNotificationType.Error, "Já existe um jogo com o mesmo nome."));
         }

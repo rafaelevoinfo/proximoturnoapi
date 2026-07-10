@@ -20,12 +20,13 @@ public class AtualizarTag(ITagRepository _repository, ILogger<AtualizarTag> logg
             return false;
         }
 
+        var nome = tagDto.Nome?.Trim();
         var filtro = new FiltroTagDTO {
-            Nome = tagDto.Nome
+            Nome = nome
         };
 
         var tagsExistentes = await _repository.GetAllAsync(filtro);
-        if (tagsExistentes.Any(c => c.Id != tagDto.Id)) {
+        if (tagsExistentes.Any(c => c.Id != tagDto.Id && string.Equals(c.Nome?.Trim(), nome, StringComparison.OrdinalIgnoreCase))) {
             logger.LogWarning("Falha ao atualizar tag {TagId}: Já existe outra tag com o nome {Nome}.", tagDto.Id, tagDto.Nome);
             AddNotification(UseCaseNotification.Create(UseCaseNotificationType.Error, "Já existe uma tag com o mesmo nome."));
         }

@@ -10,8 +10,9 @@ public class CadastroJogo(IJogoRepository _jogoRepository,
 
     public async Task<int> ExecuteAsync(JogoDTO jogoDto) {
         _logger.LogInformation("Iniciando cadastro de novo jogo: {Nome}", jogoDto.Nome);
-        var jogosExistentes = await _jogoRepository.GetAllAsync(new FiltroJogoDTO { Nome = jogoDto.Nome });
-        if (jogosExistentes.Count > 0) {
+        var nome = jogoDto.Nome?.Trim();
+        var jogosExistentes = await _jogoRepository.GetAllAsync(new FiltroJogoDTO { Nome = nome });
+        if (jogosExistentes.Any(j => string.Equals(j.Nome?.Trim(), nome, StringComparison.OrdinalIgnoreCase))) {
             _logger.LogWarning("Falha ao cadastrar jogo: Já existe um jogo com o nome {Nome}.", jogoDto.Nome);
             AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest, "Já existe um jogo com o mesmo nome."));
         }

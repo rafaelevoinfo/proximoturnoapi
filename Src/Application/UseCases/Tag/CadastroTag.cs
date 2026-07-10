@@ -13,12 +13,13 @@ public class CadastroTag(ITagRepository _repository, ILogger<CadastroTag> logger
         }
 
         logger.LogInformation("Iniciando cadastro de nova tag: {Nome}", tagDto.Nome);
+        var nome = tagDto.Nome?.Trim();
         var filtro = new FiltroTagDTO {
-            Nome = tagDto.Nome
+            Nome = nome
         };
 
         var tagsExistentes = await _repository.GetAllAsync(filtro);
-        if (tagsExistentes.Count > 0) {
+        if (tagsExistentes.Any(t => string.Equals(t.Nome?.Trim(), nome, StringComparison.OrdinalIgnoreCase))) {
             logger.LogWarning("Falha ao cadastrar tag: Já existe uma tag com o nome {Nome}.", tagDto.Nome);
             AddNotification(UseCaseNotification.Create(UseCaseNotificationType.Error, "Já existe uma tag com o mesmo nome."));
         }
