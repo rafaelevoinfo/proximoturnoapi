@@ -17,7 +17,8 @@ public class PedidosController(ILogger<ControllerBasico> logger,
     BuscarPedidos _buscarPedidosUseCase,
     CadastroPedido _cadastroPedidoUseCase,
     AtualizarPedido _atualizarPedidoUseCase,
-    AtualizarStatusPedido _atualizarStatusPedidoUseCase,
+    EntregarPedido _entregarPedidoUseCase,
+    CancelarPedido _cancelarPedidoUseCase,
     RenovarPedido _renovarPedidoUseCase,
     DevolverItensPedido _devolverPedidoUseCase) : ControllerBasico(logger) {
 
@@ -78,14 +79,14 @@ public class PedidosController(ILogger<ControllerBasico> logger,
         });
     }
 
-    [HttpPut("{id:int}/status")]
-    public async Task<IActionResult> AtualizarStatusPedido([FromRoute] int id, [FromBody] StatusPedidoDTO novoStatus) {
+    [HttpPut("{id:int}/entregar")]
+    public async Task<IActionResult> EntregarPedido([FromRoute] int id, [FromBody] EntregarPedidoDTO? dto) {
         return await EncapsulateRequestAsync(async () => {
-            await _atualizarStatusPedidoUseCase.ExecuteAsync(id, novoStatus.Status, novoStatus.DataDevolucao);
-            if (!_atualizarStatusPedidoUseCase.IsValid) {
-                return BadRequest(ApiResultDTO<PedidoDTO>.CreateFailureResult(_atualizarStatusPedidoUseCase.AggregateErrors()));
+            await _entregarPedidoUseCase.ExecuteAsync(id, dto?.DataDevolucao);
+            if (!_entregarPedidoUseCase.IsValid) {
+                return BadRequest(ApiResultDTO<PedidoDTO>.CreateFailureResult(_entregarPedidoUseCase.AggregateErrors()));
             }
-            return Ok(ApiResultDTO<PedidoDTO>.CreateSuccessResult(null, "Status do pedido atualizado com sucesso"));
+            return Ok(ApiResultDTO<PedidoDTO>.CreateSuccessResult(null, "Pedido entregue com sucesso"));
         });
     }
 
@@ -116,9 +117,9 @@ public class PedidosController(ILogger<ControllerBasico> logger,
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> CancelarPedido([FromRoute] int id) {
         return await EncapsulateRequestAsync(async () => {
-            await _atualizarStatusPedidoUseCase.ExecuteAsync(id, StatusPedido.Cancelado);
-            if (!_atualizarStatusPedidoUseCase.IsValid) {
-                return BadRequest(ApiResultDTO<PedidoDTO>.CreateFailureResult(_atualizarStatusPedidoUseCase.AggregateErrors()));
+            await _cancelarPedidoUseCase.ExecuteAsync(id);
+            if (!_cancelarPedidoUseCase.IsValid) {
+                return BadRequest(ApiResultDTO<PedidoDTO>.CreateFailureResult(_cancelarPedidoUseCase.AggregateErrors()));
             }
             return Ok(ApiResultDTO<PedidoDTO>.CreateSuccessResult(null, "Pedido cancelado com sucesso"));
         });
