@@ -12,7 +12,7 @@ namespace ProximoTurnoApi.Application.UseCases;
 public class CadastroPedido(IPedidoRepository pedidoRepository,
     IJogoRepository _jogoRepository,
     IClienteRepository _clienteRepository,
-    ICategoriaRepository _categoriaRepository,
+    ICategoriaPeriodoCache _categoriaPeriodoCache,
     UserManager<Usuario> _userManager,
     ValidarCupom _validarCupom,
     IContratoQueue _contratoQueue,
@@ -42,7 +42,7 @@ public class CadastroPedido(IPedidoRepository pedidoRepository,
 
         var pedido = new Pedido(cliente, novoPedidoDto.MetodoPagamento, novoPedidoDto.MetodoEntrega);
         foreach (var item in novoPedidoDto.Items) {
-            var resultValidacao = await ValidarAdicionarItem(item, _jogoRepository, _categoriaRepository);
+            var resultValidacao = await ValidarAdicionarItem(item, _jogoRepository, _categoriaPeriodoCache);
             if (!IsValid) {
                 logger.LogWarning("Falha na validação do item do pedido para o jogo ID {JogoId}.", item.IdJogo);
                 return 0;
@@ -50,7 +50,7 @@ public class CadastroPedido(IPedidoRepository pedidoRepository,
 
             var itemPedido = new ItemPedido() {
                 JogoCopia = resultValidacao.Value.copia!,
-                IdPeriodo = resultValidacao.Value.periodo.Id,
+                IdPeriodo = resultValidacao.Value.periodo.IdPeriodo,
                 Valor = resultValidacao.Value.periodo.Valor,
                 DataDevolucao = pedido.CalcularDataDevolucao(resultValidacao.Value.periodo.QuantidadeDias)
             };

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using ProximoTurnoApi.Application.DTOs;
 using ProximoTurnoApi.Infrastructure.Models;
+using ProximoTurnoApi.Infrastructure.Services;
 
 namespace ProximoTurnoApi.Infrastructure.Repositories;
 
@@ -12,8 +13,10 @@ public interface ICategoriaRepository {
 }
 
 public class CategoriaRepository : BaseRepository, ICategoriaRepository {
+    private readonly ICategoriaPeriodoCache _cache;
 
-    public CategoriaRepository(DatabaseContext context) : base(context) {
+    public CategoriaRepository(DatabaseContext context, ICategoriaPeriodoCache cache) : base(context) {
+        _cache = cache;
     }
 
     public async Task<List<Categoria>> GetAllAsync(FiltroCategoriaDTO filtro) {
@@ -41,11 +44,18 @@ public class CategoriaRepository : BaseRepository, ICategoriaRepository {
 
     public async Task SaveAsync(Categoria categoria, bool commit = true) {
         await SaveChangesAsync(_dbContext.Categorias, categoria, commit);
+        if (commit) {
+            await _cache.RefreshAsync();
+        }
     }
 
     public async Task<bool> DeleteAsync(int id) {
-        return await _dbContext.Categorias
+        var afetadas = await _dbContext.Categorias
             .Where(c => c.Id == id)
-            .ExecuteUpdateAsync(s => s.SetProperty(c => c.Ativo, false)) > 0;
+            .ExecuteUpdateAsync(s => s.SetProperty(c => c.Ativo, false));
+        if (afetadas > 0) {
+            await _cache.RefreshAsync();
+        }
+        return afetadas > 0;
     }
 }

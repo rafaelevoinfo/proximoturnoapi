@@ -39,6 +39,8 @@ builder.Services.AddControllers()
 builder.Services.AddScoped<IClienteRepository, ClienteRepository>();
 builder.Services.AddScoped<IJogoRepository, JogoRepository>();
 builder.Services.AddScoped<ICategoriaRepository, CategoriaRepository>();
+builder.Services.AddSingleton<ICategoriaPeriodoCache, CategoriaPeriodoCache>();
+builder.Services.AddHostedService<CategoriaPeriodoCacheWarmup>();
 builder.Services.AddScoped<IPedidoRepository, PedidoRepository>();
 builder.Services.AddScoped<ITagRepository, TagRepository>();
 builder.Services.AddScoped<IListaDesejosRepository, ListaDesejosRepository>();

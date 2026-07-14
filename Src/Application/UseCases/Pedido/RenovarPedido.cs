@@ -1,12 +1,13 @@
 using ProximoTurnoApi.Application.DTOs;
 using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Infrastructure.Repositories;
+using ProximoTurnoApi.Infrastructure.Services;
 
 namespace ProximoTurnoApi.Application.UseCases;
 
 public class RenovarPedido(IPedidoRepository pedidoRepository,
 
-                           ICategoriaRepository _categoriaRepository,
+                           ICategoriaPeriodoCache _categoriaPeriodoCache,
                            IContratoQueue _contratoQueue,
                            ILogger<RenovarPedido> logger) : PedidoUseCaseBasico(pedidoRepository) {
     public async Task ExecuteAsync(int idPedido, List<ItemPedidoRenovarDTO> itens) {
@@ -18,9 +19,7 @@ public class RenovarPedido(IPedidoRepository pedidoRepository,
             return;
         }
 
-        var categorias = await _categoriaRepository.GetAllAsync(new FiltroCategoriaDTO());
-
-        List<(int idItem, CategoriaPeriodo periodo)?> itensNovoPedido = [];
+        List<(int idItem, CategoriaPeriodoInfo periodo)?> itensNovoPedido = [];
         foreach (var itemRenovar in itens) {
             var itemPedido = pedidoExistente.Items.FirstOrDefault(i => i.Id == itemRenovar.Id);
             if (itemPedido is not null) {
@@ -29,8 +28,7 @@ public class RenovarPedido(IPedidoRepository pedidoRepository,
                     IdJogo = itemPedido.JogoCopia.IdJogo,
                     IdPeriodo = itemRenovar.IdPeriodo ?? itemPedido.IdPeriodo
                 };
-                var periodo = categorias.FirstOrDefault(c => c.Periodos.Any(p => p.Id == novoItemDto.IdPeriodo))?.Periodos.FirstOrDefault(p => p.Id == novoItemDto.IdPeriodo);
-                if (periodo is null) {
+                if (!_categoriaPeriodoCache.TryGetPeriodo(novoItemDto.IdPeriodo, out var periodo) || periodo is null) {
                     logger.LogWarning("Período de renovação ID {PeriodoId} inválido para o item {ItemId} do pedido {PedidoId}.", novoItemDto.IdPeriodo, itemRenovar.Id, idPedido);
                     AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest, $"Não foi possível identificar qual o periodo para renovação."));
                     continue;
@@ -55,7 +53,7 @@ public class RenovarPedido(IPedidoRepository pedidoRepository,
             return;
         }
 
-        var novoPedido = pedidoExistente.Renovar(itensNovoPedido);
+        var novoPedido = pedidoExistente.Renovar(itensNovoPedido, _categoriaPeriodoCache);
         if (novoPedido is null || !pedidoExistente.IsValid || !novoPedido.IsValid) {
             var errors = string.Join(", ", pedidoExistente.Notifications.Concat(novoPedido?.Notifications ?? []).Select(n => n.Message));
             logger.LogWarning("Regra de negócio impediu renovação do pedido {PedidoId}: {Errors}", idPedido, errors);

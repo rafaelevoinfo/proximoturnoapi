@@ -81,7 +81,7 @@ public class PedidosController(ILogger<ControllerBasico> logger,
     [HttpPut("{id:int}/status")]
     public async Task<IActionResult> AtualizarStatusPedido([FromRoute] int id, [FromBody] StatusPedidoDTO novoStatus) {
         return await EncapsulateRequestAsync(async () => {
-            await _atualizarStatusPedidoUseCase.ExecuteAsync(id, novoStatus.Status);
+            await _atualizarStatusPedidoUseCase.ExecuteAsync(id, novoStatus.Status, novoStatus.DataDevolucao);
             if (!_atualizarStatusPedidoUseCase.IsValid) {
                 return BadRequest(ApiResultDTO<PedidoDTO>.CreateFailureResult(_atualizarStatusPedidoUseCase.AggregateErrors()));
             }

@@ -1,5 +1,6 @@
 using System;
 using ProximoTurnoApi.Infrastructure.Models;
+using ProximoTurnoApi.Infrastructure.Services;
 
 namespace ProximoTurnoApi.Domain;
 
@@ -123,15 +124,24 @@ public class Pedido : BaseModel {
         return result;
     }
 
-    public bool Entregar() {
+    public bool Entregar(ICategoriaPeriodoCache cache, DateTime? dataDevolucao = null) {
         Clear();
         if (Status != StatusPedido.Pendente) {
             AddNotification("ERRO", $"Somente um pedido no status {StatusPedido.Pendente} pode ser entregue.");
             return false;
         }
+        if (dataDevolucao.HasValue && dataDevolucao.Value.Date <= DateTime.Now.Date) {
+            AddNotification("ERRO", "A data de devolução informada deve ser superior à data atual.");
+            return false;
+        }
+
         Status = StatusPedido.Entregue;
         DataHoraEntrega = DateTime.Now;
+
         foreach (var item in _items) {
+            item.DataDevolucao = dataDevolucao.HasValue
+                ? dataDevolucao.Value.Date.AddHours(23).AddMinutes(59).AddSeconds(59)
+                : CalcularDataDevolucao(cache.GetQuantidadeDias(item.IdPeriodo));
             item.JogoCopia.Status = StatusJogo.Alugado;
         }
         RegistrarAlteracao();
@@ -152,7 +162,7 @@ public class Pedido : BaseModel {
         return true;
     }
 
-    public Pedido? Renovar(List<(int idItem, CategoriaPeriodo periodo)?> itensRenovar) {
+    public Pedido? Renovar(List<(int idItem, CategoriaPeriodoInfo periodo)?> itensRenovar, ICategoriaPeriodoCache cache) {
         Clear();
 
         if (Status != StatusPedido.Devolvido) {
@@ -173,7 +183,7 @@ public class Pedido : BaseModel {
                 var novoItem = new ItemPedido() {
                     IdJogoCopia = item.IdJogoCopia,
                     JogoCopia = item.JogoCopia,
-                    IdPeriodo = itemRenovar.Value.periodo.Id,
+                    IdPeriodo = itemRenovar.Value.periodo.IdPeriodo,
                     Valor = itemRenovar.Value.periodo.Valor,
                     DataDevolucao = novoPedido.CalcularDataDevolucao(itemRenovar.Value.periodo.QuantidadeDias),
                     Renovado = true
@@ -182,7 +192,7 @@ public class Pedido : BaseModel {
             }
         }
         novoPedido.CalcularTotal();
-        novoPedido.Entregar();
+        novoPedido.Entregar(cache);
 
         RegistrarAlteracao();
         return novoPedido;

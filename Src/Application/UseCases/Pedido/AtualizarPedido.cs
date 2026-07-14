@@ -1,12 +1,13 @@
 using ProximoTurnoApi.Application.DTOs;
 using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Infrastructure.Repositories;
+using ProximoTurnoApi.Infrastructure.Services;
 
 namespace ProximoTurnoApi.Application.UseCases;
 
 public class AtualizarPedido(IPedidoRepository pedidoRepository,
     IJogoRepository _jogoRepository,
-    ICategoriaRepository _categoriaRepository,
+    ICategoriaPeriodoCache _categoriaPeriodoCache,
     ValidarCupom _validarCupom,
     IContratoQueue _contratoQueue,
     ILogger<AtualizarPedido> logger) : PedidoUseCaseBasico(pedidoRepository) {
@@ -34,7 +35,7 @@ public class AtualizarPedido(IPedidoRepository pedidoRepository,
             }
         }
         foreach (var item in novoPedidoDto.Items!) {
-            var resultValidacao = await ValidarAdicionarItem(item, _jogoRepository, _categoriaRepository);
+            var resultValidacao = await ValidarAdicionarItem(item, _jogoRepository, _categoriaPeriodoCache);
             if (!IsValid) {
                 logger.LogWarning("Falha na validação do item (Jogo ID {JogoId}) durante atualização do pedido {PedidoId}.", item.IdJogo, pedido.Id);
                 return;
@@ -52,7 +53,7 @@ public class AtualizarPedido(IPedidoRepository pedidoRepository,
             }
             var itemPedido = new ItemPedido() {
                 JogoCopia = resultValidacao.Value.copia,
-                IdPeriodo = resultValidacao.Value.periodo.Id,
+                IdPeriodo = resultValidacao.Value.periodo.IdPeriodo,
                 Valor = resultValidacao.Value.periodo.Valor,
                 DataDevolucao = pedido.CalcularDataDevolucao(resultValidacao.Value.periodo.QuantidadeDias)
             };

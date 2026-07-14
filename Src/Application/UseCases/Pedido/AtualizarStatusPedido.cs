@@ -3,12 +3,13 @@ using ProximoTurnoApi.Application.DTOs;
 using ProximoTurnoApi.Domain;
 using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Infrastructure.Repositories;
+using ProximoTurnoApi.Infrastructure.Services;
 
 namespace ProximoTurnoApi.Application.UseCases;
 
-public class AtualizarStatusPedido(IPedidoRepository pedidoRepository, ILogger<AtualizarStatusPedido> logger) : PedidoUseCaseBasico(pedidoRepository) {
+public class AtualizarStatusPedido(IPedidoRepository pedidoRepository, ICategoriaPeriodoCache categoriaPeriodoCache, ILogger<AtualizarStatusPedido> logger) : PedidoUseCaseBasico(pedidoRepository) {
 
-    public async Task ExecuteAsync(int idPedido, StatusPedido novoStatus) {
+    public async Task ExecuteAsync(int idPedido, StatusPedido novoStatus, DateTime? dataDevolucao = null) {
         logger.LogInformation("Solicitada alteração de status do pedido {PedidoId} para {NovoStatus}.", idPedido, novoStatus);
         var pedidoExistente = await _pedidoRepository.GetByIdAsync(idPedido);
         if (pedidoExistente is null) {
@@ -18,7 +19,7 @@ public class AtualizarStatusPedido(IPedidoRepository pedidoRepository, ILogger<A
         }
 
         if (novoStatus == StatusPedido.Entregue) {
-            if (!pedidoExistente.Entregar()) {
+            if (!pedidoExistente.Entregar(categoriaPeriodoCache, dataDevolucao)) {
                 logger.LogWarning("Regra de negócio impediu entrega do pedido {PedidoId}: {Errors}", idPedido, string.Join(", ", pedidoExistente.Notifications.Select(n => n.Message)));
                 AddNotifications((IList<UseCaseNotification>)pedidoExistente.Notifications.Select(n => UseCaseNotification.Create(UseCaseNotificationType.BadRequest, n.Message)).ToList());
                 return;
