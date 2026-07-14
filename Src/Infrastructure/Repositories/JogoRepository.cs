@@ -13,6 +13,7 @@ public interface IJogoRepository : IBaseRepository {
     Task<List<JogoCopia>> GetAllCopiasByIdsAsync(List<int> ids);
     Task<List<JogoCopia>> GetAllCopiasByIdJogoAsync(int idJogo);
     Task<Jogo?> GetByIdAsync(int id);
+    Task<Jogo?> GetResumoByIdAsync(int id);
     Task<List<JogoCopia>> GetCopiasAsync(int id);
     Task<JogoCopia?> GetCopiaByIdAsync(int id);
     Task SaveAsync(Jogo jogo, bool commit = true);
@@ -103,6 +104,20 @@ public class JogoRepository : BaseRepository, IJogoRepository {
             .FirstOrDefaultAsync(j => j.Id == id);
     }
 
+
+    // Projeção leve: apenas as colunas necessárias para validações/mensagens,
+    // evitando carregar Tags/Links/Fotos/Copias como o GetByIdAsync faz.
+    public Task<Jogo?> GetResumoByIdAsync(int id) {
+        return _dbContext.Jogos
+            .Where(j => j.Id == id)
+            .Select(j => new Jogo {
+                Id = j.Id,
+                Nome = j.Nome,
+                IdCategoria = j.IdCategoria
+            })
+            .AsNoTracking()
+            .FirstOrDefaultAsync();
+    }
 
     public async Task<JogoCopia?> GetCopiaByIdAsync(int id) {
         return await _dbContext.JogoCopias

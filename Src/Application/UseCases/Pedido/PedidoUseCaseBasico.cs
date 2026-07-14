@@ -13,15 +13,15 @@ public class PedidoUseCaseBasico(IPedidoRepository pedidoRepository) : UseCaseBa
         var copia = copias?.FirstOrDefault(c => c.Status == StatusJogo.Disponivel);
 
         if (copia is null) {
-            var jogoNaoDisp = await jogoRepository.GetByIdAsync(item.IdJogo);
+            var jogoNaoDisp = await jogoRepository.GetResumoByIdAsync(item.IdJogo);
             AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest, $"Não há cópias disponíveis do jogo \"{jogoNaoDisp?.Nome ?? "desconhecido"}\""));
             return null;
         }
 
-        // Descobre a categoria do jogo (carrega o jogo se necessário)
+        // Descobre a categoria do jogo (carrega o resumo se necessário)
         var idCategoriaJogo = copia.Jogo?.IdCategoria;
         if (idCategoriaJogo is null) {
-            var jogo = await jogoRepository.GetByIdAsync(item.IdJogo);
+            var jogo = await jogoRepository.GetResumoByIdAsync(item.IdJogo);
             idCategoriaJogo = jogo?.IdCategoria;
         }
 

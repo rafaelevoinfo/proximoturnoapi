@@ -79,6 +79,7 @@ public class ValidarCupomTests
         public Task<List<JogoCopia>> GetAllCopiasByIdsAsync(List<int> ids) => throw new NotImplementedException();
         public Task<List<JogoCopia>> GetAllCopiasByIdJogoAsync(int idJogo) => throw new NotImplementedException();
         public Task<Jogo?> GetByIdAsync(int id) => throw new NotImplementedException();
+        public Task<Jogo?> GetResumoByIdAsync(int id) => throw new NotImplementedException();
         public Task<List<JogoCopia>> GetCopiasAsync(int id) => throw new NotImplementedException();
         public Task<JogoCopia?> GetCopiaByIdAsync(int id) => throw new NotImplementedException();
         public Task SaveAsync(Jogo jogo, bool commit = true) => throw new NotImplementedException();
