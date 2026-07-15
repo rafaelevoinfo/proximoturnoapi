@@ -60,9 +60,14 @@ public class ClientesController(ILogger<ControllerBasico> logger,
                 var dto = ClienteDTO.FromModel(c);
                 dto.LoginAtivo = loginAtivo.GetValueOrDefault(c.Email.ToUpperInvariant());
                 return dto;
-            }).ToList();
+            });
 
-            return Ok(ApiResultDTO<List<ClienteDTO>>.CreateSuccessResult(dtos, "Clientes recuperados com sucesso."));
+            // O login vem do Identity e é resolvido em memória, então o filtro também é aplicado aqui.
+            if (filtro.LoginAtivo.HasValue) {
+                dtos = dtos.Where(d => d.LoginAtivo == filtro.LoginAtivo.Value);
+            }
+
+            return Ok(ApiResultDTO<List<ClienteDTO>>.CreateSuccessResult(dtos.ToList(), "Clientes recuperados com sucesso."));
         });
     }
 

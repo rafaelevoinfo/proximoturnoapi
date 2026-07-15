@@ -11,8 +11,12 @@ public class FiltroClienteDTO {
     public string? Telefone { get; set; }
     [FromQuery(Name = "cpf")]
     public string? Cpf { get; set; }
-    [FromQuery(Name = "apenasAtivos")]
-    public bool? ApenasAtivos { get; set; }
+    /// <summary>true = apenas ativos, false = apenas inativos, null = ambos.</summary>
+    [FromQuery(Name = "ativo")]
+    public bool? Ativo { get; set; }
+    /// <summary>true = apenas login ativo, false = apenas login inativo, null = ambos. Aplicado no controller.</summary>
+    [FromQuery(Name = "loginAtivo")]
+    public bool? LoginAtivo { get; set; }
     [FromQuery(Name = "page")]
     public int? Page { get; set; }
     [FromQuery(Name = "pageSize")]

@@ -42,8 +42,8 @@ public class ClienteRepository : BaseRepository, IClienteRepository {
             query = query.Where(c => c.Cpf == cpf);
         }
 
-        if (filtro.ApenasAtivos.HasValue && filtro.ApenasAtivos.Value) {
-            query = query.Where(c => c.Ativo);
+        if (filtro.Ativo.HasValue) {
+            query = query.Where(c => c.Ativo == filtro.Ativo.Value);
         }
 
         if (filtro.Page.HasValue && filtro.PageSize.HasValue && filtro.Page.Value > 0 && filtro.PageSize.Value > 0) {
