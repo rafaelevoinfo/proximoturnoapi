@@ -17,6 +17,7 @@ public class CadastroPedido(IPedidoRepository pedidoRepository,
     ValidarCupom _validarCupom,
     IContratoQueue _contratoQueue,
     INotificationService _notificationService,
+    IHostEnvironment hostEnvironment,
     ILogger<CadastroPedido> logger) : PedidoUseCaseBasico(pedidoRepository) {
 
     public async Task<int> ExecuteAsync(ClaimsPrincipal userClaim, NovoPedidoDTO novoPedidoDto) {
@@ -98,17 +99,19 @@ public class CadastroPedido(IPedidoRepository pedidoRepository,
         try {
             await _pedidoRepository.SaveAsync(pedido);
             logger.LogInformation("Pedido {PedidoId} cadastrado com sucesso para o cliente {ClienteId}.", pedido.Id, cliente.Id);
-            
-            try {
-                var pedidoCompleto = await _pedidoRepository.GetByIdAsync(pedido.Id) ?? pedido;
-                await _notificationService.EnviarNotificacaoNovoPedidoAsync(pedidoCompleto);
-            } catch (Exception ex) {
-                logger.LogError(ex, "Erro inesperado ao despachar notificações do novo pedido {PedidoId}.", pedido.Id);
+
+            if (!hostEnvironment.IsDevelopment()) {
+                try {
+                    var pedidoCompleto = await _pedidoRepository.GetByIdAsync(pedido.Id) ?? pedido;
+                    await _notificationService.EnviarNotificacaoNovoPedidoAsync(pedidoCompleto);
+                } catch (Exception ex) {
+                    logger.LogError(ex, "Erro inesperado ao despachar notificações do novo pedido {PedidoId}.", pedido.Id);
+                }
             }
 
             // Enfileira a geração de contrato de forma assíncrona
             _contratoQueue.Enfileirar(pedido.Id);
-            
+
             return pedido.Id;
         } catch (Exception ex) {
             logger.LogError(ex, "Erro fatal ao salvar o pedido no banco de dados.");

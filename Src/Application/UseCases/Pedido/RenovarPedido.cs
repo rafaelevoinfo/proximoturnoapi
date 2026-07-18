@@ -46,13 +46,6 @@ public class RenovarPedido(IPedidoRepository pedidoRepository,
             return;
         }
 
-        var idsItensDevolucao = pedidoExistente.Items.Select(i => i.Id).Except(itensNovoPedido.Select(i => i!.Value.idItem)).ToList();
-        if (!pedidoExistente.Devolver(idsItensDevolucao)) {
-            logger.LogWarning("Falha ao processar devolução necessária para renovação do pedido {PedidoId}: {Errors}", idPedido, string.Join(", ", pedidoExistente.Notifications.Select(n => n.Message)));
-            AddNotifications((IList<UseCaseNotification>)pedidoExistente.Notifications.Select(n => UseCaseNotification.Create(UseCaseNotificationType.BadRequest, n.Message)).ToList());
-            return;
-        }
-
         var novoPedido = pedidoExistente.Renovar(itensNovoPedido, _categoriaPeriodoCache);
         if (novoPedido is null || !pedidoExistente.IsValid || !novoPedido.IsValid) {
             var errors = string.Join(", ", pedidoExistente.Notifications.Concat(novoPedido?.Notifications ?? []).Select(n => n.Message));

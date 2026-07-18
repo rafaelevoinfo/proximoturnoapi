@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations.Schema;
+using ProximoTurnoApi.Domain;
 
 namespace ProximoTurnoApi.Infrastructure.Models;
-
 
 [Table("PEDIDO_ITEM")]
 public class ItemPedido : BaseModel {
@@ -20,6 +20,6 @@ public class ItemPedido : BaseModel {
     [Column("DATA_DEVOLUCAO")]
     public DateTime DataDevolucao { get; set; }
 
-    [Column("RENOVADO")]
-    public bool Renovado { get; set; }
+    [Column("STATUS")]
+    public StatusPedido Status { get; set; }
 }

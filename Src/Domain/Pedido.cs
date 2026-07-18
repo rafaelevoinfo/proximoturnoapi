@@ -13,6 +13,7 @@ public enum StatusPedido : short {
 
 public class Pedido : BaseModel {
     public Cliente Cliente { get; }
+    public int? IdPedidoOriginal { get; init; }
     //Em caso de renovações, estara preenchido com o pedido que gerou a renovacao
     public Pedido? PedidoOriginal { get; init; }
     public DateTime DataHora { get; init; }
@@ -84,6 +85,7 @@ public class Pedido : BaseModel {
         if (!IsValid) {
             return false;
         }
+        item.Status = StatusPedido.Pendente;
         _items.Add(item);
         CalcularTotal();
         RegistrarAlteracao();
@@ -139,6 +141,7 @@ public class Pedido : BaseModel {
         DataHoraEntrega = DateTime.Now;
 
         foreach (var item in _items) {
+            item.Status = StatusPedido.Entregue;
             item.DataDevolucao = dataDevolucao.HasValue
                 ? dataDevolucao.Value.Date.AddHours(23).AddMinutes(59).AddSeconds(59)
                 : CalcularDataDevolucao(cache.GetQuantidadeDias(item.IdPeriodo));
@@ -156,6 +159,7 @@ public class Pedido : BaseModel {
         }
         Status = StatusPedido.Cancelado;
         foreach (var item in _items) {
+            item.Status = StatusPedido.Cancelado;
             item.JogoCopia.Status = StatusJogo.Disponivel;
         }
         RegistrarAlteracao();
@@ -164,9 +168,8 @@ public class Pedido : BaseModel {
 
     public Pedido? Renovar(List<(int idItem, CategoriaPeriodoInfo periodo)?> itensRenovar, ICategoriaPeriodoCache cache) {
         Clear();
-
-        if (Status != StatusPedido.Devolvido) {
-            AddNotification("ERRO", "Para renovar um pedido, ele primeiro precisa ser devolvido e então renovado");
+        if (Status != StatusPedido.Entregue) {
+            AddNotification("ERRO", "Para renovar, o pedido precisa estar entregue");
             return null;
         }
 
@@ -176,36 +179,48 @@ public class Pedido : BaseModel {
             DataHoraEntrega = DateTime.Now,
             PedidoOriginal = this
         };
+
         foreach (var item in _items) {
             var itemRenovar = itensRenovar.FirstOrDefault(i => i.HasValue && i.Value.idItem == item.Id);
-            if (itemRenovar is not null) {
-                item.JogoCopia.Status = StatusJogo.Disponivel; // Permite que AdicionarItem valide e reserve a cópia
+            if (itemRenovar is not null && item.Status == StatusPedido.Entregue) {
+                item.JogoCopia.Status = StatusJogo.Disponivel; // libera para AdicionarItem revalidar e reservar
                 var novoItem = new ItemPedido() {
                     IdJogoCopia = item.IdJogoCopia,
                     JogoCopia = item.JogoCopia,
                     IdPeriodo = itemRenovar.Value.periodo.IdPeriodo,
                     Valor = itemRenovar.Value.periodo.Valor,
-                    DataDevolucao = novoPedido.CalcularDataDevolucao(itemRenovar.Value.periodo.QuantidadeDias),
-                    Renovado = true
+                    DataDevolucao = novoPedido.CalcularDataDevolucao(itemRenovar.Value.periodo.QuantidadeDias)
                 };
-                novoPedido.AdicionarItem(novoItem);
+                if (novoPedido.AdicionarItem(novoItem)) {
+                    item.Status = StatusPedido.Devolvido; // fecha a perna antiga do item renovado
+                }
             }
         }
+
+        if (novoPedido.Items.Count == 0) {
+            AddNotification("ERRO", "Nenhum item válido para renovação");
+            return null;
+        }
+
         novoPedido.CalcularTotal();
         novoPedido.Entregar(cache);
 
+        RecalcularStatus();
         RegistrarAlteracao();
         return novoPedido;
     }
 
     public bool Devolver(List<int>? idsItemsDevolvidos) {
+        Clear();
         if (Status != StatusPedido.Entregue) {
             AddNotification("ERRO", "Não é possível devolver um pedido não entregue");
             return false;
         }
         var qtdeDevolvida = 0;
         foreach (var item in _items) {
-            if (idsItemsDevolvidos is null || idsItemsDevolvidos.Count == 0 || idsItemsDevolvidos.Any(idItem => idItem == item.Id)) {
+            var deveDevolver = idsItemsDevolvidos is null || idsItemsDevolvidos.Count == 0 || idsItemsDevolvidos.Contains(item.Id);
+            if (deveDevolver && item.Status == StatusPedido.Entregue) {
+                item.Status = StatusPedido.Devolvido;
                 item.JogoCopia.Status = StatusJogo.Disponivel;
                 qtdeDevolvida++;
             }
@@ -214,9 +229,7 @@ public class Pedido : BaseModel {
             AddNotification("ERRO", "Nenhum item foi devolvido");
             return false;
         }
-
-        Status = StatusPedido.Devolvido;
-
+        RecalcularStatus();
         RegistrarAlteracao();
         return true;
     }
@@ -231,6 +244,24 @@ public class Pedido : BaseModel {
 
     private void RegistrarAlteracao() {
         DataHoraAlteracao = DateTime.Now;
+    }
+
+    private void RecalcularStatus() {
+        if (_items.Count == 0) {
+            return;
+        }
+        if (_items.All(i => i.Status == StatusPedido.Cancelado)) {
+            Status = StatusPedido.Cancelado;
+            return;
+        }
+        var ativos = _items.Where(i => i.Status != StatusPedido.Cancelado);
+        if (ativos.Any(i => i.Status == StatusPedido.Pendente)) {
+            Status = StatusPedido.Pendente;
+        } else if (ativos.Any(i => i.Status == StatusPedido.Entregue)) {
+            Status = StatusPedido.Entregue;
+        } else {
+            Status = StatusPedido.Devolvido;
+        }
     }
 
     public void AplicarCupom(int idCupom, decimal valorDesconto) {

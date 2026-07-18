@@ -44,7 +44,7 @@ public record PedidoDTO {
             CupomCodigo = pedido.Cupom?.Codigo,
             ValorDesconto = pedido.ValorDesconto,
             Status = pedido.Status,
-            Atrasado = pedido.Status == StatusPedido.Entregue && pedido.Items.Any(i => i.DataDevolucao.Date < DateTime.Today),
+            Atrasado = pedido.Items.Any(i => i.Status == StatusPedido.Entregue && i.DataDevolucao.Date < DateTime.Today),
             MetodoPagamento = pedido.MetodoPagamento,
             MetodoEntrega = pedido.MetodoEntrega,
             DataHoraAlteracao = pedido.DataHoraAlteracao,
@@ -54,7 +54,8 @@ public record PedidoDTO {
                 IdPeriodo = i.IdPeriodo,
                 Valor = i.Valor,
                 DataDevolucao = i.DataDevolucao,
-                Renovado = i.Renovado
+                Status = i.Status,
+                Renovado = pedido.IdPedidoOriginal != null
             }).ToList()
         };
     }
@@ -103,6 +104,8 @@ public record ItemPedidoDTO {
 
     public decimal Valor { get; set; }
     public DateTime DataDevolucao { get; set; }
+
+    public StatusPedido Status { get; set; }
 
     public bool Renovado { get; set; }
 }

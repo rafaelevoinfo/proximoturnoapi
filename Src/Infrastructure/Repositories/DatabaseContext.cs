@@ -130,9 +130,11 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : Identi
                    .HasForeignKey("ID_CLIENTE")
                    .OnDelete(DeleteBehavior.Restrict);
 
+            builder.Property(p => p.IdPedidoOriginal).HasColumnName("ID_PEDIDO_ORIGINAL").IsRequired(false);
+
             builder.HasOne(p => p.PedidoOriginal)
                    .WithMany()
-                   .HasForeignKey("ID_PEDIDO_ORIGINAL")
+                   .HasForeignKey(p => p.IdPedidoOriginal)
                    .OnDelete(DeleteBehavior.Restrict);
 
             builder.HasOne(p => p.Cupom)
@@ -155,6 +157,9 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : Identi
             .WithMany()
             .HasForeignKey(pj => pj.IdJogoCopia)
             .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<ItemPedido>()
+            .Property(i => i.Status).HasConversion<short>();
     }
 
     private static void ConfigureListaDesejos(ModelBuilder modelBuilder) {

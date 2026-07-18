@@ -25,15 +25,12 @@ public class SalvarComentario(
         }
 
         var pedidosComJogo = await dbContext.Pedidos
-            .Include(p => p.Cliente)
-            .Include(p => p.Items)
-                .ThenInclude(i => i.JogoCopia)
             .Where(p => p.Cliente.Id == idCliente.Value && p.Items.Any(i => i.JogoCopia.IdJogo == dto.IdJogo))
             .AsNoTracking()
             .Select(p =>
                 new {
                     p.Id,
-                    p.Status
+                    TemItemDevolvido = p.Items.Any(i => i.JogoCopia.IdJogo == dto.IdJogo && i.Status == StatusPedido.Devolvido)
                 }
             )
             .ToListAsync();
@@ -44,7 +41,7 @@ public class SalvarComentario(
             return null;
         }
 
-        var temPedidoDevolvido = pedidosComJogo.Any(p => p.Status == StatusPedido.Devolvido);
+        var temPedidoDevolvido = pedidosComJogo.Any(p => p.TemItemDevolvido);
         if (!temPedidoDevolvido) {
             logger.LogWarning("Nenhum pedido do jogo {JogoId} foi devolvido ainda para o cliente {ClienteId}.", dto.IdJogo, idCliente.Value);
             AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest, "Comentários são permitidos apenas para jogos já devolvidos."));

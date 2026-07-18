@@ -43,7 +43,7 @@ public class PedidoRepository(DatabaseContext dbContext) : BaseRepository(dbCont
 
         if (filtro.Atrasados) {
             // nao vou considerar horas, apenas dias
-            query = query.Where(p => p.Status == StatusPedido.Entregue && p.Items!.Any(i => i.DataDevolucao.Date < DateTime.Today));
+            query = query.Where(p => p.Items!.Any(i => i.Status == StatusPedido.Entregue && i.DataDevolucao.Date < DateTime.Today));
         }
 
         return await query
