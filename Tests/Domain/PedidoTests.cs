@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using ProximoTurnoApi.Domain;
 using ProximoTurnoApi.Infrastructure.Models;
 using Xunit;
@@ -205,7 +206,7 @@ public class PedidoTests
         var pedido = PedidoEntregueComDoisItens(out var item1, out var item2);
         var cache = new ProximoTurnoApi.Tests.Fakes.FakeCategoriaPeriodoCache().Adicionar(1, 7, 50m, 1);
         var periodo = new ProximoTurnoApi.Infrastructure.Services.CategoriaPeriodoInfo(1, 7, 50m, 1, "categoria");
-        var itensRenovar = new List<(int idItem, ProximoTurnoApi.Infrastructure.Services.CategoriaPeriodoInfo periodo)?> { (item1.Id, periodo) };
+        var itensRenovar = new List<(int idItem, ProximoTurnoApi.Infrastructure.Services.CategoriaPeriodoInfo periodo, DateTime? dataDevolucao)?> { (item1.Id, periodo, null) };
 
         var novo = pedido.Renovar(itensRenovar, cache);
 
@@ -223,12 +224,33 @@ public class PedidoTests
         var pedido = PedidoEntregueComDoisItens(out var item1, out var item2);
         var cache = new ProximoTurnoApi.Tests.Fakes.FakeCategoriaPeriodoCache().Adicionar(1, 7, 50m, 1);
         var periodo = new ProximoTurnoApi.Infrastructure.Services.CategoriaPeriodoInfo(1, 7, 50m, 1, "categoria");
-        var itensRenovar = new List<(int idItem, ProximoTurnoApi.Infrastructure.Services.CategoriaPeriodoInfo periodo)?> { (item1.Id, periodo), (item2.Id, periodo) };
+        var itensRenovar = new List<(int idItem, ProximoTurnoApi.Infrastructure.Services.CategoriaPeriodoInfo periodo, DateTime? dataDevolucao)?> { (item1.Id, periodo, null), (item2.Id, periodo, null) };
 
         var novo = pedido.Renovar(itensRenovar, cache);
 
         Assert.NotNull(novo);
         Assert.Equal(StatusPedido.Devolvido, pedido.Status);
         Assert.Equal(2, novo!.Items.Count);
+    }
+
+    [Fact]
+    public void Renovar_ComDataDevolucaoExplicitaNoItem_UsaDataInformadaEIgnoraCalculoPadrao()
+    {
+        var pedido = PedidoEntregueComDoisItens(out var item1, out var item2);
+        var cache = new ProximoTurnoApi.Tests.Fakes.FakeCategoriaPeriodoCache().Adicionar(1, 7, 50m, 1);
+        var periodo = new ProximoTurnoApi.Infrastructure.Services.CategoriaPeriodoInfo(1, 7, 50m, 1, "categoria");
+        var dataEscolhida = DateTime.Now.Date.AddDays(30);
+        var itensRenovar = new List<(int idItem, ProximoTurnoApi.Infrastructure.Services.CategoriaPeriodoInfo periodo, DateTime? dataDevolucao)?> {
+            (item1.Id, periodo, dataEscolhida),
+            (item2.Id, periodo, null)
+        };
+
+        var novo = pedido.Renovar(itensRenovar, cache);
+
+        Assert.NotNull(novo);
+        var novoItem1 = novo!.Items.Single(i => i.JogoCopia.Id == item1.JogoCopia.Id);
+        var novoItem2 = novo.Items.Single(i => i.JogoCopia.Id == item2.JogoCopia.Id);
+        Assert.Equal(dataEscolhida.AddHours(23).AddMinutes(59).AddSeconds(59), novoItem1.DataDevolucao);
+        Assert.Equal(novo.CalcularDataDevolucao(7), novoItem2.DataDevolucao);
     }
 }

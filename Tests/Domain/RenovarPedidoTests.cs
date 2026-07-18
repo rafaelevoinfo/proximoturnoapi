@@ -91,4 +91,30 @@ public class RenovarPedidoTests {
         Assert.Contains(repo.Pedidos, p => p.PedidoOriginal != null && p.Items.Count == 1 && p.Status == StatusPedido.Entregue);
         Assert.Single(queue.Enfileirados);
     }
+
+    [Fact]
+    public async Task ExecuteAsync_ComDataDevolucaoInformada_UsaDataNoItemDoNovoPedido() {
+        var cache = new FakeCategoriaPeriodoCache().Adicionar(10, 7, 50m, 1);
+        var (useCase, repo, _) = Criar(cache);
+        repo.Pedidos.Add(PedidoEntregue(cache, 1));
+        var dataEscolhida = DateTime.Now.Date.AddDays(45);
+
+        await useCase.ExecuteAsync(1, [new ItemPedidoRenovarDTO { Id = 1, DataDevolucao = dataEscolhida }]);
+
+        Assert.True(useCase.IsValid);
+        var novoPedido = repo.Pedidos.Single(p => p.PedidoOriginal != null);
+        Assert.Equal(dataEscolhida.AddHours(23).AddMinutes(59).AddSeconds(59), novoPedido.Items.Single().DataDevolucao);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ComDataDevolucaoNoPassado_IgnoraItemEAdicionaNotificacao() {
+        var cache = new FakeCategoriaPeriodoCache().Adicionar(10, 7, 50m, 1);
+        var (useCase, repo, _) = Criar(cache);
+        repo.Pedidos.Add(PedidoEntregue(cache, 1));
+
+        await useCase.ExecuteAsync(1, [new ItemPedidoRenovarDTO { Id = 1, DataDevolucao = DateTime.Now.Date }]);
+
+        Assert.False(useCase.IsValid);
+        Assert.Contains(useCase.Notifications, n => n.Message == "A data de devolução informada deve ser superior à data atual.");
+    }
 }

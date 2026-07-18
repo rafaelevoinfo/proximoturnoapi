@@ -1,5 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using ProximoTurnoApi.Application.DTOs;
 using ProximoTurnoApi.Application.UseCases;
@@ -15,6 +17,14 @@ public class FakeLogger<T> : ILogger<T> {
     public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
     public bool IsEnabled(LogLevel logLevel) => true;
     public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) { }
+}
+
+/// <summary>Ambiente de host reutilizável para qualquer use case; por padrão simula produção (fora do fluxo de dev).</summary>
+public class FakeHostEnvironment : IHostEnvironment {
+    public string EnvironmentName { get; set; } = Environments.Production;
+    public string ApplicationName { get; set; } = "Tests";
+    public string ContentRootPath { get; set; } = ".";
+    public IFileProvider ContentRootFileProvider { get; set; } = null!;
 }
 
 public class FakePedidoRepository : IPedidoRepository {

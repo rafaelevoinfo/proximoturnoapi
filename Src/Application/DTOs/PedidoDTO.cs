@@ -93,6 +93,7 @@ public record ItemPedidoRenovarDTO {
     [Required]
     public int Id { get; set; }
     public int? IdPeriodo { get; set; }
+    public DateTime? DataDevolucao { get; set; }
 }
 
 public record ItemPedidoDTO {

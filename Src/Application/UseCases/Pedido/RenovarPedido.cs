@@ -19,7 +19,7 @@ public class RenovarPedido(IPedidoRepository pedidoRepository,
             return;
         }
 
-        List<(int idItem, CategoriaPeriodoInfo periodo)?> itensNovoPedido = [];
+        List<(int idItem, CategoriaPeriodoInfo periodo, DateTime? dataDevolucao)?> itensNovoPedido = [];
         foreach (var itemRenovar in itens) {
             var itemPedido = pedidoExistente.Items.FirstOrDefault(i => i.Id == itemRenovar.Id);
             if (itemPedido is not null) {
@@ -34,7 +34,13 @@ public class RenovarPedido(IPedidoRepository pedidoRepository,
                     continue;
                 }
 
-                itensNovoPedido.Add((itemRenovar.Id, periodo));
+                if (itemRenovar.DataDevolucao.HasValue && itemRenovar.DataDevolucao.Value.Date <= DateTime.Now.Date) {
+                    logger.LogWarning("Data de devolução informada para o item {ItemId} do pedido {PedidoId} não é futura.", itemRenovar.Id, idPedido);
+                    AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest, "A data de devolução informada deve ser superior à data atual."));
+                    continue;
+                }
+
+                itensNovoPedido.Add((itemRenovar.Id, periodo, itemRenovar.DataDevolucao));
             } else {
                 logger.LogWarning("Item ID {ItemId} não pertence ao pedido {PedidoId}.", itemRenovar.Id, idPedido);
             }

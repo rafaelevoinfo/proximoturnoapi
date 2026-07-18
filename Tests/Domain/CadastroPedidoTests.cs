@@ -19,7 +19,7 @@ public class CadastroPedidoTests {
         FakeNotificationService notificacao) {
         // ValidarCupom não é exercitado (sem CupomCodigo), então dependências podem ser nulas.
         var validarCupom = new ValidarCupom(null!, null!, null!, new FakeLogger<ValidarCupom>());
-        return new CadastroPedido(pedidoRepo, jogoRepo, clienteRepo, cache, userManager, validarCupom, queue, notificacao, new FakeLogger<CadastroPedido>());
+        return new CadastroPedido(pedidoRepo, jogoRepo, clienteRepo, cache, userManager, validarCupom, queue, notificacao, new FakeHostEnvironment(), new FakeLogger<CadastroPedido>());
     }
 
     private static ClaimsPrincipal ClaimsVazio() => new(new ClaimsIdentity());

@@ -166,7 +166,7 @@ public class Pedido : BaseModel {
         return true;
     }
 
-    public Pedido? Renovar(List<(int idItem, CategoriaPeriodoInfo periodo)?> itensRenovar, ICategoriaPeriodoCache cache) {
+    public Pedido? Renovar(List<(int idItem, CategoriaPeriodoInfo periodo, DateTime? dataDevolucao)?> itensRenovar, ICategoriaPeriodoCache cache) {
         Clear();
         if (Status != StatusPedido.Entregue) {
             AddNotification("ERRO", "Para renovar, o pedido precisa estar entregue");
@@ -179,6 +179,8 @@ public class Pedido : BaseModel {
             DataHoraEntrega = DateTime.Now,
             PedidoOriginal = this
         };
+
+        var datasInformadas = new List<(ItemPedido novoItem, DateTime dataDevolucao)>();
 
         foreach (var item in _items) {
             var itemRenovar = itensRenovar.FirstOrDefault(i => i.HasValue && i.Value.idItem == item.Id);
@@ -193,6 +195,9 @@ public class Pedido : BaseModel {
                 };
                 if (novoPedido.AdicionarItem(novoItem)) {
                     item.Status = StatusPedido.Devolvido; // fecha a perna antiga do item renovado
+                    if (itemRenovar.Value.dataDevolucao.HasValue) {
+                        datasInformadas.Add((novoItem, itemRenovar.Value.dataDevolucao.Value));
+                    }
                 }
             }
         }
@@ -204,6 +209,11 @@ public class Pedido : BaseModel {
 
         novoPedido.CalcularTotal();
         novoPedido.Entregar(cache);
+
+        // Sobrescreve, item a item, a data calculada por Entregar quando uma data explícita foi informada na renovação
+        foreach (var (novoItem, dataDevolucao) in datasInformadas) {
+            novoItem.DataDevolucao = dataDevolucao.Date.AddHours(23).AddMinutes(59).AddSeconds(59);
+        }
 
         RecalcularStatus();
         RegistrarAlteracao();
