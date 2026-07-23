@@ -24,6 +24,16 @@ public class JogosController(ILogger<ControllerBasico> logger,
         });
     }
 
+    [HttpGet("admin")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<IActionResult> GetJogosAdmin([FromQuery] FiltroJogoAdminDTO filtro) {
+        _logger.LogInformation("Recuperando jogos (admin).");
+        return await EncapsulateRequestAsync(async () => {
+            var jogos = await _repository.GetAllAsync(filtro);
+            return Ok(ApiResultDTO<List<JogoCardDTO>>.CreateSuccessResult(jogos.Select(JogoCardDTO.FromModel).ToList(), "Jogos recuperados com sucesso."));
+        });
+    }
+
     [HttpGet("mais-alugados")]
     public async Task<IActionResult> GetJogosMaisAlugados([FromQuery] FiltroJogoDTO filtro) {
         _logger.LogInformation("Recuperando jogos mais alugados.");
@@ -133,6 +143,38 @@ public class JogosController(ILogger<ControllerBasico> logger,
             copia.Status = StatusJogo.Desativado;
             await _repository.SaveAsync(copia);
             return Ok(ApiResultDTO<object>.CreateSuccessResult(null, "Copia excluída com sucesso."));
+        });
+    }
+
+    [HttpPut("{id:int}/reativar")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<IActionResult> ReativarJogo([FromRoute] int id) {
+        return await EncapsulateRequestAsync(async () => {
+            var copias = await _repository.GetAllCopiasByIdJogoAsync(id);
+            if (copias is null || copias.Count == 0) {
+                return NotFound(ApiResultDTO<object>.CreateFailureResult($"Nenhuma copia do jogo foi encontrada."));
+            }
+            foreach (var copia in copias.Where(c => c.Status == StatusJogo.Desativado)) {
+                copia.Status = StatusJogo.Disponivel;
+            }
+            await _repository.SaveChangesAsync();
+            return Ok(ApiResultDTO<object>.CreateSuccessResult(null, "Jogo reativado com sucesso."));
+        });
+    }
+
+    [HttpPut("{idJogo:int}/copia/{id:int}/reativar")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<IActionResult> ReativarCopiaJogo([FromRoute] int idJogo, [FromRoute] int id) {
+        return await EncapsulateRequestAsync(async () => {
+            var copia = await _repository.GetCopiaByIdAsync(id);
+            if (copia == null || copia.IdJogo != idJogo) {
+                return NotFound(ApiResultDTO<object>.CreateFailureResult($"Copia de id {id} não encontrada."));
+            }
+            if (copia.Status == StatusJogo.Desativado) {
+                copia.Status = StatusJogo.Disponivel;
+                await _repository.SaveAsync(copia);
+            }
+            return Ok(ApiResultDTO<object>.CreateSuccessResult(null, "Copia reativada com sucesso."));
         });
     }
 

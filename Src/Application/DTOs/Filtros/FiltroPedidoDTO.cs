@@ -4,7 +4,9 @@ using ProximoTurnoApi.Domain;
 namespace ProximoTurnoApi.Application.DTOs;
 
 public class FiltroPedidoDTO {
-    //Preenchido automaticamente pelo use case baseado no usuario logado
+    // Para não-admin, é sobrescrito pelo use case com o cliente do usuário logado.
+    // Admin pode filtrar por um cliente específico via ?id_cliente=.
+    [FromQuery(Name = "id_cliente")]
     public int? IdCliente { get; set; }
     [FromQuery(Name = "data_inicial")]
     public DateOnly? DataInicial { get; set; }

@@ -38,6 +38,8 @@ public record JogoCardDTO {
         if (jogo.Copias is not null && jogo.Copias.Any()) {
             if (jogo.Copias.Any(c => c.Status == StatusJogo.Disponivel)) {
                 result.Status = StatusJogo.Disponivel;
+            } else if (jogo.Copias.All(c => c.Status == StatusJogo.Desativado)) {
+                result.Status = StatusJogo.Desativado;
             } else {
                 result.Status = jogo.Copias.Where(c => c.Status != StatusJogo.Desativado).Min(c => (StatusJogo?)c.Status) ?? StatusJogo.Indisponivel;
             }

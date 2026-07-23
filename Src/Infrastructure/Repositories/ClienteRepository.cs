@@ -52,11 +52,11 @@ public class ClienteRepository : BaseRepository, IClienteRepository {
 
         return await query
             .AsNoTracking()
+            .OrderBy(c => c.Nome)
             .ToListAsync();
     }
 
-    public async Task<List<Cliente>> GetAllByIdsAsync(List<int> ids)
-    {
+    public async Task<List<Cliente>> GetAllByIdsAsync(List<int> ids) {
         return await _dbContext.Clientes
             .AsNoTracking()
             .Where(c => ids.Contains(c.Id))

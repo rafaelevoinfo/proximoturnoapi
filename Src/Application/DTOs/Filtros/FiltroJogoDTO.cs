@@ -1,17 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
-using ProximoTurnoApi.Infrastructure.Models;
 
 namespace ProximoTurnoApi.Application.DTOs;
 
 public class FiltroJogoDTO {
     [FromQuery(Name = "nome")]
     public string? Nome { get; set; }
-    [FromQuery(Name = "id_categoria")]
-    public int? IdCategoria { get; set; }
     [FromQuery(Name = "tags")]
     public List<int>? Tags { get; set; }
-    [FromQuery(Name = "status")]
-    public StatusJogo? Status { get; set; }
     [FromQuery(Name = "idade_minima")]
     public short? IdadeMinima { get; set; }
     [FromQuery(Name = "qtde_jogadores")]
@@ -20,5 +15,4 @@ public class FiltroJogoDTO {
     public int? Page { get; set; }
     [FromQuery(Name = "pageSize")]
     public int? PageSize { get; set; }
-
 }

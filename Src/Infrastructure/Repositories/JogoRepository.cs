@@ -30,8 +30,11 @@ public class JogoRepository : BaseRepository, IJogoRepository {
     }
 
     public async Task<List<Jogo>> GetAllAsync(FiltroJogoDTO filtro) {
+        var admin = filtro as FiltroJogoAdminDTO;
+        bool filtrarDesativados = admin?.Status == StatusJogo.Desativado;
+
         // Listamos as colunas explicitamente para evitar conflitos de nomes (ex: ID e id)
-        var sql = @"SELECT j.* 
+        var sql = @"SELECT j.*
                     FROM JOGO j";
         var where = new List<string>();
         var parameters = new List<MySqlParameter>();
@@ -41,19 +44,14 @@ public class JogoRepository : BaseRepository, IJogoRepository {
             parameters.Add(new MySqlParameter("@NOME", $"%{filtro.Nome.ToLowerInvariant()}%"));
         }
 
-        if (filtro.IdCategoria.HasValue) {
+        if (admin?.IdCategoria is int idCategoria) {
             where.Add("j.ID_CATEGORIA = @ID_CATEGORIA");
-            parameters.Add(new MySqlParameter("@ID_CATEGORIA", filtro.IdCategoria.Value));
+            parameters.Add(new MySqlParameter("@ID_CATEGORIA", idCategoria));
         }
 
         if (filtro.Tags != null && filtro.Tags.Count > 0) {
             // Para tags, usamos uma subquery ou join. Subquery é mais segura com FromSqlRaw.
             where.Add($"EXISTS (SELECT 1 FROM JOGO_TAG jt WHERE jt.ID_JOGO = j.ID AND jt.ID_TAG IN ({string.Join(",", filtro.Tags)}))");
-        }
-
-        if (filtro.Status.HasValue) {
-            where.Add("EXISTS (SELECT 1 FROM JOGO_COPIA jc WHERE jc.ID_JOGO = j.ID AND jc.STATUS = @STATUS)");
-            parameters.Add(new MySqlParameter("@STATUS", (short)filtro.Status.Value));
         }
 
         if (filtro.IdadeMinima.HasValue) {
@@ -66,9 +64,20 @@ public class JogoRepository : BaseRepository, IJogoRepository {
             parameters.Add(new MySqlParameter("@QTDE_JOGADORES", filtro.QtdeJogadores.Value));
         }
 
-        // Filtro fixo para não trazer jogos desativados
-        where.Add("EXISTS (SELECT 1 FROM JOGO_COPIA jc WHERE jc.ID_JOGO = j.ID AND jc.STATUS != @STATUS_DESATIVADO)");
         parameters.Add(new MySqlParameter("@STATUS_DESATIVADO", (short)StatusJogo.Desativado));
+
+        if (filtrarDesativados) {
+            // Jogo inativo = todas as cópias desativadas.
+            where.Add("EXISTS (SELECT 1 FROM JOGO_COPIA jc WHERE jc.ID_JOGO = j.ID AND jc.STATUS = @STATUS_DESATIVADO)");
+            where.Add("NOT EXISTS (SELECT 1 FROM JOGO_COPIA jc WHERE jc.ID_JOGO = j.ID AND jc.STATUS != @STATUS_DESATIVADO)");
+        } else {
+            if (admin?.Status is StatusJogo status) {
+                where.Add("EXISTS (SELECT 1 FROM JOGO_COPIA jc WHERE jc.ID_JOGO = j.ID AND jc.STATUS = @STATUS)");
+                parameters.Add(new MySqlParameter("@STATUS", (short)status));
+            }
+            // Filtro fixo para não trazer jogos desativados
+            where.Add("EXISTS (SELECT 1 FROM JOGO_COPIA jc WHERE jc.ID_JOGO = j.ID AND jc.STATUS != @STATUS_DESATIVADO)");
+        }
 
         if (where.Count > 0) {
             sql += " WHERE " + string.Join(" AND ", where);
