@@ -176,13 +176,12 @@ public class JogoRepository : BaseRepository, IJogoRepository {
     public async Task<List<Jogo>> GetMaisAlugadosAsync() {
         var maisAlugadosIds = await _dbContext.Database
             .SqlQuery<int>(@$"
-            select j.ID
+            select jc.ID_JOGO
               from PEDIDO p
             inner join PEDIDO_ITEM pi ON (p.ID = pi.ID_PEDIDO)
-            inner join JOGO_COPIA jc on (jc.ID = pi.ID_JOGO_COPIA)
-            inner join JOGO j on (j.ID = jc.ID_JOGO)
-            where p.STATUS = {(short)StatusPedido.Entregue}
-            group by j.ID
+            inner join JOGO_COPIA jc on (jc.ID = pi.ID_JOGO_COPIA)            
+            where p.STATUS = {(short)StatusPedido.Devolvido}
+            group by jc.ID_JOGO
             order by count(*) desc 
             limit 3")
             .ToListAsync();
