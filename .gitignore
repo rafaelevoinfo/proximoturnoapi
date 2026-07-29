@@ -288,6 +288,10 @@ Generated_Code/
 # because we have git ;-)
 _UpgradeReport_Files/
 Backup*/
+# Reinclui o codigo-fonte do backup automatizado: a regra Backup*/ acima veio do
+# template do Visual Studio e mira pastas de conversao de projeto, mas casa com
+# Src/Application/UseCases/Backup e Src/Infrastructure/Backup.
+!Src/**/Backup/
 UpgradeLog*.XML
 UpgradeLog*.htm
 ServiceFabricBackup/

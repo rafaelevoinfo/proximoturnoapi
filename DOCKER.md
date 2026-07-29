@@ -70,6 +70,26 @@ docker-compose down -v
 - `MYSQL_USER`: Usuário do MySQL
 - `MYSQL_PASSWORD`: Senha do usuário MySQL
 
+### Backup automatizado
+
+Apenas os três segredos são obrigatórios — o resto tem padrão embutido no código:
+
+- `BACKUP_PASSPHRASE`: senha da cifra GPG do dump. **Sem padrão.**
+- `B2_KEY_ID` / `B2_APPLICATION_KEY`: credenciais da Backblaze B2. **Sem padrão.**
+
+Se qualquer um dos três faltar, o serviço registra erro no log e não agenda execuções.
+
+Opcionais, com padrão: `BACKUP_ENABLED` (`true`), `BACKUP_HORA` (`03:00`),
+`BACKUP_EMAIL_DESTINO` (`contato@proximoturno.com.br`),
+`B2_ENDPOINT` (`https://s3.us-east-005.backblazeb2.com`), `B2_BUCKET` (`proximo-turno`).
+
+**Em desenvolvimento, coloque `BACKUP_ENABLED=false` no `.env` local.** Sem isso o
+serviço tenta iniciar, não encontra os segredos e polui o log com erro a cada
+inicialização.
+
+A `BACKUP_PASSPHRASE` é o único item cuja perda torna os backups irrecuperáveis:
+guarde no gerenciador de senhas **e** numa cópia offline.
+
 ## Troubleshooting
 
 ### Container da API não consegue conectar ao MySQL

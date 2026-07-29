@@ -662,7 +662,7 @@ public class ExecutarBackupTests
     }
 
     [Fact]
-    public async Task ExecuteAsync_FalhaNaSincronizacaoDeUploads_NaoInvalidaODump()
+    public async Task ExecuteAsync_FalhaNaSincronizacaoDeUploads_ReportaFalhaMasODumpJaSubiu()
     {
         var armazenamento = new FakeArmazenamento();
         var email = new FakeEmailService();
@@ -1342,11 +1342,17 @@ git commit -m "feat: cliente de armazenamento na Backblaze B2 via API S3"
 
 **Files:**
 - Modify: `Dockerfile` (adicionar `default-mysql-client`)
+- Create: `Src/Infrastructure/Backup/ConexaoMySql.cs`
 - Create: `Src/Infrastructure/Backup/DumpBancoMySql.cs`
+- Test: `Tests/Domain/ConexaoMySqlTests.cs`
 
 **Interfaces:**
 - Consumes: `IDumpBanco` + `ResultadoDump` (Task 3), `BackupOptions` (Task 1), `IConfiguration` (para a connection string)
-- Produces: `class DumpBancoMySql(IConfiguration, BackupOptions, ILogger<DumpBancoMySql>) : IDumpBanco`
+- Produces:
+  - `record ConexaoMySql(string Host, int Porta, string Usuario, string Senha, string Banco)` com `static ConexaoMySql Parse(string connectionString)`
+  - `class DumpBancoMySql(IConfiguration, BackupOptions, ILogger<DumpBancoMySql>) : IDumpBanco`
+
+O parsing da connection string é extraído para `ConexaoMySql` porque é lógica pura com casos de borda reais (`Server=` × `Host=`, `User Id=` × `Uid=`, porta ausente) e erra em silêncio: uma chave lida errado gera um comando de dump inválido só descoberto às 03:00. O resto de `DumpBancoMySql` é orquestração de processo, validada pelo ensaio da Task 10.
 
 - [ ] **Step 1: Adicionar o cliente MySQL à imagem**
 
@@ -1369,7 +1375,164 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 `gnupg` já está na lista, então não é preciso adicionar nada para a cifra.
 
-- [ ] **Step 2: Implementar**
+- [ ] **Step 2: Escrever os testes do parser que falham**
+
+Crie `Tests/Domain/ConexaoMySqlTests.cs`:
+
+```csharp
+using ProximoTurnoApi.Infrastructure.Backup;
+using Xunit;
+
+namespace ProximoTurnoApi.Tests.Domain;
+
+public class ConexaoMySqlTests
+{
+    [Fact]
+    public void Parse_FormatoUsadoNoDockerCompose_ExtraiTodosOsCampos()
+    {
+        var conexao = ConexaoMySql.Parse(
+            "Server=proximoturno-mysql;Port=3306;Database=proximoturno;User=app;Password=segredo;");
+
+        Assert.Equal("proximoturno-mysql", conexao.Host);
+        Assert.Equal(3306, conexao.Porta);
+        Assert.Equal("proximoturno", conexao.Banco);
+        Assert.Equal("app", conexao.Usuario);
+        Assert.Equal("segredo", conexao.Senha);
+    }
+
+    [Fact]
+    public void Parse_SemPorta_UsaAPadrao3306()
+    {
+        var conexao = ConexaoMySql.Parse("Server=db;Database=x;User=u;Password=p");
+
+        Assert.Equal(3306, conexao.Porta);
+    }
+
+    [Fact]
+    public void Parse_UsandoHostEmVezDeServer_Funciona()
+    {
+        var conexao = ConexaoMySql.Parse("Host=db;Database=x;User=u;Password=p");
+
+        Assert.Equal("db", conexao.Host);
+    }
+
+    [Theory]
+    [InlineData("Server=db;Database=x;Uid=u;Password=p")]
+    [InlineData("Server=db;Database=x;User Id=u;Password=p")]
+    public void Parse_VariacoesDoNomeDeUsuario_Funcionam(string connectionString)
+    {
+        Assert.Equal("u", ConexaoMySql.Parse(connectionString).Usuario);
+    }
+
+    [Fact]
+    public void Parse_UsandoPwdEmVezDePassword_Funciona()
+    {
+        Assert.Equal("p", ConexaoMySql.Parse("Server=db;Database=x;User=u;Pwd=p").Senha);
+    }
+
+    [Fact]
+    public void Parse_ChavesEmCaixaDiferente_Funciona()
+    {
+        var conexao = ConexaoMySql.Parse("SERVER=db;database=x;uSeR=u;PASSWORD=p");
+
+        Assert.Equal("db", conexao.Host);
+        Assert.Equal("x", conexao.Banco);
+    }
+
+    [Fact]
+    public void Parse_SenhaComSinalDeIgual_PreservaOValorInteiro()
+    {
+        // Split em 2 partes: senhas base64 terminam em '=' e não podem ser truncadas.
+        Assert.Equal("ab=cd==", ConexaoMySql.Parse("Server=db;Database=x;User=u;Password=ab=cd==").Senha);
+    }
+
+    [Fact]
+    public void Parse_ComEspacosEmVoltaDosValores_RemoveOsEspacos()
+    {
+        var conexao = ConexaoMySql.Parse("Server = db ; Database = x ; User = u ; Password = p");
+
+        Assert.Equal("db", conexao.Host);
+        Assert.Equal("u", conexao.Usuario);
+    }
+
+    [Fact]
+    public void Parse_PortaNaoNumerica_CaiParaAPadrao()
+    {
+        Assert.Equal(3306, ConexaoMySql.Parse("Server=db;Port=abc;Database=x;User=u;Password=p").Porta);
+    }
+
+    [Theory]
+    [InlineData("Database=x;User=u;Password=p", "server")]
+    [InlineData("Server=db;User=u;Password=p", "database")]
+    [InlineData("Server=db;Database=x;Password=p", "user")]
+    [InlineData("Server=db;Database=x;User=u", "password")]
+    public void Parse_FaltandoCampoObrigatorio_LancaComNomeDoCampo(string connectionString, string campo)
+    {
+        var erro = Assert.Throws<InvalidOperationException>(() => ConexaoMySql.Parse(connectionString));
+
+        Assert.Contains(campo, erro.Message, StringComparison.OrdinalIgnoreCase);
+    }
+}
+```
+
+- [ ] **Step 3: Rodar os testes e confirmar que falham**
+
+Run: `dotnet test --filter "FullyQualifiedName~ConexaoMySqlTests"`
+Expected: FAIL na compilação — `ConexaoMySql` não existe.
+
+- [ ] **Step 4: Implementar o parser**
+
+Crie `Src/Infrastructure/Backup/ConexaoMySql.cs`:
+
+```csharp
+namespace ProximoTurnoApi.Infrastructure.Backup;
+
+/// <summary>
+/// Campos da connection string necessários para montar a linha de comando do
+/// mysqldump. Aceita as variações de nome que o provider do MySQL permite.
+/// </summary>
+public record ConexaoMySql(string Host, int Porta, string Usuario, string Senha, string Banco)
+{
+    private const int PortaPadrao = 3306;
+
+    public static ConexaoMySql Parse(string connectionString)
+    {
+        var partes = connectionString
+            .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            // Split em 2: senhas base64 podem conter '=' e não podem ser truncadas.
+            .Select(parte => parte.Split('=', 2))
+            .Where(par => par.Length == 2)
+            .ToDictionary(par => par[0].Trim().ToLowerInvariant(), par => par[1].Trim());
+
+        string Obrigatorio(string rotulo, params string[] chaves)
+        {
+            foreach (var chave in chaves)
+                if (partes.TryGetValue(chave, out var valor) && !string.IsNullOrWhiteSpace(valor))
+                    return valor;
+
+            throw new InvalidOperationException($"Connection string sem o campo '{rotulo}'.");
+        }
+
+        var porta = partes.TryGetValue("port", out var textoPorta) && int.TryParse(textoPorta, out var numero)
+            ? numero
+            : PortaPadrao;
+
+        return new ConexaoMySql(
+            Obrigatorio("server", "server", "host"),
+            porta,
+            Obrigatorio("user", "user", "user id", "uid"),
+            Obrigatorio("password", "password", "pwd"),
+            Obrigatorio("database", "database"));
+    }
+}
+```
+
+- [ ] **Step 5: Rodar os testes e confirmar que passam**
+
+Run: `dotnet test --filter "FullyQualifiedName~ConexaoMySqlTests"`
+Expected: PASS — 14 testes (contando os casos de `Theory`).
+
+- [ ] **Step 6: Implementar o dump**
 
 Crie `Src/Infrastructure/Backup/DumpBancoMySql.cs`:
 
@@ -1448,41 +1611,25 @@ public class DumpBancoMySql(
         return new ResultadoDump(destino, tamanho);
     }
 
-    private (string Host, int Porta, string Usuario, string Senha, string Banco) LerConexao()
+    private ConexaoMySql LerConexao()
     {
         var connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("ConnectionStrings__DefaultConnection não configurada.");
 
-        var partes = connectionString
-            .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(p => p.Split('=', 2))
-            .Where(p => p.Length == 2)
-            .ToDictionary(p => p[0].Trim().ToLowerInvariant(), p => p[1].Trim());
-
-        string Obter(params string[] chaves)
-        {
-            foreach (var chave in chaves)
-                if (partes.TryGetValue(chave, out var valor)) return valor;
-
-            throw new InvalidOperationException($"Connection string sem '{chaves[0]}'.");
-        }
-
-        var porta = partes.TryGetValue("port", out var p) && int.TryParse(p, out var n) ? n : 3306;
-
-        return (Obter("server", "host"), porta, Obter("user", "user id", "uid"), Obter("password", "pwd"), Obter("database"));
+        return ConexaoMySql.Parse(connectionString);
     }
 }
 ```
 
-- [ ] **Step 3: Confirmar que compila e que a suíte segue verde**
+- [ ] **Step 7: Confirmar que compila e que a suíte segue verde**
 
 Run: `dotnet build Src/ProximoTurnoApi.csproj` seguido de `dotnet test`
 Expected: build sem erros; todos os testes continuam passando.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
-git add Dockerfile Src/Infrastructure/Backup/DumpBancoMySql.cs
+git add Dockerfile Src/Infrastructure/Backup/ConexaoMySql.cs Src/Infrastructure/Backup/DumpBancoMySql.cs Tests/Domain/ConexaoMySqlTests.cs
 git commit -m "feat: dump do MySQL comprimido e cifrado com GPG"
 ```
 

@@ -51,7 +51,15 @@ services:
       SMTP_FROM_NAME: ${SMTP_FROM_NAME}
       AUTENTIQUE_API_TOKEN: ${AUTENTIQUE_API_TOKEN}
       AUTENTIQUE_SANDBOX: ${AUTENTIQUE_SANDBOX}
-      AUTENTIQUE_WEBHOOK_SECRET: ${AUTENTIQUE_WEBHOOK_SECRET}    
+      AUTENTIQUE_WEBHOOK_SECRET: ${AUTENTIQUE_WEBHOOK_SECRET}
+      BACKUP_ENABLED: ${BACKUP_ENABLED:-true}
+      BACKUP_HORA: ${BACKUP_HORA:-03:00}
+      BACKUP_EMAIL_DESTINO: ${BACKUP_EMAIL_DESTINO:-contato@proximoturno.com.br}
+      BACKUP_PASSPHRASE: ${BACKUP_PASSPHRASE}
+      B2_ENDPOINT: ${B2_ENDPOINT:-https://s3.us-east-005.backblazeb2.com}
+      B2_BUCKET: ${B2_BUCKET:-proximo-turno}
+      B2_KEY_ID: ${B2_KEY_ID}
+      B2_APPLICATION_KEY: ${B2_APPLICATION_KEY}
     healthcheck:
         test: ["CMD-SHELL", "curl -f http://localhost/health || exit 1"]
         interval: 30s
@@ -68,6 +76,7 @@ services:
     volumes:
       - api_uploads:/app/wwwroot/uploads
       - api_keys:/app/keys
+      - api_backup_state:/app/backup-state
 
 volumes:
   mysql_data:
@@ -75,6 +84,8 @@ volumes:
   api_uploads:
     driver: local
   api_keys:
+    driver: local
+  api_backup_state:
     driver: local
 
 networks:

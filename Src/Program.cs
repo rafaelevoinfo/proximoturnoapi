@@ -10,6 +10,8 @@ using ProximoTurnoApi.Infrastructure.Identity;
 using ProximoTurnoApi.Infrastructure.Services;
 using ProximoTurnoApi.Application.Converters;
 using ProximoTurnoApi.Application.UseCases;
+using ProximoTurnoApi.Application.UseCases.Backup;
+using ProximoTurnoApi.Infrastructure.Backup;
 using Serilog;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -50,6 +52,18 @@ builder.Services.AddSingleton<IContratoQueue, ContratoQueue>();
 builder.Services.AddHostedService<ContratoQueueBackgroundService>();
 builder.Services.AddSingleton<CloudinaryService>();
 builder.Services.AddSingleton<IEmailService, EmailService>();
+
+// Backup automatizado
+builder.Services.AddSingleton(sp =>
+    BackupOptions.DaConfiguracao(sp.GetRequiredService<IConfiguration>()));
+builder.Services.AddSingleton<IEstadoBackupStore>(sp =>
+    new EstadoBackupArquivo(sp.GetRequiredService<BackupOptions>().CaminhoEstado));
+builder.Services.AddSingleton<IArmazenamentoBackup, ArmazenamentoB2>();
+builder.Services.AddScoped<IDumpBanco, DumpBancoMySql>();
+builder.Services.AddScoped<ISincronizadorUploads, SincronizadorUploads>();
+builder.Services.AddScoped<ExecutarBackup>();
+builder.Services.AddHostedService<BackupBackgroundService>();
+
 builder.Services.AddTransient<IEmailSender<Usuario>, IdentityEmailSender>();
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<IAutentiqueService, AutentiqueService>();
