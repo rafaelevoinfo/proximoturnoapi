@@ -128,19 +128,24 @@ Na primeira execução não há tamanho anterior para comparar; a verificação 
 
 ## Configuração
 
-Novas variáveis no `.env` e no `docker-compose.yml`:
+As opções ficam numa classe `BackupOptions`, com valores padrão embutidos no código. O `.env` só precisa declarar o que foge do padrão — na prática, apenas os três segredos.
 
-| Variável | Descrição |
+| Variável | Padrão embutido |
 |---|---|
-| `BACKUP_ENABLED` | Liga/desliga a rotina. `false` em desenvolvimento. |
-| `BACKUP_HORA` | Horário da execução diária (padrão `03:00`, fuso já é `America/Sao_Paulo`). |
-| `BACKUP_PASSPHRASE` | Senha da cifra simétrica GPG. |
-| `BACKUP_EMAIL_DESTINO` | Destinatário dos avisos. |
-| `B2_ENDPOINT` | Endpoint S3 da Backblaze. |
-| `B2_KEY_ID` / `B2_APPLICATION_KEY` | Credenciais estáticas. |
-| `B2_BUCKET` | Nome do bucket. |
+| `BACKUP_ENABLED` | `true` |
+| `BACKUP_HORA` | `03:00` (fuso do contêiner já é `America/Sao_Paulo`) |
+| `BACKUP_EMAIL_DESTINO` | `contato@proximoturno.com.br` |
+| `B2_ENDPOINT` | `https://s3.us-east-005.backblazeb2.com` |
+| `B2_BUCKET` | `proximo-turno` |
+| `BACKUP_PASSPHRASE` | **sem padrão** |
+| `B2_KEY_ID` | **sem padrão** |
+| `B2_APPLICATION_KEY` | **sem padrão** |
+
+Os três últimos são segredos e não têm valor embutido. Se qualquer um deles estiver ausente na inicialização, o serviço registra um erro no log e não agenda execuções — em vez de falhar toda noite às 03:00 e encher a caixa de entrada de e-mails de falha.
 
 A `BACKUP_PASSPHRASE` é o único item cuja perda torna os backups inúteis. Deve ser guardada no gerenciador de senhas **e** numa cópia offline.
+
+Como `BACKUP_ENABLED` vem `true` por padrão, o ambiente de desenvolvimento precisa de `BACKUP_ENABLED=false` no `.env` local. Sem isso o comportamento não é perigoso — os segredos não existem na máquina de desenvolvimento, então o serviço apenas se recusa a agendar —, mas deixar explícito evita ruído no log.
 
 Alteração no `Dockerfile`: acrescentar `default-mysql-client` ao bloco `apt-get install` existente.
 
