@@ -13,8 +13,10 @@ public class BackupOptions {
     public string EmailDestino { get; init; } = "contato@proximoturno.com.br";
     public string B2Endpoint { get; init; } = "https://s3.us-east-005.backblazeb2.com";
     public string B2Bucket { get; init; } = "proximo-turno";
-    public string CaminhoUploads { get; init; } = "/app/wwwroot/uploads";
-    public string CaminhoEstado { get; init; } = "/app/backup-state/ultimo-backup.json";
+    // Preenchidos por DaConfiguracao, que precisa da raiz de conteúdo para
+    // derivar os padrões (ver CaminhoUploadsPadrao/CaminhoEstadoPadrao).
+    public string CaminhoUploads { get; init; } = "";
+    public string CaminhoEstado { get; init; } = "";
 
     public string? Passphrase { get; init; }
     public string? B2KeyId { get; init; }
@@ -44,6 +46,25 @@ public class BackupOptions {
     }
 
     /// <summary>
+    /// Padrões relativos à raiz de conteúdo da aplicação, não absolutos. No
+    /// contêiner o ContentRootPath é /app, então os valores efetivos continuam
+    /// sendo /app/wwwroot/uploads e /app/backup-state/ultimo-backup.json — os
+    /// mesmos de antes, inclusive para o volume declarado no compose.
+    ///
+    /// Fora do contêiner (ex.: `dotnet run` no WSL) apontar para /app fixo
+    /// quebrava: o Directory.CreateDirectory do estado tentava criar /app na raiz
+    /// do filesystem e estourava UnauthorizedAccessException, enquanto a
+    /// sincronização de uploads silenciosamente não achava a pasta e enviava zero
+    /// arquivos. Derivando da raiz de conteúdo, ambos caem na pasta do projeto.
+    /// </summary>
+    public static string CaminhoUploadsPadrao(string raizConteudo) =>
+        Path.Combine(raizConteudo, "wwwroot", "uploads");
+
+    /// <inheritdoc cref="CaminhoUploadsPadrao"/>
+    public static string CaminhoEstadoPadrao(string raizConteudo) =>
+        Path.Combine(raizConteudo, "backup-state", "ultimo-backup.json");
+
+    /// <summary>
     /// Sem os três segredos o backup não tem como cifrar nem enviar, então o
     /// serviço nem chega a agendar execuções.
     /// </summary>
@@ -52,7 +73,7 @@ public class BackupOptions {
         !string.IsNullOrWhiteSpace(B2KeyId) &&
         !string.IsNullOrWhiteSpace(B2ApplicationKey);
 
-    public static BackupOptions DaConfiguracao(IConfiguration configuration) {
+    public static BackupOptions DaConfiguracao(IConfiguration configuration, string raizConteudo) {
         var padrao = new BackupOptions();
 
         return new BackupOptions {
@@ -61,8 +82,8 @@ public class BackupOptions {
             EmailDestino = LerTexto(configuration["BACKUP_EMAIL_DESTINO"], padrao.EmailDestino),
             B2Endpoint = LerTexto(configuration["B2_ENDPOINT"], padrao.B2Endpoint),
             B2Bucket = LerTexto(configuration["B2_BUCKET"], padrao.B2Bucket),
-            CaminhoUploads = LerTexto(configuration["BACKUP_CAMINHO_UPLOADS"], padrao.CaminhoUploads),
-            CaminhoEstado = LerTexto(configuration["BACKUP_CAMINHO_ESTADO"], padrao.CaminhoEstado),
+            CaminhoUploads = LerTexto(configuration["BACKUP_CAMINHO_UPLOADS"], CaminhoUploadsPadrao(raizConteudo)),
+            CaminhoEstado = LerTexto(configuration["BACKUP_CAMINHO_ESTADO"], CaminhoEstadoPadrao(raizConteudo)),
             Passphrase = configuration["BACKUP_PASSPHRASE"],
             B2KeyId = configuration["B2_KEY_ID"],
             B2ApplicationKey = configuration["B2_APPLICATION_KEY"]

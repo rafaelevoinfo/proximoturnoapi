@@ -55,7 +55,9 @@ builder.Services.AddSingleton<IEmailService, EmailService>();
 
 // Backup automatizado
 builder.Services.AddSingleton(sp =>
-    BackupOptions.DaConfiguracao(sp.GetRequiredService<IConfiguration>()));
+    BackupOptions.DaConfiguracao(
+        sp.GetRequiredService<IConfiguration>(),
+        builder.Environment.ContentRootPath));
 builder.Services.AddSingleton<IEstadoBackupStore>(sp =>
     new EstadoBackupArquivo(sp.GetRequiredService<BackupOptions>().CaminhoEstado));
 builder.Services.AddSingleton<IArmazenamentoBackup, ArmazenamentoB2>();

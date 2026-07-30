@@ -22,6 +22,15 @@ public class DumpBancoMySql(
         // Pipeline em shell: o dump nunca é materializado em claro no disco.
         // --single-transaction dá um snapshot consistente sem travar tabelas.
         //
+        // --no-tablespaces evita que o mysqldump consulte INFORMATION_SCHEMA.FILES
+        // para emitir CREATE TABLESPACE, consulta que exige o privilégio global
+        // PROCESS. Sem a flag, um usuário sem PROCESS (o da aplicação) faz o
+        // mysqldump escrever "Error: 'Access denied; you need ... PROCESS'" em
+        // stderr a cada execução. O dump em si sai completo e idêntico — só usamos
+        // tablespaces per-table do InnoDB, então nada seria emitido de todo modo —
+        // mas o LogWarning de stderr abaixo passaria a disparar em todo backup,
+        // afogando qualquer aviso legítimo em ruído previsível.
+        //
         // --protocol=TCP não é opcional: para os clientes baseados em libmysqlclient
         // o host "localhost" significa "socket Unix local", e a porta é ignorada. O
         // MySQL roda em outro contêiner, então não existe socket no filesystem local
@@ -48,7 +57,7 @@ public class DumpBancoMySql(
         // "senha" — o arquivo nunca é decifrável com a passphrase real.
         var comando =
             "set -o pipefail; " +
-            "mysqldump --single-transaction --routines --triggers " +
+            "mysqldump --single-transaction --routines --triggers --no-tablespaces " +
             "--host=\"$DB_HOST\" --port=\"$DB_PORT\" --protocol=TCP --user=\"$DB_USER\" \"$DB_NAME\" " +
             "| gzip " +
             $"| gpg --batch --yes --symmetric --cipher-algo AES256 --passphrase-fd 3 --output '{destino}' 3<<<\"$BACKUP_PASSPHRASE\"";
