@@ -13,8 +13,7 @@ public class BackupBackgroundService(
     IEstadoBackupStore estadoStore,
     BackupOptions options,
     ILogger<BackupBackgroundService> logger,
-    TimeProvider? timeProvider = null) : BackgroundService
-{
+    TimeProvider? timeProvider = null) : BackgroundService {
     private readonly TimeProvider _relogio = timeProvider ?? TimeProvider.System;
 
     /// <summary>
@@ -36,8 +35,7 @@ public class BackupBackgroundService(
     /// Verdadeiro quando a última execução bem-sucedida tem mais de 24h — ou
     /// nunca houve uma. Evita que um deploy dentro da janela pule a noite.
     /// </summary>
-    public async Task<bool> DeveExecutarAgoraAsync()
-    {
+    public async Task<bool> DeveExecutarAgoraAsync() {
         if (!options.Habilitado) return false;
 
         var estado = await estadoStore.LerAsync();
@@ -57,24 +55,20 @@ public class BackupBackgroundService(
     /// relógio fixo, sem depender do laço nem de um <see cref="TimeProvider"/>
     /// com temporizador controlável.
     /// </summary>
-    public async Task<bool> JaExecutouRecentementeAsync()
-    {
+    public async Task<bool> JaExecutouRecentementeAsync() {
         var estado = await estadoStore.LerAsync();
         if (estado is null) return false;
 
         return _relogio.GetUtcNow().UtcDateTime - estado.UltimaExecucaoUtc <= LimiarUltimaExecucaoRecente;
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        if (!options.Habilitado)
-        {
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
+        if (!options.Habilitado) {
             logger.LogInformation("Backup desabilitado por configuração (BACKUP_ENABLED=false).");
             return;
         }
 
-        if (!options.SegredosPresentes)
-        {
+        if (!options.SegredosPresentes) {
             // Agendar sem os segredos só produziria uma falha por noite e
             // afogaria o e-mail de sucesso, que é o nosso sinal de vida.
             logger.LogError(
@@ -84,20 +78,14 @@ public class BackupBackgroundService(
 
         logger.LogInformation("BackupBackgroundService iniciado. Horário diário: {Horario}.", options.Horario);
 
-        try
-        {
-            if (await DeveExecutarAgoraAsync())
-            {
+        try {
+            if (await DeveExecutarAgoraAsync()) {
                 logger.LogInformation("Última execução tem mais de 24h. Executando imediatamente.");
                 await ExecutarAsync(stoppingToken);
             }
-        }
-        catch (OperationCanceledException)
-        {
+        } catch (OperationCanceledException) {
             return;
-        }
-        catch (Exception ex)
-        {
+        } catch (Exception ex) {
             // Uma falha aqui (ex.: configuração inválida na construção do
             // IArmazenamentoBackup, ou erro de I/O ao ler o estado) não pode
             // derrubar o host inteiro — BackgroundServiceExceptionBehavior é
@@ -107,14 +95,11 @@ public class BackupBackgroundService(
             logger.LogError(ex, "Falha na execução de recuperação na inicialização do serviço de backup.");
         }
 
-        while (!stoppingToken.IsCancellationRequested)
-        {
-            try
-            {
+        while (!stoppingToken.IsCancellationRequested) {
+            try {
                 await Task.Delay(TempoAteProximaExecucao(), _relogio, stoppingToken);
 
-                if (await JaExecutouRecentementeAsync())
-                {
+                if (await JaExecutouRecentementeAsync()) {
                     // A execução de recuperação (antes do laço) e a janela agendada
                     // podem cair minutos uma da outra — sem esta checagem, isso
                     // gera um segundo backup completo na mesma madrugada.
@@ -125,25 +110,18 @@ public class BackupBackgroundService(
                 }
 
                 await ExecutarAsync(stoppingToken);
-            }
-            catch (OperationCanceledException)
-            {
+            } catch (OperationCanceledException) {
                 break;
-            }
-            catch (Exception ex)
-            {
+            } catch (Exception ex) {
                 // ExecutarBackup.ExecuteAsync captura suas próprias exceções e sempre
                 // retorna um ResultadoBackup; então este catch não trata falhas do
                 // backup em si, e sim falhas de resolução de DI/escopo (ex.: serviço
                 // não registrado), que são o único jeito de chegar aqui.
                 logger.LogError(ex, "Erro no laço do serviço de backup.");
 
-                try
-                {
+                try {
                     await Task.Delay(TimeSpan.FromMinutes(5), _relogio, stoppingToken);
-                }
-                catch (OperationCanceledException)
-                {
+                } catch (OperationCanceledException) {
                     break;
                 }
             }
@@ -152,8 +130,7 @@ public class BackupBackgroundService(
         logger.LogInformation("BackupBackgroundService finalizado.");
     }
 
-    private TimeSpan TempoAteProximaExecucao()
-    {
+    private TimeSpan TempoAteProximaExecucao() {
         // O contêiner roda em America/Sao_Paulo, então o horário local é o esperado.
         var agora = _relogio.GetLocalNow().DateTime;
         var proxima = agora.Date + options.Horario;
@@ -163,8 +140,7 @@ public class BackupBackgroundService(
         return proxima - agora;
     }
 
-    private async Task ExecutarAsync(CancellationToken stoppingToken)
-    {
+    private async Task ExecutarAsync(CancellationToken stoppingToken) {
         using var scope = scopeFactory.CreateScope();
         var executarBackup = scope.ServiceProvider.GetRequiredService<ExecutarBackup>();
 

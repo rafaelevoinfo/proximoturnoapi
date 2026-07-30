@@ -16,17 +16,14 @@ public class ExecutarBackup(
     IEstadoBackupStore estadoStore,
     IEmailService emailService,
     BackupOptions options,
-    ILogger<ExecutarBackup> logger)
-{
+    ILogger<ExecutarBackup> logger) {
     /// <summary>Abaixo desta fração do dump anterior, consideramos que algo deu errado.</summary>
     private const double FracaoMinimaEmRelacaoAoAnterior = 0.5;
 
-    public async Task<ResultadoBackup> ExecuteAsync(CancellationToken cancellationToken)
-    {
+    public async Task<ResultadoBackup> ExecuteAsync(CancellationToken cancellationToken) {
         string? caminhoTemporario = null;
 
-        try
-        {
+        try {
             var anterior = await estadoStore.LerAsync();
 
             logger.LogInformation("Iniciando backup.");
@@ -56,9 +53,7 @@ public class ExecutarBackup(
             await NotificarSucessoAsync(dump.TamanhoBytes, sincronizacao);
 
             return new ResultadoBackup(true, dump.TamanhoBytes, sincronizacao.NovosEnviados, null);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
+        } catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
             // Um redeploy durante a janela de backup cancela o token; isso não
             // é uma falha do backup, e sim um desligamento normal do serviço.
             // Não envia e-mail: "Backup FALHOU" toda vez que alguém publica uma
@@ -67,21 +62,17 @@ public class ExecutarBackup(
             // contra o SIGKILL de 10s do Docker.
             logger.LogInformation("Backup cancelado (desligamento do serviço); nenhum e-mail foi enviado.");
             return new ResultadoBackup(false, 0, 0, null);
-        }
-        catch (Exception ex)
-        {
+        } catch (Exception ex) {
             logger.LogError(ex, "Falha na execução do backup.");
             await NotificarFalhaAsync(ex.Message);
             return new ResultadoBackup(false, 0, 0, ex.Message);
         }
-        finally
-        {
+        finally {
             RemoverTemporario(caminhoTemporario);
         }
     }
 
-    private static void VerificarTamanho(long tamanhoAtual, EstadoBackup? anterior)
-    {
+    private static void VerificarTamanho(long tamanhoAtual, EstadoBackup? anterior) {
         // Na primeira execução não há com o que comparar.
         if (anterior is null || anterior.TamanhoDumpBytes <= 0) return;
 
@@ -93,8 +84,7 @@ public class ExecutarBackup(
             "Envio abortado por suspeita de dump incompleto.");
     }
 
-    private async Task NotificarSucessoAsync(long tamanhoBytes, ResultadoSincronizacao sincronizacao)
-    {
+    private async Task NotificarSucessoAsync(long tamanhoBytes, ResultadoSincronizacao sincronizacao) {
         var megabytes = tamanhoBytes / 1024d / 1024d;
         var corpo =
             $"<p>Backup concluído em {DateTime.UtcNow:yyyy-MM-dd HH:mm} UTC.</p>" +
@@ -108,47 +98,36 @@ public class ExecutarBackup(
             $"<li>Arquivos locais encontrados: {sincronizacao.TotalArquivosLocais}</li>" +
             $"<li>Chaves em uploads/ no bucket: {sincronizacao.TotalChavesRemotas}</li></ul>";
 
-        try
-        {
+        try {
             await emailService.SendEmailAsync(
                 options.EmailDestino,
                 $"Backup OK — {DateTime.UtcNow:yyyy-MM-dd}",
                 corpo);
-        }
-        catch (Exception ex)
-        {
+        } catch (Exception ex) {
             // O backup já foi concluído com sucesso; a falha ao notificar não pode
             // transformar uma execução bem-sucedida em falha.
             logger.LogError(ex, "Não foi possível enviar o e-mail de sucesso do backup.");
         }
     }
 
-    private async Task NotificarFalhaAsync(string erro)
-    {
-        try
-        {
+    private async Task NotificarFalhaAsync(string erro) {
+        try {
             await emailService.SendEmailAsync(
                 options.EmailDestino,
                 $"Backup FALHOU — {DateTime.UtcNow:yyyy-MM-dd}",
                 $"<p>O backup não foi concluído.</p><pre>{erro}</pre>");
-        }
-        catch (Exception ex)
-        {
+        } catch (Exception ex) {
             // Falha ao avisar sobre falha não pode derrubar o serviço.
             logger.LogError(ex, "Não foi possível enviar o e-mail de falha do backup.");
         }
     }
 
-    private void RemoverTemporario(string? caminho)
-    {
+    private void RemoverTemporario(string? caminho) {
         if (caminho is null || !File.Exists(caminho)) return;
 
-        try
-        {
+        try {
             File.Delete(caminho);
-        }
-        catch (Exception ex)
-        {
+        } catch (Exception ex) {
             logger.LogWarning(ex, "Não foi possível remover o arquivo temporário {Caminho}.", caminho);
         }
     }

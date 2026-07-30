@@ -9,19 +9,16 @@ namespace ProximoTurnoApi.Infrastructure.Backup;
 /// Armazenamento na Backblaze B2 pela API S3-compatível. A Backblaze exige
 /// path-style; virtual-host style não funciona no endpoint deles.
 /// </summary>
-public class ArmazenamentoB2 : IArmazenamentoBackup, IDisposable
-{
+public class ArmazenamentoB2 : IArmazenamentoBackup, IDisposable {
     private readonly IAmazonS3 _cliente;
     private readonly BackupOptions _options;
     private readonly ILogger<ArmazenamentoB2> _logger;
 
-    public ArmazenamentoB2(BackupOptions options, ILogger<ArmazenamentoB2> logger)
-    {
+    public ArmazenamentoB2(BackupOptions options, ILogger<ArmazenamentoB2> logger) {
         _options = options;
         _logger = logger;
 
-        var config = new AmazonS3Config
-        {
+        var config = new AmazonS3Config {
             ServiceURL = options.B2Endpoint,
             ForcePathStyle = true
         };
@@ -33,18 +30,15 @@ public class ArmazenamentoB2 : IArmazenamentoBackup, IDisposable
         // funcionasse, decisivo quando não funciona — e não custa nada
         // deixar sem efeito (null) se o endpoint não seguir o formato
         // esperado.
-        if (options.RegiaoAutenticacao is { } regiao)
-        {
+        if (options.RegiaoAutenticacao is { } regiao) {
             config.AuthenticationRegion = regiao;
         }
 
         _cliente = new AmazonS3Client(options.B2KeyId, options.B2ApplicationKey, config);
     }
 
-    public async Task EnviarArquivoAsync(string chave, string caminhoLocal, CancellationToken cancellationToken)
-    {
-        await _cliente.PutObjectAsync(new PutObjectRequest
-        {
+    public async Task EnviarArquivoAsync(string chave, string caminhoLocal, CancellationToken cancellationToken) {
+        await _cliente.PutObjectAsync(new PutObjectRequest {
             BucketName = _options.B2Bucket,
             Key = chave,
             FilePath = caminhoLocal
@@ -53,15 +47,12 @@ public class ArmazenamentoB2 : IArmazenamentoBackup, IDisposable
         _logger.LogDebug("Objeto {Chave} enviado para o bucket {Bucket}.", chave, _options.B2Bucket);
     }
 
-    public async Task<IReadOnlyCollection<string>> ListarChavesAsync(string prefixo, CancellationToken cancellationToken)
-    {
+    public async Task<IReadOnlyCollection<string>> ListarChavesAsync(string prefixo, CancellationToken cancellationToken) {
         var chaves = new List<string>();
         string? continuacao = null;
 
-        do
-        {
-            var resposta = await _cliente.ListObjectsV2Async(new ListObjectsV2Request
-            {
+        do {
+            var resposta = await _cliente.ListObjectsV2Async(new ListObjectsV2Request {
                 BucketName = _options.B2Bucket,
                 Prefix = prefixo,
                 ContinuationToken = continuacao

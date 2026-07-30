@@ -7,8 +7,7 @@ namespace ProximoTurnoApi.Application.UseCases.Backup;
 /// Opções do backup automatizado. Todos os valores não sensíveis têm padrão
 /// embutido; apenas os três segredos precisam vir do ambiente.
 /// </summary>
-public class BackupOptions
-{
+public class BackupOptions {
     public bool Habilitado { get; init; } = true;
     public TimeSpan Horario { get; init; } = new(3, 0, 0);
     public string EmailDestino { get; init; } = "contato@proximoturno.com.br";
@@ -37,8 +36,7 @@ public class BackupOptions
     /// "https://s3.&lt;regiao&gt;.backblazeb2.com" (com ou sem barra final).
     /// Retorna null se a URL não seguir esse formato.
     /// </summary>
-    private static string? RegiaoDoEndpoint(string? endpoint)
-    {
+    private static string? RegiaoDoEndpoint(string? endpoint) {
         if (string.IsNullOrWhiteSpace(endpoint)) return null;
 
         var match = Regex.Match(endpoint, @"^https?://s3\.([^./]+)\.backblazeb2\.com/?$");
@@ -54,12 +52,10 @@ public class BackupOptions
         !string.IsNullOrWhiteSpace(B2KeyId) &&
         !string.IsNullOrWhiteSpace(B2ApplicationKey);
 
-    public static BackupOptions DaConfiguracao(IConfiguration configuration)
-    {
+    public static BackupOptions DaConfiguracao(IConfiguration configuration) {
         var padrao = new BackupOptions();
 
-        return new BackupOptions
-        {
+        return new BackupOptions {
             Habilitado = LerBool(configuration["BACKUP_ENABLED"], padrao.Habilitado),
             Horario = LerHorario(configuration["BACKUP_HORA"], padrao.Horario),
             EmailDestino = LerTexto(configuration["BACKUP_EMAIL_DESTINO"], padrao.EmailDestino),

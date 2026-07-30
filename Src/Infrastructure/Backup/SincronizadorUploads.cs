@@ -11,14 +11,11 @@ namespace ProximoTurnoApi.Infrastructure.Backup;
 public class SincronizadorUploads(
     IArmazenamentoBackup armazenamento,
     BackupOptions options,
-    ILogger<SincronizadorUploads> logger) : ISincronizadorUploads
-{
+    ILogger<SincronizadorUploads> logger) : ISincronizadorUploads {
     private const string Prefixo = "uploads/";
 
-    public async Task<ResultadoSincronizacao> SincronizarAsync(CancellationToken cancellationToken)
-    {
-        if (!Directory.Exists(options.CaminhoUploads))
-        {
+    public async Task<ResultadoSincronizacao> SincronizarAsync(CancellationToken cancellationToken) {
+        if (!Directory.Exists(options.CaminhoUploads)) {
             logger.LogWarning("Pasta de uploads {Caminho} não existe. Sincronização ignorada.", options.CaminhoUploads);
             return new ResultadoSincronizacao(0, 0, 0);
         }
@@ -27,8 +24,7 @@ public class SincronizadorUploads(
         var enviados = 0;
         var totalLocal = 0;
 
-        foreach (var caminhoLocal in Directory.EnumerateFiles(options.CaminhoUploads))
-        {
+        foreach (var caminhoLocal in Directory.EnumerateFiles(options.CaminhoUploads)) {
             cancellationToken.ThrowIfCancellationRequested();
             totalLocal++;
 

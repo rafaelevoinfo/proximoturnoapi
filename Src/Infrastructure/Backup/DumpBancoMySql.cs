@@ -8,20 +8,27 @@ namespace ProximoTurnoApi.Infrastructure.Backup;
 /// <summary>
 /// Gera o dump com `mysqldump`, comprime com gzip e cifra com GPG simétrico.
 /// mysqldump é cliente de rede: conecta no contêiner do MySQL pela connection
-/// string, sem precisar de docker exec nem do socket do Docker.
+/// string, sem precisar de docker exec nem do socket do Docker — desde que a
+/// conexão seja forçada para TCP (ver --protocol em GerarAsync).
 /// </summary>
 public class DumpBancoMySql(
     IConfiguration configuration,
     BackupOptions options,
-    ILogger<DumpBancoMySql> logger) : IDumpBanco
-{
-    public async Task<ResultadoDump> GerarAsync(CancellationToken cancellationToken)
-    {
+    ILogger<DumpBancoMySql> logger) : IDumpBanco {
+    public async Task<ResultadoDump> GerarAsync(CancellationToken cancellationToken) {
         var conexao = LerConexao();
         var destino = Path.Combine(Path.GetTempPath(), $"dump-{Guid.NewGuid()}.sql.gz.gpg");
 
         // Pipeline em shell: o dump nunca é materializado em claro no disco.
         // --single-transaction dá um snapshot consistente sem travar tabelas.
+        //
+        // --protocol=TCP não é opcional: para os clientes baseados em libmysqlclient
+        // o host "localhost" significa "socket Unix local", e a porta é ignorada. O
+        // MySQL roda em outro contêiner, então não existe socket no filesystem local
+        // e o mysqldump falharia com "Can't connect to local MySQL server through
+        // socket '/var/run/mysqld/mysqld.sock'". O provider do EF Core não tem essa
+        // regra e conecta por TCP com a mesma connection string, então o sintoma
+        // aparece só aqui.
         //
         // Host/usuário/banco chegam via variáveis de ambiente referenciadas como
         // "$VAR" (aspas duplas): o shell expande o valor sem reinterpretá-lo como
@@ -42,14 +49,12 @@ public class DumpBancoMySql(
         var comando =
             "set -o pipefail; " +
             "mysqldump --single-transaction --routines --triggers " +
-            "--host=\"$DB_HOST\" --port=\"$DB_PORT\" --user=\"$DB_USER\" \"$DB_NAME\" " +
+            "--host=\"$DB_HOST\" --port=\"$DB_PORT\" --protocol=TCP --user=\"$DB_USER\" \"$DB_NAME\" " +
             "| gzip " +
             $"| gpg --batch --yes --symmetric --cipher-algo AES256 --passphrase-fd 3 --output '{destino}' 3<<<\"$BACKUP_PASSPHRASE\"";
 
-        var processo = new Process
-        {
-            StartInfo = new ProcessStartInfo
-            {
+        var processo = new Process {
+            StartInfo = new ProcessStartInfo {
                 FileName = "/bin/bash",
                 ArgumentList = { "-c", comando },
                 RedirectStandardError = true,
@@ -64,8 +69,7 @@ public class DumpBancoMySql(
         processo.StartInfo.Environment["MYSQL_PWD"] = conexao.Senha;
         processo.StartInfo.Environment["BACKUP_PASSPHRASE"] = options.Passphrase;
 
-        try
-        {
+        try {
             processo.Start();
 
             var erro = await processo.StandardError.ReadToEndAsync(cancellationToken);
@@ -82,20 +86,15 @@ public class DumpBancoMySql(
                 throw new InvalidOperationException("O dump gerado está vazio.");
 
             return new ResultadoDump(destino, tamanho);
-        }
-        catch
-        {
+        } catch {
             // Cobre falha de exit code, dump vazio e cancelamento (ex.: shutdown da
             // aplicação durante o backup noturno) num único lugar, em vez de duplicar
             // a limpeza em cada ponto de erro: mata a árvore de processos
             // (bash/mysqldump/gzip/gpg) se ainda estiver rodando e remove o arquivo
             // temporário parcial, se algum chegou a ser criado.
-            try
-            {
+            try {
                 if (!processo.HasExited) processo.Kill(entireProcessTree: true);
-            }
-            catch
-            {
+            } catch {
                 // Processo pode não ter chegado a iniciar ou já ter terminado; sem ação.
             }
 
@@ -104,8 +103,7 @@ public class DumpBancoMySql(
         }
     }
 
-    private ConexaoMySql LerConexao()
-    {
+    private ConexaoMySql LerConexao() {
         var connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("ConnectionStrings__DefaultConnection não configurada.");
 
