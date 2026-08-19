@@ -2,8 +2,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.AI;
 using Microsoft.AspNetCore.DataProtection;
-using System.IO;
 using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Infrastructure.Repositories;
 using ProximoTurnoApi.Infrastructure.Identity;
@@ -13,8 +13,11 @@ using ProximoTurnoApi.Application.UseCases;
 using ProximoTurnoApi.Application.UseCases.Backup;
 using ProximoTurnoApi.Infrastructure.Backup;
 using Serilog;
-using System.Text.Json;
-using System.Text.Json.Serialization;
+using ProximoTurnoApi.Infrastructure.OCR;
+
+
+using Microsoft.Agents.AI;
+using OpenAI;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -219,6 +222,10 @@ if (admin is null) {
 if (!await userManager.IsInRoleAsync(admin, Roles.Admin)) {
     await userManager.AddToRoleAsync(admin, Roles.Admin);
 }
+
+var pdfTextExtractor = new PdfTextExtractor(scope.ServiceProvider.GetRequiredService<ILogger<PdfTextExtractor>>());
+//pdfTextExtractor.ExtractTextAsync("D:\\ProximoTurno\\Manuais\\Azul\\manual.pdf", CancellationToken.None).Wait();
+pdfTextExtractor.ExtractTextAsync("D:\\ProximoTurno\\Manuais\\Twister\\manual.pdf", CancellationToken.None).Wait();
 
 app.Run();
 
