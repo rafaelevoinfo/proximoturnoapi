@@ -43,6 +43,15 @@ public class JogosController(ILogger<ControllerBasico> logger,
         });
     }
 
+    [HttpGet("novidades")]
+    public async Task<IActionResult> GetNovidades() {
+        _logger.LogInformation("Recuperando novidades.");
+        return await EncapsulateRequestAsync(async () => {
+            var jogos = await _repository.GetNovidadesAsync();
+            return Ok(ApiResultDTO<List<JogoCardDTO>>.CreateSuccessResult(jogos.Select(JogoCardDTO.FromModel).ToList(), "Novidades recuperadas com sucesso."));
+        });
+    }
+
     [HttpGet("{id:int}")]
     public async Task<IActionResult> GetJogo([FromRoute] int id) {
         return await EncapsulateRequestAsync(async () => {

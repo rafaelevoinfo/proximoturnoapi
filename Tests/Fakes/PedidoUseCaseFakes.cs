@@ -99,6 +99,7 @@ public class FakeJogoRepository : IJogoRepository {
 
     public Task<List<Jogo>> GetAllAsync(FiltroJogoDTO filtro) => throw new NotImplementedException();
     public Task<List<Jogo>> GetMaisAlugadosAsync() => throw new NotImplementedException();
+    public Task<List<Jogo>> GetNovidadesAsync(int quantidade = 3) => throw new NotImplementedException();
     public Task<List<Jogo>> GetAllByIdsAsync(List<int> ids) => throw new NotImplementedException();
     public Task<List<JogoCopia>> GetAllCopiasByIdsAsync(List<int> ids) => throw new NotImplementedException();
     public Task<List<JogoCopia>> GetCopiasAsync(int id) => throw new NotImplementedException();

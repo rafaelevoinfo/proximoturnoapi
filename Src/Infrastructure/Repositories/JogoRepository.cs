@@ -9,6 +9,7 @@ namespace ProximoTurnoApi.Infrastructure.Repositories;
 public interface IJogoRepository : IBaseRepository {
     Task<List<Jogo>> GetAllAsync(FiltroJogoDTO filtro);
     Task<List<Jogo>> GetMaisAlugadosAsync();
+    Task<List<Jogo>> GetNovidadesAsync(int quantidade = 3);
     Task<List<Jogo>> GetAllByIdsAsync(List<int> ids);
     Task<List<JogoCopia>> GetAllCopiasByIdsAsync(List<int> ids);
     Task<List<JogoCopia>> GetAllCopiasByIdJogoAsync(int idJogo);
@@ -203,6 +204,20 @@ public class JogoRepository : BaseRepository, IJogoRepository {
             .Include(j => j.Fotos!.OrderBy(f => f.Ordem).Take(1))
             .Include(j => j.Copias)
             .Where(j => maisAlugadosIds.Contains(j.Id))
+            .AsNoTracking()
+            .ToListAsync();
+    }
+
+    // Os jogos nao possuem data de cadastro, entao o ID (auto incremento) define a ordem de cadastro.
+    public async Task<List<Jogo>> GetNovidadesAsync(int quantidade = 3) {
+        return await _dbContext.Jogos
+            .Include(j => j.Categoria)
+            .Include(j => j.Fotos!.OrderBy(f => f.Ordem).Take(1))
+            .Include(j => j.Copias)
+            .Where(j => _dbContext.JogoCopias.Any(jc => jc.IdJogo == j.Id && jc.Status != StatusJogo.Desativado))
+            .OrderByDescending(j => j.Id)
+            .Take(quantidade)
+            .AsSplitQuery()
             .AsNoTracking()
             .ToListAsync();
     }
