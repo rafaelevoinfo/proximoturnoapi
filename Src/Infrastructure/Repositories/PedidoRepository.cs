@@ -37,13 +37,28 @@ public class PedidoRepository(DatabaseContext dbContext) : BaseRepository(dbCont
             query = query.Where(p => p.DataHora <= dataFinal);
         }
 
-        if (filtro.Status.HasValue) {
-            query = query.Where(p => p.Status == filtro.Status.Value);
-        }
+        // Cada situacao marcada vira um ramo do OU: o pedido entra no resultado se
+        // atender a pelo menos uma delas. "Entregue" exclui os vencidos, que sao
+        // trazidos pelo ramo de atrasados.
+        // Os booleanos sao calculados aqui fora para virarem parametros do SQL,
+        // em vez de depender do EF traduzir List.Contains sobre enum.
+        var querPendente = filtro.Status?.Contains(StatusPedido.Pendente) == true;
+        var querEntregue = filtro.Status?.Contains(StatusPedido.Entregue) == true;
+        var querDevolvido = filtro.Status?.Contains(StatusPedido.Devolvido) == true;
+        var querCancelado = filtro.Status?.Contains(StatusPedido.Cancelado) == true;
+        var querAtrasado = filtro.Atrasados;
 
-        if (filtro.Atrasados) {
+        if (querPendente || querEntregue || querDevolvido || querCancelado || querAtrasado) {
             // nao vou considerar horas, apenas dias
-            query = query.Where(p => p.Items!.Any(i => i.Status == StatusPedido.Entregue && i.DataDevolucao.Date < DateTime.Today));
+            var hoje = DateTime.Today;
+            query = query.Where(p =>
+                (querPendente && p.Status == StatusPedido.Pendente) ||
+                (querDevolvido && p.Status == StatusPedido.Devolvido) ||
+                (querCancelado && p.Status == StatusPedido.Cancelado) ||
+                (querEntregue && p.Status == StatusPedido.Entregue &&
+                    !p.Items!.Any(i => i.Status == StatusPedido.Entregue && i.DataDevolucao.Date < hoje)) ||
+                (querAtrasado &&
+                    p.Items!.Any(i => i.Status == StatusPedido.Entregue && i.DataDevolucao.Date < hoje)));
         }
 
         return await query

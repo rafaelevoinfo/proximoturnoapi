@@ -40,8 +40,24 @@ public class FakePedidoRepository : IPedidoRepository {
         if (filtro.IdCliente.HasValue) {
             query = query.Where(p => p.Cliente?.Id == filtro.IdCliente.Value);
         }
-        if (filtro.Status.HasValue) {
-            query = query.Where(p => p.Status == filtro.Status.Value);
+        // Espelha o PedidoRepository: cada situacao marcada e um ramo do OU, e
+        // "Entregue" nao inclui os vencidos (esses vem por Atrasados).
+        var querPendente = filtro.Status?.Contains(StatusPedido.Pendente) == true;
+        var querEntregue = filtro.Status?.Contains(StatusPedido.Entregue) == true;
+        var querDevolvido = filtro.Status?.Contains(StatusPedido.Devolvido) == true;
+        var querCancelado = filtro.Status?.Contains(StatusPedido.Cancelado) == true;
+
+        if (querPendente || querEntregue || querDevolvido || querCancelado || filtro.Atrasados) {
+            var hoje = DateTime.Today;
+            bool EstaAtrasado(Pedido p) =>
+                p.Items?.Any(i => i.Status == StatusPedido.Entregue && i.DataDevolucao.Date < hoje) == true;
+
+            query = query.Where(p =>
+                (querPendente && p.Status == StatusPedido.Pendente) ||
+                (querDevolvido && p.Status == StatusPedido.Devolvido) ||
+                (querCancelado && p.Status == StatusPedido.Cancelado) ||
+                (querEntregue && p.Status == StatusPedido.Entregue && !EstaAtrasado(p)) ||
+                (filtro.Atrasados && EstaAtrasado(p)));
         }
         return Task.FromResult(query.ToList());
     }

@@ -12,8 +12,13 @@ public class FiltroPedidoDTO {
     public DateOnly? DataInicial { get; set; }
     [FromQuery(Name = "data_final")]
     public DateOnly? DataFinal { get; set; }
+    /// <summary>
+    /// Situacoes desejadas, combinadas por OU. <see cref="StatusPedido.Entregue"/> aqui
+    /// significa "entregue e dentro do prazo"; os vencidos entram por <see cref="Atrasados"/>.
+    /// </summary>
     [FromQuery(Name = "status")]
-    public StatusPedido? Status { get; set; }
+    public List<StatusPedido>? Status { get; set; }
+    /// <summary>Inclui (por OU) os pedidos com item entregue e prazo vencido.</summary>
     [FromQuery(Name = "atrasados")]
     public bool Atrasados { get; set; }
 }
