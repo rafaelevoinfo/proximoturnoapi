@@ -106,16 +106,69 @@ public class ContratoQueueBackgroundServiceTests
         Assert.Equal(42, repo.InativarChamadoParaPedidoId);
     }
 
+    [Fact]
+    public async Task ExecuteAsync_QuandoContratoAtivoEstaAssinado_NaoInativaNemGeraNovoContrato()
+    {
+        // Arrange
+        var queue = new FakeContratoQueue();
+        queue.Enfileirar(42, 0, inativarExistente: true);
+
+        var repo = new FakeContratoRepository
+        {
+            ContratoAtivo = new ContratoAutentique
+            {
+                IdPedido = 42,
+                AutentiqueDocumentId = "doc-1",
+                AutentiquePublicId = "pub-1",
+                LinkAssinatura = "https://exemplo.test/assinar",
+                Status = StatusContrato.Assinado
+            }
+        };
+
+        var gerarContratoFoiResolvido = false;
+        var serviceProvider = new FakeServiceProvider(t =>
+        {
+            if (t == typeof(IContratoRepository)) return repo;
+            if (t == typeof(GerarContratoPedido))
+            {
+                gerarContratoFoiResolvido = true;
+                throw new OperationCanceledException();
+            }
+            return null;
+        });
+        var scopeFactory = new FakeServiceScopeFactory(serviceProvider);
+
+        var service = new ContratoQueueBackgroundService(
+            queue,
+            scopeFactory,
+            NullLogger<ContratoQueueBackgroundService>.Instance,
+            new[] { TimeSpan.FromMilliseconds(1) }
+        );
+
+        // Act
+        using var cts = new CancellationTokenSource();
+        var runTask = service.StartAsync(cts.Token);
+        await Task.Delay(100);
+        cts.Cancel();
+
+        // Assert
+        Assert.Equal(0, repo.InativarChamadoParaPedidoId);
+        Assert.False(gerarContratoFoiResolvido);
+        // Descartado de forma limpa: nao e tratado como erro, entao nao re-enfileira.
+        Assert.Empty(queue.Jobs);
+    }
+
     private class FakeContratoRepository : IContratoRepository
     {
         public int InativarChamadoParaPedidoId { get; private set; }
+        public ContratoAutentique? ContratoAtivo { get; set; }
         public Task InativarContratosPorPedidoIdAsync(int idPedido)
         {
             InativarChamadoParaPedidoId = idPedido;
             return Task.CompletedTask;
         }
         public Task SaveAsync(ContratoAutentique contrato, bool commit = true) => Task.CompletedTask;
-        public Task<ContratoAutentique?> GetByPedidoIdAsync(int idPedido) => Task.FromResult<ContratoAutentique?>(null);
+        public Task<ContratoAutentique?> GetByPedidoIdAsync(int idPedido) => Task.FromResult(ContratoAtivo);
         public Task<ContratoAutentique?> GetByAutentiqueDocumentIdAsync(string id) => Task.FromResult<ContratoAutentique?>(null);
         public Task<List<ContratoAutentique>> GetActiveByPedidoIdsAsync(List<int> idPedidos) => Task.FromResult(new List<ContratoAutentique>());
         public Task SaveChangesAsync() => Task.CompletedTask;

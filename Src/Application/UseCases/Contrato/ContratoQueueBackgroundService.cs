@@ -77,10 +77,23 @@ public class ContratoQueueBackgroundService : BackgroundService
         try
         {
             using var scope = _scopeFactory.CreateScope();
-            
+            var contratoRepository = scope.ServiceProvider.GetRequiredService<IContratoRepository>();
+
+            // Contrato assinado nao pode ser substituido: inativa-lo descartaria a
+            // assinatura, e gerar outro sem inativar deixaria dois contratos ativos
+            // no mesmo pedido. O pedido pode seguir sendo editado; o contrato e que
+            // fica congelado como foi assinado.
+            var contratoAtivo = await contratoRepository.GetByPedidoIdAsync(job.IdPedido);
+            if (contratoAtivo?.Status == StatusContrato.Assinado)
+            {
+                _logger.LogInformation(
+                    "Pedido {IdPedido} ja possui contrato assinado ({IdContrato}). Job de geracao descartado.",
+                    job.IdPedido, contratoAtivo.Id);
+                return;
+            }
+
             if (job.InativarExistente)
             {
-                var contratoRepository = scope.ServiceProvider.GetRequiredService<IContratoRepository>();
                 _logger.LogInformation("Inativando contratos ativos antigos do pedido {IdPedido} devido a atualização.", job.IdPedido);
                 await contratoRepository.InativarContratosPorPedidoIdAsync(job.IdPedido);
             }
