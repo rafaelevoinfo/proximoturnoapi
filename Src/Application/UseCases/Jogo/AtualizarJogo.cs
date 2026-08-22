@@ -2,10 +2,11 @@ using ProximoTurnoApi.Application.DTOs;
 using ProximoTurnoApi.Application.UseCases;
 using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Infrastructure.Repositories;
+using ProximoTurnoApi.Application.UseCases.RAG;
 
 namespace ProximoTurnoApi.Application.UseCases;
 
-public class AtualizarJogo(IJogoRepository _jogoRepository, ITagRepository _tagRepository, ILogger<AtualizarJogo> _logger) : JogoUseCaseBasico(_jogoRepository, _tagRepository) {
+public class AtualizarJogo(IJogoRepository _jogoRepository, ITagRepository _tagRepository, IManualQueue _manualQueue, ILogger<AtualizarJogo> _logger) : JogoUseCaseBasico(_jogoRepository, _tagRepository) {
 
     public async Task<bool> ExecuteAsync(JogoDTO jogoDto) {
         _logger.LogInformation("Iniciando atualização do jogo ID {JogoId} ({Nome}).", jogoDto.Id, jogoDto.Nome);
@@ -36,6 +37,8 @@ public class AtualizarJogo(IJogoRepository _jogoRepository, ITagRepository _tagR
             await AtualizarTags(jogo, jogoDto.Tags);
             await _jogoRepository.SaveAsync(jogo);
             _logger.LogInformation("Jogo ID {JogoId} atualizado com sucesso.", jogo.Id);
+
+            _manualQueue.EnfileirarManuaisPendentes(jogo);
             return IsValid;
         } catch (Exception ex) {
             _logger.LogError(ex, "Erro fatal ao salvar atualização do jogo ID {JogoId}.", jogoDto.Id);

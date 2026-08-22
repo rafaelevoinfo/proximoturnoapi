@@ -22,6 +22,7 @@ public interface IJogoRepository : IBaseRepository {
     Task<bool> DeleteAsync(int id);
     Task<bool> ExisteAsync(int id);
     Task<bool> CopiaExisteAndDisponivel(int id);
+    Task<List<JogoLink>> GetJogosNaoIndexadosAsync(int? quantidade = null);
 }
 
 public class JogoRepository : BaseRepository, IJogoRepository {
@@ -239,5 +240,20 @@ public class JogoRepository : BaseRepository, IJogoRepository {
         return await _dbContext.JogoCopias
             .Where(jc => jc.IdJogo == idJogo)
             .ToListAsync();
+    }
+
+    public async Task<List<JogoLink>> GetJogosNaoIndexadosAsync(int? quantidade = null) {
+        var query = _dbContext.JogoLinks
+            .Where(jl => !jl.Indexado &&
+                          jl.Tipo == TipoLink.Regra &&
+                          jl.Url != null &&
+                          jl.Url != "");
+
+        // Sem quantidade a carga inicial do worker leva todos os pendentes.
+        if (quantidade.HasValue) {
+            query = query.Take(quantidade.Value);
+        }
+
+        return await query.ToListAsync();
     }
 }

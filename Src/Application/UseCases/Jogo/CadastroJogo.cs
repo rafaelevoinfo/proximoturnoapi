@@ -1,11 +1,13 @@
 using ProximoTurnoApi.Application.DTOs;
 using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Infrastructure.Repositories;
+using ProximoTurnoApi.Application.UseCases.RAG;
 
 namespace ProximoTurnoApi.Application.UseCases;
 
 public class CadastroJogo(IJogoRepository _jogoRepository,
                           ITagRepository _tagRepository,
+                          IManualQueue _manualQueue,
                           ILogger<CadastroJogo> _logger) : JogoUseCaseBasico(_jogoRepository, _tagRepository) {
 
     public async Task<int> ExecuteAsync(JogoDTO jogoDto) {
@@ -29,6 +31,8 @@ public class CadastroJogo(IJogoRepository _jogoRepository,
             await AtualizarTags(jogo, jogoDto.Tags);
             await _jogoRepository.SaveAsync(jogo);
             _logger.LogInformation("Jogo {JogoId} ({Nome}) cadastrado com sucesso com {Qtde} cópias.", jogo.Id, jogo.Nome, jogoDto.Copias?.Count ?? 1);
+
+            _manualQueue.EnfileirarManuaisPendentes(jogo);
             return jogo.Id;
         } catch (Exception ex) {
             _logger.LogError(ex, "Erro fatal ao salvar o jogo {Nome} no banco de dados.", jogoDto.Nome);

@@ -50,8 +50,7 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : Identi
                         timeOnly => timeOnly.ToTimeSpan(),
                         timeSpan => TimeOnly.FromTimeSpan(timeSpan)
                     ));
-                }
-                else if (property.ClrType == typeof(DateOnly) || property.ClrType == typeof(DateOnly?)) {
+                } else if (property.ClrType == typeof(DateOnly) || property.ClrType == typeof(DateOnly?)) {
                     property.SetValueConverter(new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateOnly, DateTime>(
                         dateOnly => dateOnly.ToDateTime(TimeOnly.MinValue),
                         dateTime => DateOnly.FromDateTime(dateTime)
@@ -199,10 +198,8 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : Identi
         });
     }
 
-    private static void ConfigureCupom(ModelBuilder modelBuilder)
-    {
-        modelBuilder.Entity<Cupom>(entity =>
-        {
+    private static void ConfigureCupom(ModelBuilder modelBuilder) {
+        modelBuilder.Entity<Cupom>(entity => {
             entity.ToTable("CUPOM");
             entity.HasKey(c => c.Id);
             entity.Property(c => c.Id).HasColumnName("ID");
@@ -240,6 +237,7 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : Identi
     public DbSet<Cliente> Clientes { get; set; }
     public DbSet<Jogo> Jogos { get; set; }
     public DbSet<JogoCopia> JogoCopias { get; set; }
+    public DbSet<JogoLink> JogoLinks { get; set; }
     public DbSet<Categoria> Categorias { get; set; }
     public DbSet<Pedido> Pedidos { get; set; }
     public DbSet<Tag> Tags { get; set; }

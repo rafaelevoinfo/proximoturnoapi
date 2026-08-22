@@ -22,4 +22,8 @@ public class JogoLink : BaseModel {
     [Column("TIPO")]
     public TipoLink Tipo { get; set; }
 
+    //Indica se para o conteudo do link ja foi indexado para uso com RAG (embeddding)
+    [Column("INDEXADO")]
+    public bool Indexado { get; set; }
+
 }

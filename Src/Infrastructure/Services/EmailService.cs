@@ -6,6 +6,11 @@ using Microsoft.Extensions.Logging;
 
 namespace ProximoTurnoApi.Infrastructure.Services;
 
+public interface IEmailService
+{
+    Task SendEmailAsync(string toEmail, string subject, string body, bool isHtml = true);
+}
+
 public class EmailService : IEmailService {
     private readonly IConfiguration _configuration;
     private readonly ILogger<EmailService> _logger;

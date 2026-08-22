@@ -5,15 +5,19 @@ using ProximoTurnoApi.Application.DTOs.Filtros;
 using ProximoTurnoApi.Application.UseCases;
 using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Infrastructure.Repositories;
+using ProximoTurnoApi.Tests.Fakes;
 
 namespace ProximoTurnoApi.Tests.Domain;
 
 public class CadastroJogoTests {
     private const string MensagemDuplicado = "Já existe um jogo com o mesmo nome.";
 
-    private static CadastroJogo Montar(FakeJogoRepository jogoRepo) {
+    private static CadastroJogo Montar(FakeJogoRepository jogoRepo) =>
+        Montar(jogoRepo, new FakeManualQueue());
+
+    private static CadastroJogo Montar(FakeJogoRepository jogoRepo, FakeManualQueue manualQueue) {
         var tagRepo = new FakeTagRepository();
-        return new CadastroJogo(jogoRepo, tagRepo, NullLogger<CadastroJogo>.Instance);
+        return new CadastroJogo(jogoRepo, tagRepo, manualQueue, NullLogger<CadastroJogo>.Instance);
     }
 
     private static JogoDTO NovoJogo(string nome) => new() {
@@ -21,6 +25,49 @@ public class CadastroJogoTests {
         Descricao = "Descrição",
         QuantidadeCopias = 1
     };
+
+    private const string UrlManual = "https://cdn.proximoturno.com.br/manuais/azul.pdf";
+
+    [Fact]
+    public async Task Cadastro_EnfileiraApenasLinksDeRegra() {
+        var jogoRepo = new FakeJogoRepository();
+        var manualQueue = new FakeManualQueue();
+        var jogoDto = NovoJogo("Azul");
+        jogoDto.Links = [
+            new JogoLinkDTO { Url = UrlManual, Titulo = "Manual", Tipo = TipoLink.Regra },
+            new JogoLinkDTO { Url = "https://youtube.com/watch?v=abc", Titulo = "Como jogar", Tipo = TipoLink.Video }
+        ];
+
+        await Montar(jogoRepo, manualQueue).ExecuteAsync(jogoDto);
+
+        var job = Assert.Single(manualQueue.Enfileirados);
+        Assert.Equal(UrlManual, job.Url);
+        Assert.Equal(99, job.IdJogo);
+    }
+
+    [Fact]
+    public async Task Cadastro_NaoEnfileira_QuandoJogoNaoTemManual() {
+        var jogoRepo = new FakeJogoRepository();
+        var manualQueue = new FakeManualQueue();
+
+        await Montar(jogoRepo, manualQueue).ExecuteAsync(NovoJogo("Azul"));
+
+        Assert.Empty(manualQueue.Enfileirados);
+    }
+
+    [Fact]
+    public async Task Cadastro_NaoEnfileira_QuandoNomeDuplicado() {
+        var jogoRepo = new FakeJogoRepository {
+            Existentes = { new Jogo { Id = 1, Nome = "Azul", Descricao = "x" } }
+        };
+        var manualQueue = new FakeManualQueue();
+        var jogoDto = NovoJogo("Azul");
+        jogoDto.Links = [new JogoLinkDTO { Url = UrlManual, Titulo = "Manual", Tipo = TipoLink.Regra }];
+
+        await Montar(jogoRepo, manualQueue).ExecuteAsync(jogoDto);
+
+        Assert.Empty(manualQueue.Enfileirados);
+    }
 
     [Fact]
     public async Task NaoBloqueia_QuandoNomeEhSubstringDeOutroJogo() {
@@ -68,6 +115,7 @@ public class CadastroJogoTests {
     }
 
     private class FakeJogoRepository : IJogoRepository {
+        public Task<List<JogoLink>> GetJogosNaoIndexadosAsync(int? quantidade = null) => throw new NotImplementedException();
         public List<Jogo> Existentes { get; set; } = [];
         public Jogo? Salvo { get; private set; }
 

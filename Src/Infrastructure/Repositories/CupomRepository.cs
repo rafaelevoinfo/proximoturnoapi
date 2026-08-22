@@ -9,6 +9,18 @@ using ProximoTurnoApi.Infrastructure.Models;
 
 namespace ProximoTurnoApi.Infrastructure.Repositories;
 
+public interface ICupomRepository : IBaseRepository
+{
+    Task<Cupom?> GetByIdAsync(int id);
+    Task<Cupom?> GetByCodigoAsync(string codigo);
+    Task<List<Cupom>> GetAllAsync(FiltroCupomDTO filtro);
+    Task<int> GetUsoCountGlobalAsync(int cupomId, int? idPedidoExcluir = null);
+    Task<int> GetUsoCountClienteAsync(int cupomId, int clienteId, int? idPedidoExcluir = null);
+    Task SaveAsync(Cupom cupom, bool commit = true);
+    Task<bool> DeleteAsync(int id);
+    Task<bool> IsUsedInPedidoAsync(int id);
+}
+
 public class CupomRepository(DatabaseContext dbContext) : BaseRepository(dbContext), ICupomRepository
 {
     public async Task<Cupom?> GetByIdAsync(int id)

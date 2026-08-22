@@ -13,7 +13,9 @@ using ProximoTurnoApi.Application.UseCases;
 using ProximoTurnoApi.Application.UseCases.Backup;
 using ProximoTurnoApi.Infrastructure.Backup;
 using Serilog;
-using ProximoTurnoApi.Infrastructure.OCR;
+using ProximoTurnoApi.Infrastructure.RAG;
+using ProximoTurnoApi.Application.UseCases.RAG;
+using ProximoTurnoApi.Application.Workers;
 
 
 using Microsoft.Agents.AI;
@@ -68,6 +70,11 @@ builder.Services.AddScoped<IDumpBanco, DumpBancoMySql>();
 builder.Services.AddScoped<ISincronizadorUploads, SincronizadorUploads>();
 builder.Services.AddScoped<ExecutarBackup>();
 builder.Services.AddHostedService<BackupBackgroundService>();
+
+// Indexacao de manuais (RAG)
+builder.Services.AddSingleton<IManualQueue, ManualQueue>();
+builder.Services.AddScoped<ITextExtractor, PdfTextExtractor>();
+builder.Services.AddHostedService<IndexacaoManuaisWorker>();
 
 builder.Services.AddTransient<IEmailSender<Usuario>, IdentityEmailSender>();
 builder.Services.AddHttpClient();
@@ -223,9 +230,9 @@ if (!await userManager.IsInRoleAsync(admin, Roles.Admin)) {
     await userManager.AddToRoleAsync(admin, Roles.Admin);
 }
 
-var pdfTextExtractor = new PdfTextExtractor(scope.ServiceProvider.GetRequiredService<ILogger<PdfTextExtractor>>());
-//pdfTextExtractor.ExtractTextAsync("D:\\ProximoTurno\\Manuais\\Azul\\manual.pdf", CancellationToken.None).Wait();
-pdfTextExtractor.ExtractTextAsync("D:\\ProximoTurno\\Manuais\\Twister\\manual.pdf", CancellationToken.None).Wait();
+// Extração manual para teste local. O IndexacaoManuaisWorker cuida disso em runtime.
+//var pdfTextExtractor = new PdfTextExtractor(scope.ServiceProvider.GetRequiredService<ILogger<PdfTextExtractor>>());
+//pdfTextExtractor.ExtractTextAsync("D:\ProximoTurno\Manuais\Twister\manual.pdf", CancellationToken.None).Wait();
 
 app.Run();
 

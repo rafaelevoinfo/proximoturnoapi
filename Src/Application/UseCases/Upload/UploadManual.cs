@@ -10,6 +10,10 @@ using System.Threading.Tasks;
 namespace ProximoTurnoApi.Application.UseCases;
 
 public class UploadManual(IWebHostEnvironment _env, ILogger<UploadManual> logger) : UseCaseBasico {
+
+    public const string UploadsFolderName = "uploads";
+    public static string GetUploadFolder(IWebHostEnvironment env) => Path.Combine(env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot"), UploadsFolderName);
+
     public async Task<string?> ExecuteAsync(IFormFile? file, string baseUrl) {
         if (file == null || file.Length == 0) {
             logger.LogWarning("Falha no upload: Nenhum arquivo enviado.");
@@ -33,7 +37,7 @@ public class UploadManual(IWebHostEnvironment _env, ILogger<UploadManual> logger
         }
 
         try {
-            var uploadsFolder = Path.Combine(_env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot"), "uploads");
+            var uploadsFolder = GetUploadFolder(_env);
             if (!Directory.Exists(uploadsFolder)) {
                 Directory.CreateDirectory(uploadsFolder);
             }
@@ -46,7 +50,7 @@ public class UploadManual(IWebHostEnvironment _env, ILogger<UploadManual> logger
                 await file.CopyToAsync(fileStream);
             }
 
-            var fileUrl = $"{baseUrl}/uploads/{uniqueFileName}";
+            var fileUrl = $"{baseUrl}/{UploadsFolderName}/{uniqueFileName}";
             logger.LogInformation("Arquivo {FileName} salvo com sucesso no servidor. URL: {FileUrl}", file.FileName, fileUrl);
             return fileUrl;
         } catch (Exception ex) {
