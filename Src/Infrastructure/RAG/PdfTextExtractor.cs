@@ -1,4 +1,5 @@
 using System.ClientModel;
+using System.ClientModel.Primitives;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.AI;
 using OpenAI;
@@ -33,6 +34,9 @@ Seja rigoroso: se páginas ficaram de fora ou trechos ficaram ilegíveis, a nota
     // acrescentar algo depois dela; errar por falta so faria escalar de modelo a toa.
     private const int TamanhoJanelaSentinela = 2048;
 
+    // Folga para manuais longos: o modelo precisa ler o PDF inteiro antes do primeiro token.
+    private static readonly TimeSpan TimeoutRede = TimeSpan.FromMinutes(10);
+
     // RightToLeft para pegar a ultima ocorrencia: se o modelo devolver a resposta dentro
     // de uma cerca de codigo, a sentinela nao fica exatamente no fim do texto.
     private static readonly Regex ConfiabilidadeRegex =
@@ -51,6 +55,15 @@ Seja rigoroso: se páginas ficaram de fora ou trechos ficaram ilegíveis, a nota
 
         var openAiClient = new OpenAIClient(new ApiKeyCredential(openRouterApiKey), new OpenAIClientOptions() {
             Endpoint = new Uri("https://openrouter.ai/api/v1"),
+
+            // O padrao do System.ClientModel e 100s, curto demais: transcrever um manual
+            // inteiro leva minutos e a chamada morria antes de o modelo terminar.
+            NetworkTimeout = TimeoutRede,
+
+            // Sem isso o SDK tenta 4 vezes por modelo. Como ja temos a cascata de modelos,
+            // seriam ate 12 chamadas por PDF - e um timeout do cliente nao impede o servidor
+            // de concluir e cobrar. Uma retentativa cobre falha transitoria de rede.
+            RetryPolicy = new ClientRetryPolicy(maxRetries: 1),
         });
 
         var chatOptions = new ChatOptions() {

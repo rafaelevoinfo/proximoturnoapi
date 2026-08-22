@@ -5,6 +5,9 @@ namespace ProximoTurnoApi.Tests.Infrastructure;
 
 public class PdfTextExtractorTests {
 
+    private static PdfTextExtractor.ExtracaoManual Extracao(int confiabilidade) =>
+        new("# Manual\n\nRegras.", confiabilidade);
+
     [Theory]
     // Confiabilidade ate 50: pula direto para o ultimo (melhor) modelo.
     [InlineData(0, 0, 2)]
@@ -17,7 +20,7 @@ public class PdfTextExtractorTests {
     [InlineData(1, 30, 2)]
     [InlineData(1, 70, 2)]
     public void ProximoModelo_EscalonaConformeConfiabilidade(int indiceAtual, int confiabilidade, int esperado) {
-        var proximo = PdfTextExtractor.ProximoModelo(indiceAtual, confiabilidade, totalModelos: 3);
+        var proximo = PdfTextExtractor.ProximoModelo(indiceAtual, Extracao(confiabilidade), totalModelos: 3);
 
         Assert.Equal(esperado, proximo);
     }
@@ -27,16 +30,25 @@ public class PdfTextExtractorTests {
     [InlineData(40)]
     [InlineData(79)]
     public void ProximoModelo_NoUltimoModelo_NaoEscalonaMais(int confiabilidade) {
-        var proximo = PdfTextExtractor.ProximoModelo(indiceAtual: 2, confiabilidade, totalModelos: 3);
+        var proximo = PdfTextExtractor.ProximoModelo(indiceAtual: 2, Extracao(confiabilidade), totalModelos: 3);
 
         Assert.Equal(2, proximo);
     }
 
     [Fact]
     public void ProximoModelo_ComUmUnicoModelo_NaoEscalona() {
-        var proximo = PdfTextExtractor.ProximoModelo(indiceAtual: 0, confiabilidade: 10, totalModelos: 1);
+        var proximo = PdfTextExtractor.ProximoModelo(indiceAtual: 0, Extracao(10), totalModelos: 1);
 
         Assert.Equal(0, proximo);
+    }
+
+    [Fact]
+    public void ProximoModelo_SemExtracao_AvancaApenasUmDegrau() {
+        // Falha total do modelo nao produz nota. Diferente de uma nota baixa, aqui nao ha
+        // sinal de que o arquivo seja dificil, entao a cascata anda so um degrau.
+        var proximo = PdfTextExtractor.ProximoModelo(indiceAtual: 0, extracao: null, totalModelos: 3);
+
+        Assert.Equal(1, proximo);
     }
 
     [Fact]
@@ -99,7 +111,6 @@ public class PdfTextExtractorTests {
     public void Interpretar_SemTextoAproveitavel_DevolveNull(string? resposta) {
         Assert.Null(PdfTextExtractor.Interpretar(resposta));
     }
-
     [Fact]
     public void Interpretar_ManualGrande_EncontraSentinelaNaCauda() {
         var corpo = string.Join("\n", Enumerable.Repeat("Texto de regra do manual.", 8000));
