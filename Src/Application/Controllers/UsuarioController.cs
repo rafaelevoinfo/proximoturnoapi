@@ -11,7 +11,7 @@ namespace ProximoTurnoApi.Application.Controllers;
 
 [Route("api/usuarios")]
 [ApiController]
-public class UsuarioController(ILogger<ControllerBasico> logger, UserManager<Usuario> _userManager, IClienteRepository _clienteRepository, IConfiguration _configuration, IResetSenhaLinkService _resetSenhaLinkService) : ControllerBasico(logger) {
+public class UsuarioController(ILogger<UsuarioController> logger, UserManager<Usuario> _userManager, IClienteRepository _clienteRepository, IConfiguration _configuration, IResetSenhaLinkService _resetSenhaLinkService) : ControllerBasico(logger) {
 
     [HttpGet("logado")]
     [Authorize]

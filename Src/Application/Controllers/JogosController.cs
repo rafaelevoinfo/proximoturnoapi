@@ -9,7 +9,7 @@ namespace ProximoTurnoApi.Application.Controllers;
 
 [Route("api/jogos")]
 [ApiController]
-public class JogosController(ILogger<ControllerBasico> logger,
+public class JogosController(ILogger<JogosController> logger,
                              IJogoRepository _repository,
                              CadastroJogo _cadastroJogoUseCase,
                              AtualizarJogo _atualizarJogoUseCase,

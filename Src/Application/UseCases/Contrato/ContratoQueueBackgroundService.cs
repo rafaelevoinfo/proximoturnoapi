@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using ProximoTurnoApi.Infrastructure.Logging;
 using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Infrastructure.Repositories;
 
@@ -37,10 +38,17 @@ public class ContratoQueueBackgroundService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("ContratoQueueBackgroundService iniciado.");
+        using (RastreioBackground.Iniciar("ContratoQueue.Inicializacao"))
+        {
+            _logger.LogInformation("ContratoQueueBackgroundService iniciado.");
+        }
 
         while (!stoppingToken.IsCancellationRequested)
         {
+            // Uma Activity por job: a geracao de um contrato (e suas retentativas)
+            // fica correlacionada por um trace id proprio no log.
+            using var rastreio = RastreioBackground.Iniciar("GeracaoContrato");
+
             try
             {
                 var job = await _queue.DesenfileirarAsync(stoppingToken);

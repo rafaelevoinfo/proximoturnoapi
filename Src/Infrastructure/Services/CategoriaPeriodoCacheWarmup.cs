@@ -1,3 +1,5 @@
+using ProximoTurnoApi.Infrastructure.Logging;
+
 namespace ProximoTurnoApi.Infrastructure.Services;
 
 public class CategoriaPeriodoCacheWarmup(
@@ -5,6 +7,8 @@ public class CategoriaPeriodoCacheWarmup(
     ILogger<CategoriaPeriodoCacheWarmup> logger) : IHostedService {
 
     public async Task StartAsync(CancellationToken cancellationToken) {
+        using var rastreio = RastreioBackground.Iniciar("AquecimentoCachePeriodos");
+
         logger.LogInformation("Aquecendo cache de períodos na inicialização.");
         await cache.RefreshAsync();
     }

@@ -18,7 +18,7 @@ namespace ProximoTurnoApi.Application.Controllers;
 [Route("api/webhooks")]
 [ApiController]
 public class WebhooksController(
-    ILogger<ControllerBasico> logger,
+    ILogger<WebhooksController> logger,
     ProcessarWebhookAutentique _webhookUseCase) : ControllerBasico(logger) {
 
     [HttpPost("autentique")]

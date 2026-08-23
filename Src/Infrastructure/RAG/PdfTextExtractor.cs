@@ -118,8 +118,9 @@ Seja rigoroso: se páginas ficaram de fora ou trechos ficaram ilegíveis, a nota
                 pdfFilePath, melhorModelo, melhorExtracao.Confiabilidade);
         }
 
-        await File.WriteAllTextAsync(Path.ChangeExtension(pdfFilePath, ".md"), melhorExtracao.Texto, cancellationToken);
-        return melhorExtracao.Texto;
+        var markdownFilePath = Path.ChangeExtension(pdfFilePath, ".md");
+        await File.WriteAllTextAsync(markdownFilePath, melhorExtracao.Texto, cancellationToken);
+        return markdownFilePath;
     }
 
     /// <summary>

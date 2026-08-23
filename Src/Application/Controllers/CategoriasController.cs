@@ -9,7 +9,7 @@ namespace ProximoTurnoApi.Application.Controllers;
 
 [Route("api/categorias")]
 [ApiController]
-public class CategoriasController(ILogger<ControllerBasico> logger,
+public class CategoriasController(ILogger<CategoriasController> logger,
                             ICategoriaRepository _repository,
                             CadastroCategoria _cadastroCategoriaUseCase,
                             AtualizarCategoria _atualizarCategoriaUseCase) : ControllerBasico(logger) {

@@ -13,7 +13,7 @@ namespace ProximoTurnoApi.Application.Controllers;
 [ApiController]
 [Authorize]
 public class CuponsController(
-    ILogger<ControllerBasico> logger,
+    ILogger<CuponsController> logger,
     ListarCupons _listarCupons,
     CadastroCupom _cadastroCupom,
     AtualizarCupom _atualizarCupom,

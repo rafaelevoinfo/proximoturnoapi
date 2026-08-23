@@ -1,6 +1,7 @@
 using ProximoTurnoApi.Application.UseCases.RAG;
 using ProximoTurnoApi.Infrastructure.Repositories;
 using ProximoTurnoApi.Application.UseCases;
+using ProximoTurnoApi.Infrastructure.Logging;
 
 namespace ProximoTurnoApi.Application.Workers;
 
@@ -10,11 +11,17 @@ public class IndexacaoManuaisWorker(IWebHostEnvironment _env,
                                     IServiceScopeFactory _scopeFactory) : BackgroundService {
 
     protected async override Task ExecuteAsync(CancellationToken stoppingToken) {
-        _logger.LogInformation("IndexacaoManuaisWorker iniciado.");
+        using (RastreioBackground.Iniciar("IndexacaoManuais.Inicializacao")) {
+            _logger.LogInformation("IndexacaoManuaisWorker iniciado.");
 
-        await EnfileirarPendentesAsync();
+            await EnfileirarPendentesAsync();
+        }
 
         while (!stoppingToken.IsCancellationRequested) {
+            // Uma Activity por item da fila: assim as linhas de um manual ficam
+            // separadas das do proximo pelo trace id, mesmo saindo intercaladas.
+            using var rastreio = RastreioBackground.Iniciar("IndexacaoManual");
+
             try {
                 var job = await _queue.DesenfileirarAsync(stoppingToken);
                 _logger.LogInformation("Manual do link {IdJogoLink} retirado da fila de indexação.", job.IdJogoLink);
@@ -38,6 +45,48 @@ public class IndexacaoManuaisWorker(IWebHostEnvironment _env,
         _logger.LogInformation("IndexacaoManuaisWorker finalizado.");
     }
 
+
+
+    private async Task ProcessarAsync(ManualJob job, CancellationToken stoppingToken) {
+        var (sucesso, markdownFile) = await ExtrairMarkdownAsync(job, stoppingToken);
+        if (!sucesso) {
+            _logger.LogWarning("Falha ao extrair markdown do manual do link {IdJogoLink} do jogo {IdJogo}.", job.IdJogoLink, job.IdJogo);
+            return;
+        }
+        //Realizar chunking do markdown extraído
+        //Realizar embedding dos chunks
+        //Salvar embeddings no banco vetorial
+        //Atualizar o banco indicando que esse jogo ja foi processado
+    }
+
+    private async Task<(bool Sucesso, string MarkdownFile)> ExtrairMarkdownAsync(ManualJob job, CancellationToken stoppingToken) {
+        return (false, "");
+        try {
+            var nomeArquivo = Path.GetFileName(job.Url);
+            var caminhoArquivo = Path.Combine(UploadManual.GetUploadFolder(_env), nomeArquivo);
+
+            if (!File.Exists(caminhoArquivo)) {
+                _logger.LogWarning("Arquivo do link {IdJogoLink} do jogo {IdJogo} não encontrado para indexação.", job.IdJogoLink, job.IdJogo);
+                return (false, string.Empty);
+            }
+
+            var markdown = Path.ChangeExtension(caminhoArquivo, ".md");
+            if (File.Exists(markdown)) {
+                _logger.LogDebug("Manual do link {IdJogoLink} já possui markdown extraído. Nada a fazer.", job.IdJogoLink);
+                return (false, string.Empty);
+            }
+
+            using var scope = _scopeFactory.CreateScope();
+            var textExtractor = scope.ServiceProvider.GetRequiredService<ITextExtractor>();
+            var markdownFile = await textExtractor.ExtractTextAsync(caminhoArquivo, stoppingToken);
+            _logger.LogInformation("Manual do link {IdJogoLink} do jogo {IdJogo} extraído com sucesso.", job.IdJogoLink, job.IdJogo);
+            return (true, markdownFile);
+        } catch (Exception ex) {
+            _logger.LogError(ex, "Erro ao extrair markdown do manual do link {IdJogoLink} do jogo {IdJogo}.", job.IdJogoLink, job.IdJogo);
+            return (false, string.Empty);
+        }
+    }
+
     /// <summary>
     /// Carga inicial da fila: tudo que ficou pendente enquanto a aplicação estava fora do ar.
     /// </summary>
@@ -56,27 +105,5 @@ public class IndexacaoManuaisWorker(IWebHostEnvironment _env,
             // A carga inicial falhar nao pode impedir o worker de consumir os links novos.
             _logger.LogError(ex, "Falha ao enfileirar os manuais pendentes na carga inicial.");
         }
-    }
-
-    private async Task ProcessarAsync(ManualJob job, CancellationToken stoppingToken) {
-        var nomeArquivo = Path.GetFileName(job.Url);
-        var caminhoArquivo = Path.Combine(UploadManual.GetUploadFolder(_env), nomeArquivo);
-
-        if (!File.Exists(caminhoArquivo)) {
-            _logger.LogWarning("Arquivo do link {IdJogoLink} do jogo {IdJogo} não encontrado para indexação.", job.IdJogoLink, job.IdJogo);
-            return;
-        }
-
-        var markdown = Path.ChangeExtension(caminhoArquivo, ".md");
-        if (File.Exists(markdown)) {
-            _logger.LogDebug("Manual do link {IdJogoLink} já possui markdown extraído. Nada a fazer.", job.IdJogoLink);
-            return;
-        }
-
-        using var scope = _scopeFactory.CreateScope();
-        var textExtractor = scope.ServiceProvider.GetRequiredService<ITextExtractor>();
-        await textExtractor.ExtractTextAsync(caminhoArquivo, stoppingToken);
-
-        _logger.LogInformation("Manual do link {IdJogoLink} do jogo {IdJogo} extraído com sucesso.", job.IdJogoLink, job.IdJogo);
     }
 }

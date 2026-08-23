@@ -13,7 +13,7 @@ namespace ProximoTurnoApi.Application.Controllers;
 [Route("api/pedidos")]
 [ApiController]
 [Authorize]
-public class PedidosController(ILogger<ControllerBasico> logger,
+public class PedidosController(ILogger<PedidosController> logger,
     BuscarPedidos _buscarPedidosUseCase,
     CadastroPedido _cadastroPedidoUseCase,
     AtualizarPedido _atualizarPedidoUseCase,

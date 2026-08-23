@@ -13,7 +13,7 @@ namespace ProximoTurnoApi.Application.Controllers;
 [ApiController]
 [Authorize]
 public class ContratosController(
-    ILogger<ControllerBasico> logger,
+    ILogger<ContratosController> logger,
     GerarContratoPedido _gerarContratoUseCase,
     ConsultarContratoPedido _consultarContratoUseCase) : ControllerBasico(logger) {
 

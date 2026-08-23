@@ -10,7 +10,7 @@ namespace ProximoTurnoApi.Application.Controllers;
 
 [Route("api/tags")]
 [ApiController]
-public class TagsController(ILogger<ControllerBasico> logger,
+public class TagsController(ILogger<TagsController> logger,
                             ITagRepository _repository,
                             CadastroTag _cadastroTagUseCase,
                             AtualizarTag _atualizarTagUseCase) : ControllerBasico(logger) {

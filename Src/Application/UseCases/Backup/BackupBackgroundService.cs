@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using ProximoTurnoApi.Infrastructure.Logging;
 
 namespace ProximoTurnoApi.Application.UseCases.Backup;
 
@@ -63,39 +64,15 @@ public class BackupBackgroundService(
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
-        if (!options.Habilitado) {
-            logger.LogInformation("Backup desabilitado por configuração (BACKUP_ENABLED=false).");
-            return;
-        }
-
-        if (!options.SegredosPresentes) {
-            // Agendar sem os segredos só produziria uma falha por noite e
-            // afogaria o e-mail de sucesso, que é o nosso sinal de vida.
-            logger.LogError(
-                "Backup não será agendado: BACKUP_PASSPHRASE, B2_KEY_ID ou B2_APPLICATION_KEY ausente.");
-            return;
-        }
-
-        logger.LogInformation("BackupBackgroundService iniciado. Horário diário: {Horario}.", options.Horario);
-
-        try {
-            if (await DeveExecutarAgoraAsync()) {
-                logger.LogInformation("Última execução tem mais de 24h. Executando imediatamente.");
-                await ExecutarAsync(stoppingToken);
-            }
-        } catch (OperationCanceledException) {
-            return;
-        } catch (Exception ex) {
-            // Uma falha aqui (ex.: configuração inválida na construção do
-            // IArmazenamentoBackup, ou erro de I/O ao ler o estado) não pode
-            // derrubar o host inteiro — BackgroundServiceExceptionBehavior é
-            // StopHost por padrão, e o backup mal configurado não pode tirar o
-            // sistema de negócio do ar. O agendamento diário abaixo continua
-            // valendo mesmo se a recuperação de inicialização falhar.
-            logger.LogError(ex, "Falha na execução de recuperação na inicialização do serviço de backup.");
+        using (RastreioBackground.Iniciar("Backup.Inicializacao")) {
+            if (!await InicializarAsync(stoppingToken)) return;
         }
 
         while (!stoppingToken.IsCancellationRequested) {
+            // Uma Activity por janela: cada execucao diaria (ou pulo de janela)
+            // ganha o seu proprio trace id no log.
+            using var rastreio = RastreioBackground.Iniciar("Backup");
+
             try {
                 await Task.Delay(TempoAteProximaExecucao(), _relogio, stoppingToken);
 
@@ -128,6 +105,46 @@ public class BackupBackgroundService(
         }
 
         logger.LogInformation("BackupBackgroundService finalizado.");
+    }
+
+    /// <summary>
+    /// Checagens de configuração e a execução de recuperação de inicialização.
+    /// Retorna <c>false</c> quando o serviço não deve seguir para o laço diário.
+    /// </summary>
+    private async Task<bool> InicializarAsync(CancellationToken stoppingToken) {
+        if (!options.Habilitado) {
+            logger.LogInformation("Backup desabilitado por configuração (BACKUP_ENABLED=false).");
+            return false;
+        }
+
+        if (!options.SegredosPresentes) {
+            // Agendar sem os segredos só produziria uma falha por noite e
+            // afogaria o e-mail de sucesso, que é o nosso sinal de vida.
+            logger.LogError(
+                "Backup não será agendado: BACKUP_PASSPHRASE, B2_KEY_ID ou B2_APPLICATION_KEY ausente.");
+            return false;
+        }
+
+        logger.LogInformation("BackupBackgroundService iniciado. Horário diário: {Horario}.", options.Horario);
+
+        try {
+            if (await DeveExecutarAgoraAsync()) {
+                logger.LogInformation("Última execução tem mais de 24h. Executando imediatamente.");
+                await ExecutarAsync(stoppingToken);
+            }
+        } catch (OperationCanceledException) {
+            return false;
+        } catch (Exception ex) {
+            // Uma falha aqui (ex.: configuração inválida na construção do
+            // IArmazenamentoBackup, ou erro de I/O ao ler o estado) não pode
+            // derrubar o host inteiro — BackgroundServiceExceptionBehavior é
+            // StopHost por padrão, e o backup mal configurado não pode tirar o
+            // sistema de negócio do ar. O agendamento diário abaixo continua
+            // valendo mesmo se a recuperação de inicialização falhar.
+            logger.LogError(ex, "Falha na execução de recuperação na inicialização do serviço de backup.");
+        }
+
+        return true;
     }
 
     private TimeSpan TempoAteProximaExecucao() {

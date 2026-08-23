@@ -11,7 +11,7 @@ namespace ProximoTurnoApi.Application.Controllers;
 
 [Route("api/clientes")]
 [ApiController]
-public class ClientesController(ILogger<ControllerBasico> logger,
+public class ClientesController(ILogger<ClientesController> logger,
                             IClienteRepository _repository,
                             CadastroCliente _cadastroClienteUseCase,
                             AtualizarCliente _atualizarClienteUseCase,

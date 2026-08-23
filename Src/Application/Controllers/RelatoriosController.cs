@@ -10,7 +10,7 @@ namespace ProximoTurnoApi.Application.Controllers;
 [Route("api/relatorios")]
 [ApiController]
 [Authorize(Roles = Roles.Admin)]
-public class RelatoriosController(ILogger<ControllerBasico> logger, ObterRelatorioFaturamento obterRelatorioFaturamento) : ControllerBasico(logger)
+public class RelatoriosController(ILogger<RelatoriosController> logger, ObterRelatorioFaturamento obterRelatorioFaturamento) : ControllerBasico(logger)
 {
     private readonly ObterRelatorioFaturamento _obterRelatorioFaturamento = obterRelatorioFaturamento;
 

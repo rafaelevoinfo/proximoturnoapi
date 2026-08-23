@@ -12,7 +12,9 @@ using ProximoTurnoApi.Application.Converters;
 using ProximoTurnoApi.Application.UseCases;
 using ProximoTurnoApi.Application.UseCases.Backup;
 using ProximoTurnoApi.Infrastructure.Backup;
+using ProximoTurnoApi.Infrastructure.Logging;
 using Serilog;
+using Serilog.Events;
 using ProximoTurnoApi.Infrastructure.RAG;
 using ProximoTurnoApi.Application.UseCases.RAG;
 using ProximoTurnoApi.Application.Workers;
@@ -166,7 +168,12 @@ builder.Services.AddCors(options => {
 
 builder.Services.AddHealthChecks();
 
-builder.Host.UseSerilog((hostingContext, loggerConfiguration) => loggerConfiguration.ReadFrom.Configuration(hostingContext.Configuration));
+builder.Host.UseSerilog((hostingContext, loggerConfiguration) => loggerConfiguration
+    .ReadFrom.Configuration(hostingContext.Configuration)
+    // Fica no codigo, e nao no appsettings, porque o enricher e uma classe deste
+    // assembly: via configuracao exigiria expor um metodo de extensao so para isso.
+    // O nivel e o corte entre "so a classe" (barato) e "classe + metodo" (pilha).
+    .Enrich.With(new CallerEnricher(LogEventLevel.Warning)));
 
 
 var app = builder.Build();
@@ -199,35 +206,40 @@ app.MapGroup("/api")
 app.MapControllers();
 
 
-using var scope = app.Services.CreateScope();
-var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+// A carga inicial roda fora de qualquer requisicao, entao nao existe Activity e os
+// logs sairiam sem trace id. O bloco fecha a Activity antes do app.Run(): deixa-la
+// aberta faria toda requisicao herdar este mesmo trace id como pai.
+using (RastreioBackground.Iniciar("Inicializacao")) {
+    using var scope = app.Services.CreateScope();
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
 
-if (!await roleManager.RoleExistsAsync(Roles.Admin)) {
-    await roleManager.CreateAsync(new IdentityRole(Roles.Admin));
-}
-
-if (!await roleManager.RoleExistsAsync(Roles.Member)) {
-    await roleManager.CreateAsync(new IdentityRole(Roles.Member));
-}
-
-var userManager = scope.ServiceProvider.GetRequiredService<UserManager<Usuario>>();
-var admin = await userManager.FindByEmailAsync("contato@proximoturno.com.br");
-if (admin is null) {
-    var adminEmail = "contato@proximoturno.com.br";
-    admin = new Usuario() {
-        Nome = "Rafael",
-        UserName = adminEmail,
-        Email = adminEmail,
-        EmailConfirmed = true
-    };
-    userManager.Options.Password.RequiredLength = 1;
-    var result = await userManager.CreateAsync(admin, "admin");
-    if (!result.Succeeded) {
-        throw new Exception("Failed to create admin user: " + string.Join(", ", result.Errors.Select(e => e.Description)));
+    if (!await roleManager.RoleExistsAsync(Roles.Admin)) {
+        await roleManager.CreateAsync(new IdentityRole(Roles.Admin));
     }
-}
-if (!await userManager.IsInRoleAsync(admin, Roles.Admin)) {
-    await userManager.AddToRoleAsync(admin, Roles.Admin);
+
+    if (!await roleManager.RoleExistsAsync(Roles.Member)) {
+        await roleManager.CreateAsync(new IdentityRole(Roles.Member));
+    }
+
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<Usuario>>();
+    var admin = await userManager.FindByEmailAsync("contato@proximoturno.com.br");
+    if (admin is null) {
+        var adminEmail = "contato@proximoturno.com.br";
+        admin = new Usuario() {
+            Nome = "Rafael",
+            UserName = adminEmail,
+            Email = adminEmail,
+            EmailConfirmed = true
+        };
+        userManager.Options.Password.RequiredLength = 1;
+        var result = await userManager.CreateAsync(admin, "admin");
+        if (!result.Succeeded) {
+            throw new Exception("Failed to create admin user: " + string.Join(", ", result.Errors.Select(e => e.Description)));
+        }
+    }
+    if (!await userManager.IsInRoleAsync(admin, Roles.Admin)) {
+        await userManager.AddToRoleAsync(admin, Roles.Admin);
+    }
 }
 
 // Extração manual para teste local. O IndexacaoManuaisWorker cuida disso em runtime.

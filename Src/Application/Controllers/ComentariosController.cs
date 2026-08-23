@@ -11,7 +11,7 @@ namespace ProximoTurnoApi.Application.Controllers;
 [ApiController]
 [Authorize]
 public class ComentariosController(
-    ILogger<ControllerBasico> logger,
+    ILogger<ComentariosController> logger,
     SalvarComentario salvarComentarioUseCase,
     PodeComentarJogo podeComentarJogoUseCase,
     ObterComentariosJogo obterComentariosJogoUseCase,
