@@ -22,6 +22,11 @@ using ProximoTurnoApi.Application.Workers;
 
 using Microsoft.Agents.AI;
 using OpenAI;
+using System.ClientModel;
+using System.ClientModel.Primitives;
+using ProximoTurnoApi.Domain;
+using Qdrant.Client;
+using Qdrant.Client.Grpc;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -76,6 +81,49 @@ builder.Services.AddHostedService<BackupBackgroundService>();
 // Indexacao de manuais (RAG)
 builder.Services.AddSingleton<IManualQueue, ManualQueue>();
 builder.Services.AddScoped<ITextExtractor, PdfTextExtractor>();
+builder.Services.AddScoped<IChunkingExtractor, ChunkingExtractor>();
+builder.Services.AddScoped<IEmbeddingExtractor, EmbeddingExtractor>();
+builder.Services.AddScoped<IManualVectorStore, QdrantManualVectorStore>();
+
+// Singleton: o QdrantClient carrega o canal gRPC e nao pode ser criado por requisicao.
+builder.Services.AddSingleton(_ => {
+    var qdrantUrl = Environment.GetEnvironmentVariable("QDRANT_URL");
+    var qdrantApiKey = Environment.GetEnvironmentVariable("QDRANT_API_KEY");
+    if (string.IsNullOrWhiteSpace(qdrantUrl) || string.IsNullOrWhiteSpace(qdrantApiKey)) {
+        throw new InvalidOperationException("QDRANT_URL ou QDRANT_API_KEY não configuradas.");
+    }
+
+    var channel = QdrantChannel.ForAddress(
+        qdrantUrl,
+        new ClientConfiguration {
+            ApiKey = qdrantApiKey
+        });
+
+    return new QdrantClient(new QdrantGrpcClient(channel));
+});
+
+// Cliente de embedding do OpenRouter. Singleton porque o OpenAIClient e thread-safe e
+// segura o pool de conexoes; falhar aqui por falta de chave so derruba a indexacao,
+// que roda em background e ja trata o erro por manual.
+builder.Services.AddSingleton<IEmbeddingGenerator<string, Embedding<float>>>(_ => {
+    var openRouterApiKey = Environment.GetEnvironmentVariable("OPENROUTER_API_KEY");
+    if (string.IsNullOrWhiteSpace(openRouterApiKey)) {
+        throw new InvalidOperationException("OPENROUTER_API_KEY não configurada.");
+    }
+
+    var openAiClient = new OpenAIClient(new ApiKeyCredential(openRouterApiKey), new OpenAIClientOptions() {
+        Endpoint = new Uri("https://openrouter.ai/api/v1"),
+
+        // Embedding responde em segundos, ao contrario da transcricao do PDF inteiro.
+        NetworkTimeout = TimeSpan.FromMinutes(2),
+
+        // Chamada curta e idempotente: repetir e barato e resolve falha transitoria.
+        RetryPolicy = new ClientRetryPolicy(maxRetries: 2),
+    });
+
+    return openAiClient.GetEmbeddingClient(IAModel.EMBEDDING_MODEL).AsIEmbeddingGenerator();
+});
+
 builder.Services.AddHostedService<IndexacaoManuaisWorker>();
 
 builder.Services.AddTransient<IEmailSender<Usuario>, IdentityEmailSender>();
@@ -241,10 +289,6 @@ using (RastreioBackground.Iniciar("Inicializacao")) {
         await userManager.AddToRoleAsync(admin, Roles.Admin);
     }
 }
-
-// Extração manual para teste local. O IndexacaoManuaisWorker cuida disso em runtime.
-//var pdfTextExtractor = new PdfTextExtractor(scope.ServiceProvider.GetRequiredService<ILogger<PdfTextExtractor>>());
-//pdfTextExtractor.ExtractTextAsync("D:\ProximoTurno\Manuais\Twister\manual.pdf", CancellationToken.None).Wait();
 
 app.Run();
 

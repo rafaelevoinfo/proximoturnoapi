@@ -116,6 +116,7 @@ public class CadastroJogoTests {
 
     private class FakeJogoRepository : IJogoRepository {
         public Task<List<JogoLink>> GetJogosNaoIndexadosAsync(int? quantidade = null) => throw new NotImplementedException();
+        public Task MarcarIndexadoAsync(int idJogoLink) => throw new NotImplementedException();
         public List<Jogo> Existentes { get; set; } = [];
         public Jogo? Salvo { get; private set; }
 

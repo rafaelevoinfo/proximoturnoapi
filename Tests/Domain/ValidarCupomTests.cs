@@ -72,6 +72,7 @@ public class ValidarCupomTests
     private class FakeJogoRepository : IJogoRepository
     {
         public Task<List<JogoLink>> GetJogosNaoIndexadosAsync(int? quantidade = null) => throw new NotImplementedException();
+        public Task MarcarIndexadoAsync(int idJogoLink) => throw new NotImplementedException();
         public List<Jogo> Jogos { get; set; } = new();
         public Task<List<Jogo>> GetAllByIdsAsync(List<int> ids) => Task.FromResult(Jogos.Where(j => ids.Contains(j.Id)).ToList());
 

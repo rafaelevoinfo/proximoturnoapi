@@ -53,14 +53,101 @@ public class IndexacaoManuaisWorker(IWebHostEnvironment _env,
             _logger.LogWarning("Falha ao extrair markdown do manual do link {IdJogoLink} do jogo {IdJogo}.", job.IdJogoLink, job.IdJogo);
             return;
         }
-        //Realizar chunking do markdown extraído
-        //Realizar embedding dos chunks
-        //Salvar embeddings no banco vetorial
-        //Atualizar o banco indicando que esse jogo ja foi processado
+
+        var chunks = await ChunkingAsync(job, markdownFile, stoppingToken);
+        if (chunks.Count == 0) {
+            _logger.LogWarning("Nenhum chunk gerado para o manual do link {IdJogoLink} do jogo {IdJogo}.", job.IdJogoLink, job.IdJogo);
+            return;
+        }
+
+        var embeddings = await EmbeddingAsync(job, chunks, stoppingToken);
+        if (embeddings.Count == 0) {
+            _logger.LogWarning("Nenhum embedding gerado para o manual do link {IdJogoLink} do jogo {IdJogo}.", job.IdJogoLink, job.IdJogo);
+            return;
+        }
+
+        if (!await SalvarVetoresAsync(job, embeddings, stoppingToken)) {
+            return;
+        }
+
+        await MarcarIndexadoAsync(job);
+    }
+
+    /// <summary>
+    /// Grava os vetores no Qdrant. Só depois disso o link pode ser marcado como indexado:
+    /// marcar antes deixaria o manual fora da fila sem nunca ter sido gravado.
+    /// </summary>
+    private async Task<bool> SalvarVetoresAsync(ManualJob job, IReadOnlyList<ChunkEmbedding> embeddings, CancellationToken stoppingToken) {
+        try {
+            using var scope = _scopeFactory.CreateScope();
+            var vectorStore = scope.ServiceProvider.GetRequiredService<IManualVectorStore>();
+            await vectorStore.SalvarAsync(job.IdJogo, job.IdJogoLink, embeddings, stoppingToken);
+            return true;
+        } catch (OperationCanceledException) {
+            throw;
+        } catch (Exception ex) {
+            _logger.LogError(ex, "Erro ao gravar os vetores do manual do link {IdJogoLink} do jogo {IdJogo}.", job.IdJogoLink, job.IdJogo);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Fecha o ciclo do manual. Falhar aqui só custa reprocessar o manual no próximo
+    /// start: o Qdrant apaga os vetores antigos do link antes de gravar de novo.
+    /// </summary>
+    private async Task MarcarIndexadoAsync(ManualJob job) {
+        try {
+            using var scope = _scopeFactory.CreateScope();
+            var jogoRepository = scope.ServiceProvider.GetRequiredService<IJogoRepository>();
+            await jogoRepository.MarcarIndexadoAsync(job.IdJogoLink);
+
+            _logger.LogInformation("Manual do link {IdJogoLink} do jogo {IdJogo} indexado com sucesso.", job.IdJogoLink, job.IdJogo);
+        } catch (Exception ex) {
+            _logger.LogError(ex, "Vetores gravados, mas falhou ao marcar o link {IdJogoLink} como indexado.", job.IdJogoLink);
+        }
+    }
+
+    /// <summary>
+    /// Gera os vetores dos chunks. Como a chamada e paga, uma falha aqui para este manual
+    /// e nao e retentada: o link continua nao indexado e volta na proxima carga inicial.
+    /// </summary>
+    private async Task<IReadOnlyList<ChunkEmbedding>> EmbeddingAsync(ManualJob job, IReadOnlyList<ManualChunk> chunks, CancellationToken stoppingToken) {
+        try {
+            using var scope = _scopeFactory.CreateScope();
+            var embeddingExtractor = scope.ServiceProvider.GetRequiredService<IEmbeddingExtractor>();
+            var embeddings = await embeddingExtractor.GerarEmbeddingsAsync(chunks, stoppingToken);
+
+            _logger.LogInformation("Manual do link {IdJogoLink} do jogo {IdJogo}: {Quantidade} embeddings gerados.",
+                                   job.IdJogoLink, job.IdJogo, embeddings.Count);
+            return embeddings;
+        } catch (OperationCanceledException) {
+            throw;
+        } catch (Exception ex) {
+            _logger.LogError(ex, "Erro ao gerar embeddings do manual do link {IdJogoLink} do jogo {IdJogo}.", job.IdJogoLink, job.IdJogo);
+            return [];
+        }
+    }
+
+    /// <summary>
+    /// Quebra o markdown em chunks. Falhar aqui derruba so este manual: o proximo da fila
+    /// nao tem nada a ver com um markdown malformado.
+    /// </summary>
+    private async Task<IReadOnlyList<ManualChunk>> ChunkingAsync(ManualJob job, string markdownFile, CancellationToken stoppingToken) {
+        try {
+            using var scope = _scopeFactory.CreateScope();
+            var chunkingExtractor = scope.ServiceProvider.GetRequiredService<IChunkingExtractor>();
+            var chunks = await chunkingExtractor.ExtrairChunksAsync(markdownFile, stoppingToken);
+
+            _logger.LogInformation("Manual do link {IdJogoLink} do jogo {IdJogo} dividido em {Quantidade} chunks.",
+                                   job.IdJogoLink, job.IdJogo, chunks.Count);
+            return chunks;
+        } catch (Exception ex) {
+            _logger.LogError(ex, "Erro ao dividir em chunks o manual do link {IdJogoLink} do jogo {IdJogo}.", job.IdJogoLink, job.IdJogo);
+            return [];
+        }
     }
 
     private async Task<(bool Sucesso, string MarkdownFile)> ExtrairMarkdownAsync(ManualJob job, CancellationToken stoppingToken) {
-        return (false, "");
         try {
             var nomeArquivo = Path.GetFileName(job.Url);
             var caminhoArquivo = Path.Combine(UploadManual.GetUploadFolder(_env), nomeArquivo);
@@ -70,15 +157,15 @@ public class IndexacaoManuaisWorker(IWebHostEnvironment _env,
                 return (false, string.Empty);
             }
 
-            var markdown = Path.ChangeExtension(caminhoArquivo, ".md");
-            if (File.Exists(markdown)) {
+            var markdownFile = Path.ChangeExtension(caminhoArquivo, ".md");
+            if (File.Exists(markdownFile)) {
                 _logger.LogDebug("Manual do link {IdJogoLink} já possui markdown extraído. Nada a fazer.", job.IdJogoLink);
-                return (false, string.Empty);
+                return (true, markdownFile);
             }
 
             using var scope = _scopeFactory.CreateScope();
             var textExtractor = scope.ServiceProvider.GetRequiredService<ITextExtractor>();
-            var markdownFile = await textExtractor.ExtractTextAsync(caminhoArquivo, stoppingToken);
+            markdownFile = await textExtractor.ExtractTextAsync(caminhoArquivo, stoppingToken);
             _logger.LogInformation("Manual do link {IdJogoLink} do jogo {IdJogo} extraído com sucesso.", job.IdJogoLink, job.IdJogo);
             return (true, markdownFile);
         } catch (Exception ex) {

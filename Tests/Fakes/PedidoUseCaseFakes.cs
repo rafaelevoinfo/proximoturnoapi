@@ -105,6 +105,7 @@ public class FakeCategoriaPeriodoCache : ICategoriaPeriodoCache {
 
 public class FakeJogoRepository : IJogoRepository {
     public Task<List<JogoLink>> GetJogosNaoIndexadosAsync(int? quantidade = null) => throw new NotImplementedException();
+    public Task MarcarIndexadoAsync(int idJogoLink) => throw new NotImplementedException();
     public List<JogoCopia> Copias { get; set; } = [];
     public List<Jogo> Jogos { get; set; } = [];
 

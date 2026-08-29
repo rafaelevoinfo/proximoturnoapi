@@ -23,6 +23,7 @@ public interface IJogoRepository : IBaseRepository {
     Task<bool> ExisteAsync(int id);
     Task<bool> CopiaExisteAndDisponivel(int id);
     Task<List<JogoLink>> GetJogosNaoIndexadosAsync(int? quantidade = null);
+    Task MarcarIndexadoAsync(int idJogoLink);
 }
 
 public class JogoRepository : BaseRepository, IJogoRepository {
@@ -255,5 +256,15 @@ public class JogoRepository : BaseRepository, IJogoRepository {
         }
 
         return await query.ToListAsync();
+    }
+
+    /// <summary>
+    /// Marca o link como indexado. ExecuteUpdate porque o contexto roda NoTracking:
+    /// sem isso seria preciso buscar e anexar a entidade só para virar um bool.
+    /// </summary>
+    public async Task MarcarIndexadoAsync(int idJogoLink) {
+        await _dbContext.JogoLinks
+            .Where(jl => jl.Id == idJogoLink)
+            .ExecuteUpdateAsync(update => update.SetProperty(jl => jl.Indexado, true));
     }
 }
