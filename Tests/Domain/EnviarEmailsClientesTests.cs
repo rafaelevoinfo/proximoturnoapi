@@ -73,6 +73,28 @@ public class EnviarEmailsClientesTests
     }
 
     [Fact]
+    public async Task NaoEnvia_ParaClienteAnonimizado() {
+        var repo = new FakeClienteRepository {
+            Clientes = {
+                new Cliente {
+                    Id = 1, Nome = "cliente removido", Email = "anon-1@removido.local",
+                    Telefone = "anon1", Endereco = "removido",
+                    Ativo = false, DataAnonimizacao = new DateTime(2026, 1, 1)
+                }
+            }
+        };
+        var email = new FakeEmailService();
+        var links = new FakeResetSenhaLinkService("https://site/r", "https://site/a");
+        var useCase = new EnviarEmailsClientes(repo, email, links, NullLogger<EnviarEmailsClientes>.Instance);
+
+        await useCase.ExecuteAsync(new EnviarEmailsClientesRequest {
+            ClienteIds = [1], Titulo = "Oi", Conteudo = "Promoção"
+        });
+
+        Assert.Empty(email.Enviados);
+    }
+
+    [Fact]
     public async Task Envia_SemGerarLinks_QuandoNaoHaPlaceholderDeLink()
     {
         var links = new FakeResetSenhaLinkService("r", "a");
@@ -115,8 +137,8 @@ public class EnviarEmailsClientesTests
     {
         public List<Cliente> Clientes { get; set; } = [];
 
-        public Task<List<Cliente>> GetAllByIdsAsync(List<int> ids)
-            => Task.FromResult(Clientes.Where(c => ids.Contains(c.Id)).ToList());
+        public Task<List<Cliente>> GetAllByIdsAsync(List<int> ids) =>
+            Task.FromResult(Clientes.Where(c => ids.Contains(c.Id) && c.DataAnonimizacao == null).ToList());
 
         public Task<List<Cliente>> GetAllAsync(FiltroClienteDTO filtro) => throw new NotImplementedException();
         public Task<Cliente?> GetByIdAsync(int id) => Task.FromResult(Clientes.FirstOrDefault(c => c.Id == id));
@@ -130,5 +152,6 @@ public class EnviarEmailsClientesTests
         public Task StartTransactionAsync() => Task.CompletedTask;
         public Task CommitTransactionAsync() => Task.CompletedTask;
         public Task RollbackTransactionAsync() => Task.CompletedTask;
+        public Task ExcluirDadosVinculadosAsync(int idCliente) => throw new NotImplementedException();
     }
 }

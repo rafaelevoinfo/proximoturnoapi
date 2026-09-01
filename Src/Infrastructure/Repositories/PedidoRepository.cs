@@ -10,6 +10,9 @@ public interface IPedidoRepository : IBaseRepository {
     Task<List<Pedido>> GetAllAsync(FiltroPedidoDTO filtro);
     Task<Pedido?> GetByIdAsync(int id);
     Task<bool> DeleteAsync(int id);
+
+    /// <summary>Pedidos que impedem a exclusão da conta: ainda não devolvidos nem cancelados.</summary>
+    Task<List<Pedido>> ObterPedidosEmAbertoAsync(int idCliente);
 }
 
 public class PedidoRepository(DatabaseContext dbContext) : BaseRepository(dbContext), IPedidoRepository {
@@ -86,5 +89,16 @@ public class PedidoRepository(DatabaseContext dbContext) : BaseRepository(dbCont
 
     public async Task SaveAsync(Pedido pedido, bool commit) {
         await SaveChangesAsync(_dbContext.Pedidos, pedido, commit);
+    }
+
+    public async Task<List<Pedido>> ObterPedidosEmAbertoAsync(int idCliente) {
+        return await _dbContext.Pedidos
+            .AsNoTracking()
+            .Include(p => p.Items)!
+                .ThenInclude(i => i.JogoCopia)
+                    .ThenInclude(jc => jc.Jogo)
+            .Where(p => p.Cliente.Id == idCliente
+                     && (p.Status == StatusPedido.Pendente || p.Status == StatusPedido.Entregue))
+            .ToListAsync();
     }
 }

@@ -17,6 +17,7 @@ public class ClientesController(ILogger<ControllerBasico> logger,
                             AtualizarCliente _atualizarClienteUseCase,
                             AtualizarStatusCliente _atualizarStatusClienteUseCase,
                             EnviarEmailsClientes _enviarEmailsClientes,
+                            ExcluirContaCliente _excluirContaClienteUseCase,
                             UserManager<Usuario> _userManager) : ControllerBasico(logger) {
 
     /// <summary>
@@ -104,6 +105,9 @@ public class ClientesController(ILogger<ControllerBasico> logger,
             if (cliente == null) {
                 return NotFound(ApiResultDTO<ClienteDTO>.CreateFailureResult($"Cliente de id {id} não encontrado."));
             }
+            if (cliente.DataAnonimizacao is not null) {
+                return NotFound(ApiResultDTO<ClienteDTO>.CreateFailureResult($"Cliente de id {id} não encontrado."));
+            }
             //Futuramente podemos ter um outro DTO para diferenciar o perfil do cliente usado por um admin e o perfil do cliente usado pelo próprio cliente
             return Ok(ApiResultDTO<ClienteDTO>.CreateSuccessResult(ClienteDTO.FromModel(cliente), "Cliente recuperado com sucesso."));
         });
@@ -115,6 +119,16 @@ public class ClientesController(ILogger<ControllerBasico> logger,
         return await EncapsulateRequestAsync(async () => {
             if (id != cliente.Id) {
                 return BadRequest(ApiResultDTO<ClienteDTO>.CreateFailureResult("ID do cliente na URL não corresponde ao ID no corpo da requisição."));
+            }
+            var user = await _userManager.GetUserAsync(User);
+            if (user is null) {
+                _logger.LogWarning("Usuário logado não encontrado.");
+                return Unauthorized();
+            }
+            var idCliente = await _repository.GetIdByEmailAsync(user.Email ?? "");
+            if (idCliente != id && !await _userManager.IsInRoleAsync(user, Roles.Admin)) {
+                _logger.LogWarning("Usuário logado tentou atualizar o perfil de outro cliente.");
+                return Forbid();
             }
             var result = await _atualizarClienteUseCase.ExecuteAsync(cliente);
             if (!result) {
@@ -178,4 +192,50 @@ public class ClientesController(ILogger<ControllerBasico> logger,
 
             return Ok(ApiResultDTO<object>.CreateSuccessResult(null, "Emails enviados com sucesso."));
         });
+
+    /// <summary>
+    /// Exclusão de conta pelo titular (LGPD Art. 18, VI). O próprio cliente precisa informar a
+    /// senha; um Admin pode executar sem senha para atender pedidos vindos por outros canais.
+    /// </summary>
+    [HttpDelete("{id:int}/conta")]
+    [Authorize]
+    public async Task<IActionResult> ExcluirConta([FromRoute] int id, [FromBody] ExcluirContaRequestDTO? request) {
+        return await EncapsulateRequestAsync(async () => {
+            var usuarioLogado = await _userManager.GetUserAsync(User);
+            if (usuarioLogado is null) {
+                return Unauthorized();
+            }
+
+            var isAdmin = await _userManager.IsInRoleAsync(usuarioLogado, Roles.Admin);
+            var idClienteLogado = await _repository.GetIdByEmailAsync(usuarioLogado.Email ?? "");
+            if (!isAdmin && idClienteLogado != id) {
+                _logger.LogWarning("Usuário logado tentou excluir a conta de outro cliente.");
+                return Forbid();
+            }
+
+            var sucesso = await _excluirContaClienteUseCase.ExecuteAsync(id, request?.Senha, isAdmin, usuarioLogado.Id);
+            if (sucesso) {
+                return Ok(ApiResultDTO<object>.CreateSuccessResult(null, "Conta excluída com sucesso."));
+            }
+
+            // Pedidos em aberto viram 409 para o frontend montar uma tela própria, em vez de
+            // um 400 indistinguível de "senha incorreta".
+            if (_excluirContaClienteUseCase.PedidosEmAberto.Count > 0) {
+                // Montado na mão porque isto é uma falha que carrega dados: CreateFailureResult
+                // zera o Data e CreateSuccessResult marcaria Success = true.
+                return Conflict(new ApiResultDTO<List<PedidoEmAbertoDTO>> {
+                    Success = false,
+                    Message = _excluirContaClienteUseCase.AggregateErrors(),
+                    Data = [.. _excluirContaClienteUseCase.PedidosEmAberto]
+                });
+            }
+
+            var notification = _excluirContaClienteUseCase.Notifications.FirstOrDefault();
+            if (notification?.Type == UseCaseNotificationType.NotFound) {
+                return NotFound(ApiResultDTO<object>.CreateFailureResult(_excluirContaClienteUseCase.AggregateErrors()));
+            }
+
+            return BadRequest(ApiResultDTO<object>.CreateFailureResult(_excluirContaClienteUseCase.AggregateErrors()));
+        });
+    }
 }

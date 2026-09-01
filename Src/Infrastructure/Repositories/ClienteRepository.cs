@@ -15,6 +15,9 @@ public interface IClienteRepository : IBaseRepository {
     Task<bool> DeleteAsync(int id);
     Task<bool> ExistsAsync(int id);
 
+    /// <summary>Apaga comentários e itens de lista de desejos do cliente. Usado na exclusão de conta (LGPD).</summary>
+    Task ExcluirDadosVinculadosAsync(int idCliente);
+
 }
 
 public class ClienteRepository : BaseRepository, IClienteRepository {
@@ -59,7 +62,9 @@ public class ClienteRepository : BaseRepository, IClienteRepository {
     public async Task<List<Cliente>> GetAllByIdsAsync(List<int> ids) {
         return await _dbContext.Clientes
             .AsNoTracking()
-            .Where(c => ids.Contains(c.Id))
+            // Contas excluídas pelo titular nunca entram em disparo de e-mail: o endereço é um
+            // token sintético e o consentimento de marketing foi revogado junto com a conta.
+            .Where(c => ids.Contains(c.Id) && c.DataAnonimizacao == null)
             .ToListAsync();
     }
 
@@ -103,5 +108,17 @@ public class ClienteRepository : BaseRepository, IClienteRepository {
 
     public Task<bool> ExistsAsync(int id) {
         return _dbContext.Clientes.AnyAsync(c => c.Id == id);
+    }
+
+    public async Task ExcluirDadosVinculadosAsync(int idCliente) {
+        // Hard delete: o texto livre do comentário pode conter dado pessoal que anonimizar o
+        // autor não removeria. Ver decisão 3 da spec.
+        await _dbContext.Comentarios
+            .Where(c => c.IdCliente == idCliente)
+            .ExecuteDeleteAsync();
+
+        await _dbContext.ItensListaDesejos
+            .Where(i => i.IdCliente == idCliente)
+            .ExecuteDeleteAsync();
     }
 }

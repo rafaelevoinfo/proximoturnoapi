@@ -49,6 +49,9 @@ public record ClienteDTO {
     /// </summary>
     public bool LoginAtivo { get; set; }
 
+    /// <summary>Somente leitura: quando a conta foi excluída pelo titular. Null = conta ativa.</summary>
+    public DateTime? DataAnonimizacao { get; set; }
+
     public Cliente ToModel() {
         return new Cliente {
             Id = Id ?? 0,
@@ -85,7 +88,8 @@ public record ClienteDTO {
             DataNascimento = cliente.DataNascimento,
             ComoNosConheceu = cliente.ComoNosConheceu,
             AceitaReceberOfertas = cliente.AceitaReceberOfertas,
-            Ativo = cliente.Ativo
+            Ativo = cliente.Ativo,
+            DataAnonimizacao = cliente.DataAnonimizacao
         };
     }
 }

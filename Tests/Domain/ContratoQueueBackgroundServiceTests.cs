@@ -175,6 +175,10 @@ public class ContratoQueueBackgroundServiceTests
         public Task StartTransactionAsync() => Task.CompletedTask;
         public Task CommitTransactionAsync() => Task.CompletedTask;
         public Task RollbackTransactionAsync() => Task.CompletedTask;
+        public Task ExcluirPorClienteAsync(int idCliente)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
 

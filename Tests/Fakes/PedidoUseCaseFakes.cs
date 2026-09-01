@@ -85,6 +85,12 @@ public class FakePedidoRepository : IPedidoRepository {
     public Task StartTransactionAsync() => Task.CompletedTask;
     public Task CommitTransactionAsync() => Task.CompletedTask;
     public Task RollbackTransactionAsync() => Task.CompletedTask;
+
+    public Task<List<Pedido>> ObterPedidosEmAbertoAsync(int idCliente) =>
+        Task.FromResult(Pedidos
+            .Where(p => p.Cliente.Id == idCliente
+                     && (p.Status == StatusPedido.Pendente || p.Status == StatusPedido.Entregue))
+            .ToList());
 }
 
 public class FakeCategoriaPeriodoCache : ICategoriaPeriodoCache {
@@ -135,7 +141,7 @@ public class FakeClienteRepository : IClienteRepository {
     public List<Cliente> Clientes { get; set; } = [];
 
     public Task<List<Cliente>> GetAllByIdsAsync(List<int> ids) =>
-        Task.FromResult(Clientes.Where(c => ids.Contains(c.Id)).ToList());
+        Task.FromResult(Clientes.Where(c => ids.Contains(c.Id) && c.DataAnonimizacao == null).ToList());
 
     public Task<int?> GetIdByEmailAsync(string email) =>
         Task.FromResult(Clientes.FirstOrDefault(c => c.Email == email)?.Id);
@@ -145,13 +151,47 @@ public class FakeClienteRepository : IClienteRepository {
 
     public Task<List<Cliente>> GetAllAsync(FiltroClienteDTO filtro) => throw new NotImplementedException();
     public Task AddAsync(Cliente cliente) => throw new NotImplementedException();
-    public Task UpdateAsync(Cliente cliente) => throw new NotImplementedException();
     public Task<bool> DeleteAsync(int id) => throw new NotImplementedException();
     public Task<bool> ExistsAsync(int id) => throw new NotImplementedException();
     public Task SaveChangesAsync() => Task.CompletedTask;
-    public Task StartTransactionAsync() => Task.CompletedTask;
-    public Task CommitTransactionAsync() => Task.CompletedTask;
-    public Task RollbackTransactionAsync() => Task.CompletedTask;
+
+    /// <summary>Ordem em que StartTransactionAsync/UpdateAsync/CommitTransactionAsync/
+    /// RollbackTransactionAsync foram chamados, registrados como "Start"/"Update"/"Commit"/"Rollback".</summary>
+    public List<string> Chamadas { get; } = [];
+
+    public Task UpdateAsync(Cliente cliente) {
+        Chamadas.Add("Update");
+        return Task.CompletedTask;
+    }
+
+    public Task StartTransactionAsync() {
+        Chamadas.Add("Start");
+        return Task.CompletedTask;
+    }
+
+    public Task CommitTransactionAsync() {
+        Chamadas.Add("Commit");
+        return Task.CompletedTask;
+    }
+
+    public Task RollbackTransactionAsync() {
+        Chamadas.Add("Rollback");
+        return Task.CompletedTask;
+    }
+
+    public List<int> DadosVinculadosExcluidos { get; } = [];
+
+    /// <summary>Quando true, ExcluirDadosVinculadosAsync lança para simular uma falha no
+    /// meio da transação (ex.: violação de constraint) e exercer o caminho de rollback.</summary>
+    public bool LancarErroAoExcluirDadosVinculados { get; set; }
+
+    public Task ExcluirDadosVinculadosAsync(int idCliente) {
+        if (LancarErroAoExcluirDadosVinculados) {
+            throw new InvalidOperationException("falha simulada ao excluir dados vinculados");
+        }
+        DadosVinculadosExcluidos.Add(idCliente);
+        return Task.CompletedTask;
+    }
 }
 
 public class FakeContratoRepository : IContratoRepository {
@@ -170,6 +210,13 @@ public class FakeContratoRepository : IContratoRepository {
     public Task StartTransactionAsync() => Task.CompletedTask;
     public Task CommitTransactionAsync() => Task.CompletedTask;
     public Task RollbackTransactionAsync() => Task.CompletedTask;
+
+    public List<int> ContratosExcluidosPorCliente { get; } = [];
+
+    public Task ExcluirPorClienteAsync(int idCliente) {
+        ContratosExcluidosPorCliente.Add(idCliente);
+        return Task.CompletedTask;
+    }
 }
 
 public class FakeContratoQueue : IContratoQueue {
@@ -190,14 +237,51 @@ public class FakeUserManager : UserManager<Usuario> {
     private readonly Usuario? _user;
     private readonly bool _isAdmin;
 
+    /// <summary>Usuário devolvido por FindByEmailAsync. Null simula cliente importado sem login.</summary>
+    public Usuario? UsuarioPorEmail { get; set; }
+    /// <summary>Resultado de CheckPasswordAsync.</summary>
+    public bool SenhaCorreta { get; set; } = true;
+    /// <summary>Ids dos usuários passados para DeleteAsync.</summary>
+    public List<string> Deletados { get; } = [];
+    /// <summary>Quando true, DeleteAsync devolve um IdentityResult com falha em vez de sucesso.</summary>
+    public bool FalharDelete { get; set; }
+
     public FakeUserManager(Usuario? user, bool isAdmin = false)
         : base(new FakeUserStore(), null!, null!, null!, null!, null!, null!, null!, null!) {
         _user = user;
         _isAdmin = isAdmin;
+        UsuarioPorEmail = user;
     }
 
     public override Task<Usuario?> GetUserAsync(ClaimsPrincipal principal) => Task.FromResult(_user);
     public override Task<bool> IsInRoleAsync(Usuario user, string role) => Task.FromResult(_isAdmin);
+    public override Task<Usuario?> FindByEmailAsync(string email) => Task.FromResult(UsuarioPorEmail);
+    public override Task<bool> CheckPasswordAsync(Usuario user, string password) => Task.FromResult(SenhaCorreta);
+
+    /// <summary>True depois que SetLockoutEndDateAsync foi chamado ao menos uma vez.</summary>
+    public bool LockoutEndFoiDefinido { get; private set; }
+    /// <summary>Último valor passado para SetLockoutEndDateAsync (null = login liberado).</summary>
+    public DateTimeOffset? LockoutEndDefinido { get; private set; }
+
+    // O FakeUserStore não implementa IUserLockoutStore; sem estes overrides o UserManager real
+    // estouraria NotSupportedException em qualquer teste que chegue ao bloqueio de login.
+    public override Task<IdentityResult> SetLockoutEnabledAsync(Usuario user, bool enabled) =>
+        Task.FromResult(IdentityResult.Success);
+
+    public override Task<IdentityResult> SetLockoutEndDateAsync(Usuario user, DateTimeOffset? lockoutEnd) {
+        LockoutEndFoiDefinido = true;
+        LockoutEndDefinido = lockoutEnd;
+        return Task.FromResult(IdentityResult.Success);
+    }
+
+    public override Task<IdentityResult> DeleteAsync(Usuario user) {
+        if (FalharDelete) {
+            return Task.FromResult(IdentityResult.Failed(
+                new IdentityError { Description = "falha simulada ao deletar usuário" }));
+        }
+        Deletados.Add(user.Id);
+        return Task.FromResult(IdentityResult.Success);
+    }
 }
 
 public class FakeUserStore : IUserStore<Usuario> {

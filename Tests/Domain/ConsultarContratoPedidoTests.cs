@@ -46,6 +46,7 @@ public class ConsultarContratoPedidoTests
         public Task StartTransactionAsync() => Task.CompletedTask;
         public Task CommitTransactionAsync() => Task.CompletedTask;
         public Task RollbackTransactionAsync() => Task.CompletedTask;
+        public Task ExcluirPorClienteAsync(int idCliente) => throw new NotImplementedException();
     }
 
     private class FakeClienteRepository : IClienteRepository
@@ -72,6 +73,7 @@ public class ConsultarContratoPedidoTests
         public Task StartTransactionAsync() => Task.CompletedTask;
         public Task CommitTransactionAsync() => Task.CompletedTask;
         public Task RollbackTransactionAsync() => Task.CompletedTask;
+        public Task ExcluirDadosVinculadosAsync(int idCliente) => throw new NotImplementedException();
     }
 
     private class FakePedidoRepository : IPedidoRepository
@@ -90,6 +92,7 @@ public class ConsultarContratoPedidoTests
         public Task StartTransactionAsync() => Task.CompletedTask;
         public Task CommitTransactionAsync() => Task.CompletedTask;
         public Task RollbackTransactionAsync() => Task.CompletedTask;
+        public Task<List<Pedido>> ObterPedidosEmAbertoAsync(int idCliente) => throw new NotImplementedException();
     }
 
     private class FakeAutentiqueService : IAutentiqueService

@@ -9,6 +9,12 @@ public interface IContratoRepository : IBaseRepository {
     Task<ContratoAutentique?> GetByAutentiqueDocumentIdAsync(string autentiqueDocumentId);
     Task<List<ContratoAutentique>> GetActiveByPedidoIdsAsync(List<int> idPedidos);
     Task InativarContratosPorPedidoIdAsync(int idPedido);
+
+    /// <summary>
+    /// Apaga as linhas locais de contrato dos pedidos do cliente. O documento no Autentique
+    /// permanece — risco residual assumido, ver decisão 5 da spec.
+    /// </summary>
+    Task ExcluirPorClienteAsync(int idCliente);
 }
 
 public class ContratoRepository(DatabaseContext dbContext) : BaseRepository(dbContext), IContratoRepository {
@@ -43,5 +49,15 @@ public class ContratoRepository(DatabaseContext dbContext) : BaseRepository(dbCo
         await _dbContext.ContratosAutentique
             .Where(c => c.IdPedido == idPedido && c.Ativo)
             .ExecuteUpdateAsync(s => s.SetProperty(c => c.Ativo, false));
+    }
+
+    public async Task ExcluirPorClienteAsync(int idCliente) {
+        var idsPedidos = _dbContext.Pedidos
+            .Where(p => p.Cliente.Id == idCliente)
+            .Select(p => p.Id);
+
+        await _dbContext.ContratosAutentique
+            .Where(c => idsPedidos.Contains(c.IdPedido))
+            .ExecuteDeleteAsync();
     }
 }

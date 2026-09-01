@@ -38,5 +38,12 @@ public class Cliente : BaseModel {
 
     [Column("ATIVO")]
     public bool Ativo { get; set; } = true;
+
+    /// <summary>
+    /// Preenchido quando o titular exerce o direito de eliminação (LGPD Art. 18, VI).
+    /// Null = conta nunca excluída. Invariante: preenchido implica Ativo == false.
+    /// </summary>
+    [Column("DATA_ANONIMIZACAO")]
+    public DateTime? DataAnonimizacao { get; set; }
 }
 
