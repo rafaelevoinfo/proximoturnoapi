@@ -175,15 +175,17 @@ public class JogoRepository : BaseRepository, IJogoRepository {
     }
 
     public async Task<List<Jogo>> GetMaisAlugadosAsync() {
+        // Conta pelo status do item (o pedido pode ter devolucao parcial): Entregue/Devolvido = o jogo saiu.
+        // Cada renovacao gera um item novo e conta como um novo aluguel; jogos desativados ficam fora.
         var maisAlugadosIds = await _dbContext.Database
             .SqlQuery<int>(@$"
             select jc.ID_JOGO
-              from PEDIDO p
-            inner join PEDIDO_ITEM pi ON (p.ID = pi.ID_PEDIDO)
-            inner join JOGO_COPIA jc on (jc.ID = pi.ID_JOGO_COPIA)            
-            where p.STATUS = {(short)StatusPedido.Devolvido}
+              from PEDIDO_ITEM pi
+            inner join JOGO_COPIA jc on (jc.ID = pi.ID_JOGO_COPIA)
+            where pi.STATUS in ({(short)StatusPedido.Entregue}, {(short)StatusPedido.Devolvido})
+              and exists (select 1 from JOGO_COPIA ativa where ativa.ID_JOGO = jc.ID_JOGO and ativa.STATUS != {(short)StatusJogo.Desativado})
             group by jc.ID_JOGO
-            order by count(*) desc 
+            order by count(*) desc, jc.ID_JOGO desc
             limit 3")
             .ToListAsync();
 
@@ -200,12 +202,15 @@ public class JogoRepository : BaseRepository, IJogoRepository {
             maisAlugadosIds.AddRange(recentesIds);
         }
 
-        return await _dbContext.Jogos
+        var jogos = await _dbContext.Jogos
             .Include(j => j.Fotos!.OrderBy(f => f.Ordem).Take(1))
             .Include(j => j.Copias)
             .Where(j => maisAlugadosIds.Contains(j.Id))
             .AsNoTracking()
             .ToListAsync();
+
+        // O banco devolve os jogos ordenados por ID; reaplica a ordem do ranking.
+        return jogos.OrderBy(j => maisAlugadosIds.IndexOf(j.Id)).ToList();
     }
 
     // Os jogos nao possuem data de cadastro, entao o ID (auto incremento) define a ordem de cadastro.
