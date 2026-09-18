@@ -259,12 +259,56 @@ public class ChunkingExtractorTests {
         try {
             var extractor = new ChunkingExtractor(NullLogger<ChunkingExtractor>.Instance);
 
-            var chunks = await extractor.ExtrairChunksAsync(caminho, CancellationToken.None);
+            var chunks = await extractor.ExtrairChunksAsync(caminho, null, CancellationToken.None);
 
             Assert.Single(chunks);
             Assert.Equal("Azul > Preparação", chunks[0].Titulo);
         } finally {
             File.Delete(caminho);
         }
+    }
+
+    [Fact]
+    public void Dividir_ComContexto_PrefixaOJogoEOManualNoTitulo() {
+        var markdown = $"""
+            # Modo Forrá
+
+            ## Como jogar
+
+            {Corpo("Apenas o jogador da frente da fila move cartas.")}
+            """;
+
+        var chunks = ChunkingExtractor.Dividir(markdown, new ContextoManual("Balde de Caranguejo", "Modos extras"));
+
+        // Sem o nome do jogo o vetor nao sabe de que jogo fala: o manual de modos extras
+        // do Balde de Caranguejo nao cita o nome do jogo em lugar nenhum do corpo.
+        Assert.Equal("Balde de Caranguejo > Modos extras > Modo Forrá > Como jogar", Assert.Single(chunks).Titulo);
+    }
+
+    [Fact]
+    public void Dividir_ComContexto_SecaoSemTitulo_FicaComOPrefixo() {
+        var markdown = Corpo("Neste jogo cooperativo os jogadores organizam os caranguejos.");
+
+        var chunks = ChunkingExtractor.Dividir(markdown, new ContextoManual("Balde de Caranguejo", "Manual"));
+
+        Assert.Equal("Balde de Caranguejo > Manual", Assert.Single(chunks).Titulo);
+    }
+
+    [Fact]
+    public void Dividir_ContextoSemTituloDeManual_UsaSoONomeDoJogo() {
+        var markdown = $"## Preparação\n\n{Corpo("Separe as cartas.")}";
+
+        var chunks = ChunkingExtractor.Dividir(markdown, new ContextoManual("Azul", ""));
+
+        Assert.Equal("Azul > Preparação", Assert.Single(chunks).Titulo);
+    }
+
+    [Fact]
+    public void Dividir_SemContexto_MantemApenasOCaminhoDeTitulos() {
+        var markdown = $"## Preparação\n\n{Corpo("Separe as cartas.")}";
+
+        var chunks = ChunkingExtractor.Dividir(markdown);
+
+        Assert.Equal("Preparação", Assert.Single(chunks).Titulo);
     }
 }

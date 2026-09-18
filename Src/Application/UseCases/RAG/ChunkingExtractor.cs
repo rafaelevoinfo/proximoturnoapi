@@ -16,7 +16,7 @@ public sealed record ManualChunk(int Ordem, string Titulo, string Texto) {
 }
 
 public interface IChunkingExtractor {
-    Task<IReadOnlyList<ManualChunk>> ExtrairChunksAsync(string markdownFilePath, CancellationToken cancellationToken);
+    Task<IReadOnlyList<ManualChunk>> ExtrairChunksAsync(string markdownFilePath, ContextoManual? contexto, CancellationToken cancellationToken);
 }
 
 /// <summary>
@@ -49,9 +49,9 @@ public class ChunkingExtractor(ILogger<ChunkingExtractor> _logger) : IChunkingEx
     /// <summary>Uma seção do markdown: o caminho de títulos, a linha de título crua e o corpo.</summary>
     private sealed record Secao(string Caminho, string LinhaTitulo, string Corpo);
 
-    public async Task<IReadOnlyList<ManualChunk>> ExtrairChunksAsync(string markdownFilePath, CancellationToken cancellationToken) {
+    public async Task<IReadOnlyList<ManualChunk>> ExtrairChunksAsync(string markdownFilePath, ContextoManual? contexto, CancellationToken cancellationToken) {
         var markdown = await File.ReadAllTextAsync(markdownFilePath, cancellationToken);
-        var chunks = Dividir(markdown);
+        var chunks = Dividir(markdown, contexto);
 
         _logger.LogInformation("Markdown {MarkdownFilePath} dividido em {Quantidade} chunks.", markdownFilePath, chunks.Count);
         return chunks;
@@ -60,20 +60,29 @@ public class ChunkingExtractor(ILogger<ChunkingExtractor> _logger) : IChunkingEx
     /// <summary>
     /// Divisão propriamente dita. Isolada do I/O para poder ser testada sem tocar em arquivo.
     /// </summary>
-    public static IReadOnlyList<ManualChunk> Dividir(string markdown) {
+    public static IReadOnlyList<ManualChunk> Dividir(string markdown, ContextoManual? contexto = null) {
         if (string.IsNullOrWhiteSpace(markdown)) {
             return [];
         }
 
+        var prefixo = contexto?.Prefixo ?? "";
         var chunks = new List<ManualChunk>();
         foreach (var secao in Fundir(LerSecoes(markdown.Replace("\r\n", "\n")))) {
+            var caminho = Combinar(prefixo, secao.Caminho);
             foreach (var texto in DividirCorpo(secao.Corpo)) {
-                chunks.Add(new ManualChunk(chunks.Count, secao.Caminho, texto));
+                chunks.Add(new ManualChunk(chunks.Count, caminho, texto));
             }
         }
 
         return chunks;
     }
+
+    /// <summary>
+    /// Junta o contexto do manual ao caminho de títulos. Um chunk isolado precisa dizer de
+    /// que jogo e de que manual ele saiu, senão a busca sem filtro não tem como acertar.
+    /// </summary>
+    private static string Combinar(string prefixo, string caminho) =>
+        string.Join(SeparadorTitulo, new[] { prefixo, caminho }.Where(parte => parte.Length > 0));
 
     /// <summary>
     /// Percorre o markdown montando o caminho de títulos ("Azul > Turno > Pegar peças").

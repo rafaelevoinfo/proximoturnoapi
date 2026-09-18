@@ -136,7 +136,7 @@ public class IndexacaoManuaisWorker(IWebHostEnvironment _env,
         try {
             using var scope = _scopeFactory.CreateScope();
             var chunkingExtractor = scope.ServiceProvider.GetRequiredService<IChunkingExtractor>();
-            var chunks = await chunkingExtractor.ExtrairChunksAsync(markdownFile, stoppingToken);
+            var chunks = await chunkingExtractor.ExtrairChunksAsync(markdownFile, null, stoppingToken);
 
             _logger.LogInformation("Manual do link {IdJogoLink} do jogo {IdJogo} dividido em {Quantidade} chunks.",
                                    job.IdJogoLink, job.IdJogo, chunks.Count);
