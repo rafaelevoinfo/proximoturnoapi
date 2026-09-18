@@ -1,5 +1,7 @@
+using Microsoft.Extensions.Hosting;
 using ProximoTurnoApi.Application.UseCases.RAG;
 using ProximoTurnoApi.Infrastructure.RAG;
+using ProximoTurnoApi.Tests.Fakes;
 using Xunit;
 
 namespace ProximoTurnoApi.Tests.Domain;
@@ -46,5 +48,24 @@ public class QdrantManualVectorStoreTests {
         var segundo = QdrantManualVectorStore.Ponto(1, 1, Embedding(ordem: 1));
 
         Assert.NotEqual(primeiro.Id, segundo.Id);
+    }
+
+    [Fact]
+    public void NomeColecao_UsaColecaoSeparadaEmDesenvolvimento() {
+        // Reindexar em dev apaga e regrava os pontos do link; na colecao de producao
+        // isso derrubaria a busca de quem esta usando o site.
+        var env = new FakeHostEnvironment { EnvironmentName = Environments.Development };
+
+        Assert.Equal(QdrantManualVectorStore.COLECAO_MANUAIS_DEBUG, QdrantManualVectorStore.NomeColecao(env));
+
+        // Separar so vale se os nomes forem mesmo diferentes.
+        Assert.NotEqual(QdrantManualVectorStore.COLECAO_MANUAIS, QdrantManualVectorStore.COLECAO_MANUAIS_DEBUG);
+    }
+
+    [Fact]
+    public void NomeColecao_UsaColecaoDeProducaoForaDeDesenvolvimento() {
+        var env = new FakeHostEnvironment { EnvironmentName = Environments.Production };
+
+        Assert.Equal(QdrantManualVectorStore.COLECAO_MANUAIS, QdrantManualVectorStore.NomeColecao(env));
     }
 }

@@ -248,7 +248,10 @@ public class JogoRepository : BaseRepository, IJogoRepository {
             .Where(jl => !jl.Indexado &&
                           jl.Tipo == TipoLink.Regra &&
                           jl.Url != null &&
-                          jl.Url != "");
+                          jl.Url != "" &&
+                          // Jogo desativado nao aparece no site: indexar o manual dele so
+                          // gastaria embedding e poluiria a busca com resposta de jogo fora do catalogo.
+                          _dbContext.JogoCopias.Any(jc => jc.IdJogo == jl.IdJogo && jc.Status != StatusJogo.Desativado));
 
         // Sem quantidade a carga inicial do worker leva todos os pendentes.
         if (quantidade.HasValue) {
