@@ -1455,7 +1455,7 @@ Em `Src/Infrastructure/RAG/QdrantManualVectorStore.cs`, apagar a constante `Port
 
         var facetas = await _client.FacetAsync(Colecao, "IdJogoLink", limit: LimiteFacet, exact: true, cancellationToken: cancellationToken);
 
-        return [.. facetas.Select(faceta => (int)faceta.Value.IntegerValue)];
+        return [.. facetas.Hits.Select(faceta => (int)faceta.Value.IntegerValue)];
     }
 ```
 
