@@ -1331,6 +1331,7 @@ git commit -m "feat: nome do jogo e do manual no texto do chunk"
 - Modify: `Src/Infrastructure/RAG/PdfTextExtractor.cs` (fim do `ExtractTextAsync`, linhas 111-124)
 - Modify: `Src/Domain/IAModels.cs:5`
 - Modify: `Src/Application/Workers/IndexacaoManuaisWorker.cs:168` (ajuste temporário)
+- Modify: `Src/Application/UseCases/RAG/MarkdownExtractor.cs` (consumidor morto do contrato: ajuste mínimo só para o build passar, já que a Task 10 apaga o arquivo)
 
 **Interfaces:**
 - Consumes: nada de tasks anteriores.
