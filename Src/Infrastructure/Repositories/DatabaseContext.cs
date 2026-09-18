@@ -107,6 +107,17 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : Identi
             .WithOne(c => c.Jogo)
             .HasForeignKey(c => c.IdJogo)
             .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<JogoLinkIndexacao>(b => {
+            // Uma linha por link, e apagar o link leva a linha junto: indexacao sem link
+            // nao significa nada e so atrapalharia a reconciliacao.
+            b.HasIndex(i => i.IdJogoLink).IsUnique();
+            b.HasIndex(i => i.HashPdf);
+            b.HasOne<JogoLink>()
+             .WithOne()
+             .HasForeignKey<JogoLinkIndexacao>(i => i.IdJogoLink)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
     }
 
     private static void ConfigurePedido(ModelBuilder modelBuilder) {
@@ -238,6 +249,7 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : Identi
     public DbSet<Jogo> Jogos { get; set; }
     public DbSet<JogoCopia> JogoCopias { get; set; }
     public DbSet<JogoLink> JogoLinks { get; set; }
+    public DbSet<JogoLinkIndexacao> JogoLinkIndexacoes { get; set; }
     public DbSet<Categoria> Categorias { get; set; }
     public DbSet<Pedido> Pedidos { get; set; }
     public DbSet<Tag> Tags { get; set; }
