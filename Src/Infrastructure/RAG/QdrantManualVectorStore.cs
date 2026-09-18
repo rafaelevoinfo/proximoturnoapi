@@ -26,9 +26,6 @@ public class QdrantManualVectorStore(ILogger<QdrantManualVectorStore> _logger,
 
     private string Colecao => NomeColecao(_env);
 
-    // O SDK .NET fala gRPC, que no Qdrant Cloud atende na 6334 (a 6333 e REST).
-    private const int PortaGrpc = 6334;
-
     public async Task SalvarAsync(int idJogo, int idJogoLink, IReadOnlyList<ChunkEmbedding> embeddings, CancellationToken cancellationToken) {
         if (embeddings.Count == 0) {
             return;
@@ -44,6 +41,29 @@ public class QdrantManualVectorStore(ILogger<QdrantManualVectorStore> _logger,
 
         _logger.LogInformation("{Quantidade} vetores do link {IdJogoLink} do jogo {IdJogo} gravados na coleção {Colecao}.",
                                pontos.Count, idJogoLink, idJogo, Colecao);
+    }
+
+    // O padrao do facet e 10: sem um teto alto a reconciliacao enxergaria so uma fatia
+    // da colecao e deixaria orfao para tras.
+    private const ulong LimiteFacet = 10_000;
+
+    public async Task RemoverAsync(int idJogoLink, CancellationToken cancellationToken) {
+        if (!await _client.CollectionExistsAsync(Colecao, cancellationToken)) {
+            return;
+        }
+
+        await _client.DeleteAsync(Colecao, MatchInt("IdJogoLink", idJogoLink), cancellationToken: cancellationToken);
+        _logger.LogInformation("Vetores do link {IdJogoLink} removidos da coleção {Colecao}.", idJogoLink, Colecao);
+    }
+
+    public async Task<IReadOnlyList<int>> ListarIdsLinksAsync(CancellationToken cancellationToken) {
+        if (!await _client.CollectionExistsAsync(Colecao, cancellationToken)) {
+            return [];
+        }
+
+        var facetas = await _client.FacetAsync(Colecao, "IdJogoLink", limit: LimiteFacet, exact: true, cancellationToken: cancellationToken);
+
+        return [.. facetas.Hits.Select(faceta => (int)faceta.Value.IntegerValue)];
     }
 
     /// <summary>
