@@ -4,7 +4,8 @@ public class MarkdownExtractor(ILogger<MarkdownExtractor> _logger, ITextExtracto
     public async Task<string> ExtractMarkdownAsync(string filePath) {
         var markdownFilePath = Path.ChangeExtension(filePath, ".md");
         if (!File.Exists(markdownFilePath)) {
-            return await _textExtractor.ExtractTextAsync(filePath, CancellationToken.None);
+            var extracao = await _textExtractor.ExtractTextAsync(filePath, CancellationToken.None);
+            await File.WriteAllTextAsync(markdownFilePath, extracao.Texto, CancellationToken.None);
         } else {
             _logger.LogDebug("Markdown já extraído para {FilePath}.", markdownFilePath);
         }

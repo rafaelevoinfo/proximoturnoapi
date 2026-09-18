@@ -165,7 +165,8 @@ public class IndexacaoManuaisWorker(IWebHostEnvironment _env,
 
             using var scope = _scopeFactory.CreateScope();
             var textExtractor = scope.ServiceProvider.GetRequiredService<ITextExtractor>();
-            markdownFile = await textExtractor.ExtractTextAsync(caminhoArquivo, stoppingToken);
+            var extracao = await textExtractor.ExtractTextAsync(caminhoArquivo, stoppingToken);
+            await File.WriteAllTextAsync(markdownFile, extracao.Texto, stoppingToken);
             _logger.LogInformation("Manual do link {IdJogoLink} do jogo {IdJogo} extraído com sucesso.", job.IdJogoLink, job.IdJogo);
             return (true, markdownFile);
         } catch (Exception ex) {

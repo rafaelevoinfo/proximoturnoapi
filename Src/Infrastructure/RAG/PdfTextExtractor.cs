@@ -42,7 +42,7 @@ Seja rigoroso: se páginas ficaram de fora ou trechos ficaram ilegíveis, a nota
     private static readonly Regex ConfiabilidadeRegex =
         new(@"<!--\s*CONFIABILIDADE:\s*(\d{1,3})\s*-->", RegexOptions.Compiled | RegexOptions.RightToLeft);
 
-    public async Task<string> ExtractTextAsync(string pdfFilePath, CancellationToken cancellationToken) {
+    public async Task<ResultadoExtracao> ExtractTextAsync(string pdfFilePath, CancellationToken cancellationToken) {
         var openRouterApiKey = Environment.GetEnvironmentVariable("OPENROUTER_API_KEY") ?? "";
         if (string.IsNullOrWhiteSpace(openRouterApiKey)) {
             throw new InvalidOperationException("OPENROUTER_API_KEY não configurada.");
@@ -118,9 +118,7 @@ Seja rigoroso: se páginas ficaram de fora ou trechos ficaram ilegíveis, a nota
                 pdfFilePath, melhorModelo, melhorExtracao.Confiabilidade);
         }
 
-        var markdownFilePath = Path.ChangeExtension(pdfFilePath, ".md");
-        await File.WriteAllTextAsync(markdownFilePath, melhorExtracao.Texto, cancellationToken);
-        return markdownFilePath;
+        return new ResultadoExtracao(melhorExtracao.Texto, melhorModelo!, melhorExtracao.Confiabilidade);
     }
 
     /// <summary>
