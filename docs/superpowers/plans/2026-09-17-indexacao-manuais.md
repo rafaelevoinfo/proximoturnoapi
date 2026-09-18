@@ -2581,7 +2581,7 @@ Sem código. Estas são as partes que não têm teste unitário: as consultas LI
 - [ ] **Step 1: Subir a infraestrutura**
 
 Run: `docker-compose up -d`
-Expected: MySQL de pé na 3308. Confirme no `.env` que `OPENROUTER_API_KEY`, `QDRANT_URL` e `QDRANT_API_KEY` estão preenchidas e que o ambiente é `Development`, para gravar na coleção `manuais_dev`.
+Expected: MySQL de pé na porta que o `appsettings.Development.json` deste worktree usa (3309). Confirme no `.env` que `OPENROUTER_API_KEY`, `QDRANT_URL` e `QDRANT_API_KEY` estão preenchidas e que o ambiente é `Development`, para gravar na coleção `manuais_dev`.
 
 - [ ] **Step 2: Rodar a API e observar a carga inicial**
 
