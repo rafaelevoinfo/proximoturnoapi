@@ -1774,7 +1774,7 @@ public class SincronizarManualTests : IDisposable {
         var linha = _repo.Linha(1)!;
         Assert.Equal(StatusIndexacao.Indexado, linha.Status);
         Assert.Equal("modelo/falso", linha.ModeloExtracao);
-        Assert.Equal(91, linha.ConfiabilidadeExtracao);
+        Assert.Equal((short)91, linha.ConfiabilidadeExtracao);
         Assert.Equal("revisor/falso", linha.ModeloRevisao);
         Assert.True(linha.RevisaoCompleta);
         Assert.NotNull(linha.DataIndexacao);
@@ -1891,7 +1891,7 @@ public class SincronizarManualTests : IDisposable {
         _extrator.Erro = new OperationCanceledException();
         _repo.Adicionar(1);
 
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(Executar);
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Executar());
 
         Assert.Equal(StatusIndexacao.Processando, _repo.Linha(1)!.Status);
     }
@@ -1960,7 +1960,7 @@ public class SincronizarManualTests : IDisposable {
         await Executar(idJogoLink: 2, idJogo: 100);
 
         Assert.Equal("modelo/falso", _repo.Linha(2)!.ModeloExtracao);
-        Assert.Equal(91, _repo.Linha(2)!.ConfiabilidadeExtracao);
+        Assert.Equal((short)91, _repo.Linha(2)!.ConfiabilidadeExtracao);
     }
 }
 ```
