@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using ProximoTurnoApi.Application.UseCases.RAG;
-using ProximoTurnoApi.Domain;
 using ProximoTurnoApi.Infrastructure.Models;
 
 namespace ProximoTurnoApi.Infrastructure.Repositories;
