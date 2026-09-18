@@ -125,6 +125,27 @@ builder.Services.AddSingleton<IEmbeddingGenerator<string, Embedding<float>>>(_ =
     return openAiClient.GetEmbeddingClient(IAModel.EMBEDDING_MODEL).AsIEmbeddingGenerator();
 });
 
+// Cliente do revisor do markdown. Chave propria porque o embedding ja registra um
+// cliente OpenRouter, e cada um fala com um modelo diferente.
+builder.Services.AddKeyedSingleton<IChatClient>(LlmMarkdownRevisor.ChaveChat, (_, _) => {
+    var openRouterApiKey = Environment.GetEnvironmentVariable("OPENROUTER_API_KEY");
+    if (string.IsNullOrWhiteSpace(openRouterApiKey)) {
+        throw new InvalidOperationException("OPENROUTER_API_KEY não configurada.");
+    }
+
+    var openAiClient = new OpenAIClient(new ApiKeyCredential(openRouterApiKey), new OpenAIClientOptions() {
+        Endpoint = new Uri("https://openrouter.ai/api/v1"),
+
+        // Um bloco de 4000 caracteres responde em segundos; nao precisa da folga do OCR.
+        NetworkTimeout = TimeSpan.FromMinutes(2),
+        RetryPolicy = new ClientRetryPolicy(maxRetries: 2),
+    });
+
+    return openAiClient.GetChatClient(IAModel.REVISOR_MODEL).AsIChatClient();
+});
+
+builder.Services.AddScoped<IRevisorMarkdown, LlmMarkdownRevisor>();
+
 builder.Services.AddHostedService<IndexacaoManuaisWorker>();
 
 builder.Services.AddTransient<IEmailSender<Usuario>, IdentityEmailSender>();
