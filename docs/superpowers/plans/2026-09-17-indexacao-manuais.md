@@ -1018,7 +1018,7 @@ namespace ProximoTurnoApi.Infrastructure.RAG;
 /// só sugere: o que entra no texto é decidido pelas travas de <see cref="RevisaoMarkdown"/>.
 /// </summary>
 public class LlmMarkdownRevisor(ILogger<LlmMarkdownRevisor> _logger,
-                                [FromKeyedServices(ChaveChat)] IChatClient _chatClient) : IRevisorMarkdown {
+                                [FromKeyedServices(LlmMarkdownRevisor.ChaveChat)] IChatClient _chatClient) : IRevisorMarkdown {
 
     public const string ChaveChat = "revisor";
 
