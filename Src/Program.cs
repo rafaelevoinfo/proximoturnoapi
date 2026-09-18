@@ -145,6 +145,7 @@ builder.Services.AddKeyedSingleton<IChatClient>(LlmMarkdownRevisor.ChaveChat, (_
 });
 
 builder.Services.AddScoped<IRevisorMarkdown, LlmMarkdownRevisor>();
+builder.Services.AddScoped<SincronizarManual>();
 
 builder.Services.AddHostedService<IndexacaoManuaisWorker>();
 
