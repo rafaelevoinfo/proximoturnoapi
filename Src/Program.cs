@@ -80,6 +80,7 @@ builder.Services.AddHostedService<BackupBackgroundService>();
 
 // Indexacao de manuais (RAG)
 builder.Services.AddSingleton<IManualQueue, ManualQueue>();
+builder.Services.AddScoped<IIndexacaoManualRepository, IndexacaoManualRepository>();
 builder.Services.AddScoped<ITextExtractor, PdfTextExtractor>();
 builder.Services.AddScoped<IChunkingExtractor, ChunkingExtractor>();
 builder.Services.AddScoped<IEmbeddingExtractor, EmbeddingExtractor>();
