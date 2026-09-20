@@ -22,8 +22,6 @@ public interface IJogoRepository : IBaseRepository {
     Task<bool> DeleteAsync(int id);
     Task<bool> ExisteAsync(int id);
     Task<bool> CopiaExisteAndDisponivel(int id);
-    Task<List<JogoLink>> GetJogosNaoIndexadosAsync(int? quantidade = null);
-    Task MarcarIndexadoAsync(int idJogoLink);
 }
 
 public class JogoRepository : BaseRepository, IJogoRepository {
@@ -243,31 +241,4 @@ public class JogoRepository : BaseRepository, IJogoRepository {
             .ToListAsync();
     }
 
-    public async Task<List<JogoLink>> GetJogosNaoIndexadosAsync(int? quantidade = null) {
-        var query = _dbContext.JogoLinks
-            .Where(jl => !jl.Indexado &&
-                          jl.Tipo == TipoLink.Regra &&
-                          jl.Url != null &&
-                          jl.Url != "" &&
-                          // Jogo desativado nao aparece no site: indexar o manual dele so
-                          // gastaria embedding e poluiria a busca com resposta de jogo fora do catalogo.
-                          _dbContext.JogoCopias.Any(jc => jc.IdJogo == jl.IdJogo && jc.Status != StatusJogo.Desativado));
-
-        // Sem quantidade a carga inicial do worker leva todos os pendentes.
-        if (quantidade.HasValue) {
-            query = query.Take(quantidade.Value);
-        }
-
-        return await query.ToListAsync();
-    }
-
-    /// <summary>
-    /// Marca o link como indexado. ExecuteUpdate porque o contexto roda NoTracking:
-    /// sem isso seria preciso buscar e anexar a entidade só para virar um bool.
-    /// </summary>
-    public async Task MarcarIndexadoAsync(int idJogoLink) {
-        await _dbContext.JogoLinks
-            .Where(jl => jl.Id == idJogoLink)
-            .ExecuteUpdateAsync(update => update.SetProperty(jl => jl.Indexado, true));
-    }
 }
