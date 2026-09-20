@@ -2266,6 +2266,7 @@ git commit -m "feat: use case de sincronizacao do manual"
 - Modify: `Src/Application/UseCases/RAG/ManualJob.cs`
 - Modify: `Src/Application/UseCases/RAG/ManualQueue.cs` (extensão nas linhas 11-28)
 - Modify: `Src/Application/UseCases/RAG/SincronizarManual.cs` (chamada em `ReenfileirarDuplicadosAsync`)
+- Modify: `Src/Infrastructure/Repositories/IndexacaoManualRepository.cs` (projeção do `GetElegiveisAsync`; sem ela o build quebra)
 - Modify: `Src/Application/Workers/IndexacaoManuaisWorker.cs` (arquivo inteiro)
 - Modify: `Src/Application/UseCases/Jogo/CadastroJogo.cs:35`
 - Modify: `Src/Application/UseCases/Jogo/AtualizarJogo.cs:36-41`
@@ -2511,7 +2512,7 @@ Expected: verde.
 - [ ] **Step 8: Commit**
 
 ```bash
-git add Src/Application/UseCases/RAG/ManualJob.cs Src/Application/UseCases/RAG/ManualQueue.cs Src/Application/UseCases/RAG/SincronizarManual.cs Src/Application/Workers/IndexacaoManuaisWorker.cs Src/Application/UseCases/Jogo/CadastroJogo.cs Src/Application/UseCases/Jogo/AtualizarJogo.cs Src/Application/Controllers/JogosController.cs Tests/Domain/CadastroJogoTests.cs Tests/Domain/SincronizarManualTests.cs
+git add Src/Application/UseCases/RAG/ManualJob.cs Src/Application/UseCases/RAG/ManualQueue.cs Src/Application/UseCases/RAG/SincronizarManual.cs Src/Infrastructure/Repositories/IndexacaoManualRepository.cs Src/Application/Workers/IndexacaoManuaisWorker.cs Src/Application/UseCases/Jogo/CadastroJogo.cs Src/Application/UseCases/Jogo/AtualizarJogo.cs Src/Application/Controllers/JogosController.cs Tests/Domain/CadastroJogoTests.cs Tests/Domain/SincronizarManualTests.cs
 git commit -m "feat: worker e produtores passam a sincronizar links"
 ```
 
