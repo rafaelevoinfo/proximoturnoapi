@@ -1,7 +1,9 @@
 namespace ProximoTurnoApi.Application.UseCases.RAG;
 
 /// <summary>
-/// Manual pendente de extração. Carrega só o necessário para o worker trabalhar,
-/// evitando que uma entidade rastreada pelo EF atravesse escopos.
+/// Pedido de sincronização de um manual. Só ids: a URL e o estado vêm do banco na hora de
+/// executar, senão um job parado na fila carregaria uma foto velha do link.
+/// O IdJogo serve para achar os duplicados quando o link já nem existe mais; vale 0 quando
+/// quem enfileirou não sabe o jogo (reconciliação).
 /// </summary>
-public record ManualJob(int IdJogoLink, int IdJogo, string Url);
+public record ManualJob(int IdJogoLink, int IdJogo);

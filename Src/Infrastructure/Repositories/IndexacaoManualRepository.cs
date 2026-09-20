@@ -31,7 +31,7 @@ public class IndexacaoManualRepository(DatabaseContext context) : BaseRepository
                 i.Url == jl.Url &&
                 (i.Status == StatusIndexacao.Indexado ||
                  (i.Status == StatusIndexacao.Falhou && i.Tentativas >= maxTentativas))))
-            .Select(jl => new ManualJob(jl.Id, jl.IdJogo, jl.Url))
+            .Select(jl => new ManualJob(jl.Id, jl.IdJogo))
             .ToListAsync();
     }
 

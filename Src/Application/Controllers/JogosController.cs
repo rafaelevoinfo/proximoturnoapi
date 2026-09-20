@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using ProximoTurnoApi.Application.DTOs;
 using ProximoTurnoApi.Application.UseCases;
+using ProximoTurnoApi.Application.UseCases.RAG;
 using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Infrastructure.Repositories;
 
@@ -13,7 +14,19 @@ public class JogosController(ILogger<JogosController> logger,
                              IJogoRepository _repository,
                              CadastroJogo _cadastroJogoUseCase,
                              AtualizarJogo _atualizarJogoUseCase,
-                             ObterJogo _obterJogoUseCase) : ControllerBasico(logger) {
+                             ObterJogo _obterJogoUseCase,
+                             IIndexacaoManualRepository _indexacaoRepository,
+                             IManualQueue _manualQueue) : ControllerBasico(logger) {
+
+    /// <summary>
+    /// Avisa a fila que os manuais deste jogo podem ter mudado de situação: desativar tira
+    /// os manuais da busca, reativar devolve.
+    /// </summary>
+    private async Task SincronizarManuaisAsync(int idJogo) {
+        foreach (var idLink in await _indexacaoRepository.GetIdsLinksAsync(idJogo)) {
+            _manualQueue.Enfileirar(new ManualJob(idLink, idJogo));
+        }
+    }
 
     [HttpGet]
     public async Task<IActionResult> GetJogos([FromQuery] FiltroJogoDTO filtro) {
@@ -136,6 +149,7 @@ public class JogosController(ILogger<JogosController> logger,
                 copia.Status = StatusJogo.Desativado;
             }
             await _repository.SaveChangesAsync();
+            await SincronizarManuaisAsync(id);
 
             return Ok(ApiResultDTO<object>.CreateSuccessResult(null, "Jogo desativado com sucesso."));
         });
@@ -151,6 +165,7 @@ public class JogosController(ILogger<JogosController> logger,
             }
             copia.Status = StatusJogo.Desativado;
             await _repository.SaveAsync(copia);
+            await SincronizarManuaisAsync(idJogo);
             return Ok(ApiResultDTO<object>.CreateSuccessResult(null, "Copia excluída com sucesso."));
         });
     }
@@ -167,6 +182,7 @@ public class JogosController(ILogger<JogosController> logger,
                 copia.Status = StatusJogo.Disponivel;
             }
             await _repository.SaveChangesAsync();
+            await SincronizarManuaisAsync(id);
             return Ok(ApiResultDTO<object>.CreateSuccessResult(null, "Jogo reativado com sucesso."));
         });
     }
@@ -183,6 +199,7 @@ public class JogosController(ILogger<JogosController> logger,
                 copia.Status = StatusJogo.Disponivel;
                 await _repository.SaveAsync(copia);
             }
+            await SincronizarManuaisAsync(idJogo);
             return Ok(ApiResultDTO<object>.CreateSuccessResult(null, "Copia reativada com sucesso."));
         });
     }

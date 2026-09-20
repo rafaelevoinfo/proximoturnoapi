@@ -241,7 +241,7 @@ public class SincronizarManual(IWebHostEnvironment _env,
         }
 
         foreach (var id in await _repository.GetIdsDuplicadosAsync(idJogo, idJogoLinkExceto)) {
-            _queue.Enfileirar(new ManualJob(id, idJogo, ""));
+            _queue.Enfileirar(new ManualJob(id, idJogo));
         }
     }
 

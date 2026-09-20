@@ -26,7 +26,7 @@ public class SincronizarManualTests : IDisposable {
             new ChunkingExtractor(NullLogger<ChunkingExtractor>.Instance), _embedding, _fila);
 
     private Task Executar(int idJogoLink = 1, int idJogo = 99) =>
-        Montar().ExecuteAsync(new ManualJob(idJogoLink, idJogo, ""), CancellationToken.None);
+        Montar().ExecuteAsync(new ManualJob(idJogoLink, idJogo), CancellationToken.None);
 
     [Fact]
     public async Task LinkApagado_RemoveOsVetores() {

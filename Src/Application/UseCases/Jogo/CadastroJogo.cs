@@ -32,7 +32,7 @@ public class CadastroJogo(IJogoRepository _jogoRepository,
             await _jogoRepository.SaveAsync(jogo);
             _logger.LogInformation("Jogo {JogoId} ({Nome}) cadastrado com sucesso com {Qtde} cópias.", jogo.Id, jogo.Nome, jogoDto.Copias?.Count ?? 1);
 
-            _manualQueue.EnfileirarManuaisPendentes(jogo);
+            _manualQueue.EnfileirarSincronizacao(jogo);
             return jogo.Id;
         } catch (Exception ex) {
             _logger.LogError(ex, "Erro fatal ao salvar o jogo {Nome} no banco de dados.", jogoDto.Nome);

@@ -11,18 +11,17 @@ public interface IManualQueue {
 public static class ManualQueueExtensions {
 
     /// <summary>
-    /// Enfileira os manuais (links do tipo Regra) do jogo que ainda não foram indexados.
-    /// Deve ser chamado depois do SaveAsync, quando o EF já atribuiu os Ids dos links novos.
+    /// Pede a sincronização de todos os links do jogo e dos que acabaram de ser removidos.
+    /// Não filtra por tipo nem por estado de propósito: quem decide é o SincronizarManual,
+    /// com o banco na mão. Chamar depois do SaveAsync, quando os links novos já têm Id.
     /// </summary>
-    public static void EnfileirarManuaisPendentes(this IManualQueue queue, Jogo jogo) {
-        if (jogo.Links is null) {
-            return;
+    public static void EnfileirarSincronizacao(this IManualQueue queue, Jogo jogo, IEnumerable<int>? idsRemovidos = null) {
+        foreach (var link in jogo.Links ?? []) {
+            queue.Enfileirar(new ManualJob(link.Id, jogo.Id));
         }
 
-        foreach (var link in jogo.Links) {
-            if (link.Tipo == TipoLink.Regra && !link.Indexado && !string.IsNullOrWhiteSpace(link.Url)) {
-                queue.Enfileirar(new ManualJob(link.Id, jogo.Id, link.Url));
-            }
+        foreach (var id in idsRemovidos ?? []) {
+            queue.Enfileirar(new ManualJob(id, jogo.Id));
         }
     }
 }

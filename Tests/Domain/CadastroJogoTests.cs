@@ -29,7 +29,7 @@ public class CadastroJogoTests {
     private const string UrlManual = "https://cdn.proximoturno.com.br/manuais/azul.pdf";
 
     [Fact]
-    public async Task Cadastro_EnfileiraApenasLinksDeRegra() {
+    public async Task Cadastro_EnfileiraTodosOsLinksDoJogo() {
         var jogoRepo = new FakeJogoRepository();
         var manualQueue = new FakeManualQueue();
         var jogoDto = NovoJogo("Azul");
@@ -40,9 +40,10 @@ public class CadastroJogoTests {
 
         await Montar(jogoRepo, manualQueue).ExecuteAsync(jogoDto);
 
-        var job = Assert.Single(manualQueue.Enfileirados);
-        Assert.Equal(UrlManual, job.Url);
-        Assert.Equal(99, job.IdJogo);
+        // Quem filtra por tipo e o SincronizarManual, com o estado do banco: o link que
+        // deixa de ser regra tambem precisa passar por la, para perder os vetores.
+        Assert.Equal(2, manualQueue.Enfileirados.Count);
+        Assert.All(manualQueue.Enfileirados, job => Assert.Equal(99, job.IdJogo));
     }
 
     [Fact]

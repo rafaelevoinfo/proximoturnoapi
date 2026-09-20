@@ -33,12 +33,17 @@ public class AtualizarJogo(IJogoRepository _jogoRepository, ITagRepository _tagR
             return false;
 
         try {
+            // Guardado antes do update: o UpdateModel remove da colecao os links que o
+            // admin tirou, e sem esta lista nao saberiamos apagar os vetores deles.
+            var idsAntes = jogo.Links?.Select(l => l.Id).ToList() ?? [];
+
             jogoDto.UpdateModel(jogo);
             await AtualizarTags(jogo, jogoDto.Tags);
             await _jogoRepository.SaveAsync(jogo);
             _logger.LogInformation("Jogo ID {JogoId} atualizado com sucesso.", jogo.Id);
 
-            _manualQueue.EnfileirarManuaisPendentes(jogo);
+            var idsDepois = jogo.Links?.Select(l => l.Id).ToHashSet() ?? [];
+            _manualQueue.EnfileirarSincronizacao(jogo, idsAntes.Where(id => !idsDepois.Contains(id)));
             return IsValid;
         } catch (Exception ex) {
             _logger.LogError(ex, "Erro fatal ao salvar atualização do jogo ID {JogoId}.", jogoDto.Id);
