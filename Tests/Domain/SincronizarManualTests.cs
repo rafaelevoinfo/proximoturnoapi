@@ -182,6 +182,23 @@ public class SincronizarManualTests : IDisposable {
         await Executar();
 
         Assert.Equal(2, _repo.Linha(1)!.Tentativas);
+        Assert.Contains(1, _vetores.Removidos);
+    }
+
+    [Fact]
+    public async Task FalhaAoGravarVetores_JaTinhaRemovidoOsAntigos() {
+        // A remocao acontece ao entrar no pipeline, nao depois que a gravacao da certo:
+        // mesmo falhando no ultimo passo, os vetores antigos ja foram embora.
+        _env.CriarPdf(NomeArquivo);
+        _vetores.ErroAoSalvar = new InvalidOperationException("qdrant fora do ar");
+        _repo.Adicionar(1);
+
+        await Executar();
+
+        var linha = _repo.Linha(1)!;
+        Assert.Equal(StatusIndexacao.Falhou, linha.Status);
+        Assert.Equal(1, linha.Tentativas);
+        Assert.Contains(1, _vetores.Removidos);
     }
 
     [Fact]
