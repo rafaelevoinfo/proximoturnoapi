@@ -23,8 +23,18 @@ public class JogosController(ILogger<JogosController> logger,
     /// os manuais da busca, reativar devolve.
     /// </summary>
     private async Task SincronizarManuaisAsync(int idJogo) {
-        foreach (var idLink in await _indexacaoRepository.GetIdsLinksAsync(idJogo)) {
-            _manualQueue.Enfileirar(new ManualJob(idLink, idJogo));
+        try {
+            foreach (var idLink in await _indexacaoRepository.GetIdsLinksAsync(idJogo)) {
+                _manualQueue.Enfileirar(new ManualJob(idLink, idJogo));
+            }
+        } catch (OperationCanceledException) {
+            throw;
+        } catch (Exception ex) {
+            // Enfileirar e so um aviso: a operacao (desativar/reativar) ja foi salva antes
+            // desta chamada. Perder o aviso aqui nao pode virar 500 para uma escrita que deu
+            // certo, nem mentir que a operacao falhou; a proxima reconciliacao do worker acha
+            // o link e corrige.
+            _logger.LogError(ex, "Falha ao avisar a fila de indexação sobre o jogo {IdJogo}.", idJogo);
         }
     }
 
