@@ -2584,6 +2584,12 @@ Sem código. Estas são as partes que não têm teste unitário: as consultas LI
 Run: `docker-compose up -d`
 Expected: MySQL de pé na porta que o `appsettings.Development.json` deste worktree usa (3309). Confirme no `.env` que `OPENROUTER_API_KEY`, `QDRANT_URL` e `QDRANT_API_KEY` estão preenchidas e que o ambiente é `Development`, para gravar na coleção `manuais_dev`.
 
+- [ ] **Step 1b: Confirmar a origem da coleção do Qdrant**
+
+A reconciliação depende do índice de payload em `IdJogoLink`, que só existe se a coleção tiver sido criada por `GarantirColecaoAsync`. Uma coleção criada à mão, por script antigo, não teria esse índice, e o facet voltaria vazio sem erro nenhum — a reconciliação simplesmente não veria vetor órfão algum.
+Confira no painel do Qdrant (ou via API) que `manuais_dev` tem o índice de payload em `IdJogoLink`. Se não tiver, apague a coleção e deixe o código recriá-la na primeira indexação.
+Expected: índice presente, ou coleção recriada pelo código.
+
 - [ ] **Step 2: Rodar a API e observar a carga inicial**
 
 Run: `dotnet run --project Src/ProximoTurnoApi.csproj`
