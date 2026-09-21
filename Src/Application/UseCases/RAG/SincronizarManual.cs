@@ -112,6 +112,9 @@ public class SincronizarManual(IWebHostEnvironment _env,
 
         if (await _repository.ExisteIndexadoComHashAsync(estado.IdJogo, indexacao.HashPdf, estado.IdJogoLink)) {
             indexacao.Status = StatusIndexacao.Duplicado;
+            // Sem isso, duas falhas antes do duplicado chegam ao teto com uma falha so quando
+            // o link volta a ser processado, e o manual para de indexar sem erro correspondente.
+            indexacao.Tentativas = 0;
             await _repository.SalvarAsync(indexacao);
 
             _logger.LogInformation("Link {IdJogoLink} aponta para um PDF já indexado no jogo {IdJogo}. Marcado como duplicado.",
@@ -210,6 +213,9 @@ public class SincronizarManual(IWebHostEnvironment _env,
 
         var estavaIndexado = indexacao.Status == StatusIndexacao.Indexado;
         indexacao.Status = StatusIndexacao.Removido;
+        // Mesmo motivo do Duplicado: um Removido que volta a ser de regra nao pode herdar
+        // tentativas de uma vida anterior do link.
+        indexacao.Tentativas = 0;
         await _repository.SalvarAsync(indexacao);
 
         _logger.LogInformation("Link {IdJogoLink} não deve ter vetores (tipo {Tipo}, jogo ativo: {JogoAtivo}). Marcado como removido.",

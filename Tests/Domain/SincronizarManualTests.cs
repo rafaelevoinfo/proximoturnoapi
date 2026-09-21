@@ -58,6 +58,18 @@ public class SincronizarManualTests : IDisposable {
     }
 
     [Fact]
+    public async Task MarcadoRemovido_ZeraTentativas() {
+        // Sem isso, um link que ja tinha falhado antes de virar video chega ao teto de
+        // tentativas na primeira falha depois de voltar a ser de regra.
+        _repo.Adicionar(1, tipo: TipoLink.Video, indexacao: new JogoLinkIndexacao { Url = Url, Status = StatusIndexacao.Falhou, Tentativas = 2 });
+
+        await Executar();
+
+        Assert.Equal(StatusIndexacao.Removido, _repo.Linha(1)!.Status);
+        Assert.Equal(0, _repo.Linha(1)!.Tentativas);
+    }
+
+    [Fact]
     public async Task JogoDesativado_RemoveOsVetoresEMarcaRemovido() {
         _repo.Adicionar(1, jogoAtivo: false, indexacao: new JogoLinkIndexacao { Url = Url, Status = StatusIndexacao.Indexado });
 
@@ -144,6 +156,23 @@ public class SincronizarManualTests : IDisposable {
         // O segundo link nao paga extracao nem revisao de novo.
         Assert.Equal(1, _extrator.Chamadas);
         Assert.Equal(1, _revisor.Chamadas);
+    }
+
+    [Fact]
+    public async Task MarcadoDuplicado_ZeraTentativas() {
+        // Sem isso, um link que falhou antes de virar duplicado chega ao teto de tentativas
+        // assim que o outro link com o mesmo PDF sai de cena e ele volta a ser processado.
+        _env.CriarPdf(NomeArquivo, "conteudo igual");
+        _env.CriarPdf("copia.pdf", "conteudo igual");
+        _repo.Adicionar(1, url: Url);
+        _repo.Adicionar(2, url: "https://site/uploads/copia.pdf",
+                        indexacao: new JogoLinkIndexacao { Url = "https://site/uploads/copia.pdf", Status = StatusIndexacao.Falhou, Tentativas = 2 });
+
+        await Executar(idJogoLink: 1);
+        await Executar(idJogoLink: 2);
+
+        Assert.Equal(StatusIndexacao.Duplicado, _repo.Linha(2)!.Status);
+        Assert.Equal(0, _repo.Linha(2)!.Tentativas);
     }
 
     [Fact]
