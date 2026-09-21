@@ -90,6 +90,9 @@ public class IndexacaoManuaisWorker(ILogger<IndexacaoManuaisWorker> _logger,
             }
 
             _logger.LogInformation("Reconciliação: {Quantidade} link(s) com vetores sobrando enfileirados.", orfaos.Count);
+        } catch (OperationCanceledException) {
+            // Desligamento pegou a reconciliacao em andamento: nao e falha, e merge dispara
+            // deploy, entao isso aconteceria toda hora e o Error viraria ruido ignorado.
         } catch (Exception ex) {
             _logger.LogError(ex, "Falha ao reconciliar os vetores com o banco.");
         }
