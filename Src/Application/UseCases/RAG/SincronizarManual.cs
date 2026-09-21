@@ -64,9 +64,16 @@ public class SincronizarManual(IWebHostEnvironment _env,
         var indexacao = estado.Indexacao ?? new JogoLinkIndexacao { IdJogoLink = estado.IdJogoLink, Url = estado.Url };
         var estavaIndexado = indexacao.Status == StatusIndexacao.Indexado && indexacao.Id != 0;
 
+        // Encontrado como Processando no start (persistido de uma execucao anterior): a
+        // aplicacao caiu no meio da cascata. Conta como tentativa antes de refazer, senao
+        // um manual que trava sempre no mesmo passo pago repete para sempre, sem contador.
+        var retomandoProcessamentoInterrompido = indexacao.Status == StatusIndexacao.Processando && indexacao.Id != 0;
+
         if (indexacao.Url != estado.Url) {
             indexacao.Url = estado.Url;
             indexacao.Tentativas = 0;
+        } else if (retomandoProcessamentoInterrompido) {
+            indexacao.Tentativas++;
         }
 
         indexacao.Status = StatusIndexacao.Processando;

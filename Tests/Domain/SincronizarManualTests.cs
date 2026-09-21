@@ -186,6 +186,18 @@ public class SincronizarManualTests : IDisposable {
     }
 
     [Fact]
+    public async Task ProcessandoDeExecucaoAnterior_ContaComoTentativaAntesDeRetomar() {
+        // Sem o arquivo, a extracao falha e soma mais uma tentativa no catch: assim da para
+        // separar, no total, a tentativa da retomada da tentativa da falha.
+        _repo.Adicionar(1, indexacao: new JogoLinkIndexacao { Url = Url, Status = StatusIndexacao.Processando, Tentativas = 1 });
+
+        await Executar();
+
+        // 1 (estado inicial) + 1 (retomada de Processando) + 1 (falha por arquivo ausente) = 3
+        Assert.Equal(3, _repo.Linha(1)!.Tentativas);
+    }
+
+    [Fact]
     public async Task FalhaAoGravarVetores_JaTinhaRemovidoOsAntigos() {
         // A remocao acontece ao entrar no pipeline, nao depois que a gravacao da certo:
         // mesmo falhando no ultimo passo, os vetores antigos ja foram embora.
