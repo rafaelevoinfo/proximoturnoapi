@@ -48,6 +48,7 @@ public sealed class FakeIndexacaoManualRepository : IIndexacaoManualRepository {
     public List<EstadoLinkManual> Estados { get; } = [];
     public List<JogoLinkIndexacao> Linhas { get; } = [];
     public List<ManualJob> Elegiveis { get; } = [];
+    public Exception? ErroAoListarElegiveis { get; set; }
 
     /// <summary>Monta o estado de um link, junto com a linha de indexação quando já existe.</summary>
     public EstadoLinkManual Adicionar(int idJogoLink,
@@ -71,7 +72,13 @@ public sealed class FakeIndexacaoManualRepository : IIndexacaoManualRepository {
 
     public JogoLinkIndexacao? Linha(int idJogoLink) => Linhas.FirstOrDefault(l => l.IdJogoLink == idJogoLink);
 
-    public Task<List<ManualJob>> GetElegiveisAsync(int maxTentativas) => Task.FromResult(Elegiveis.ToList());
+    public Task<List<ManualJob>> GetElegiveisAsync(int maxTentativas) {
+        if (ErroAoListarElegiveis is not null) {
+            throw ErroAoListarElegiveis;
+        }
+
+        return Task.FromResult(Elegiveis.ToList());
+    }
 
     public Task<EstadoLinkManual?> GetEstadoAsync(int idJogoLink) =>
         Task.FromResult(Estados.FirstOrDefault(e => e.IdJogoLink == idJogoLink));
