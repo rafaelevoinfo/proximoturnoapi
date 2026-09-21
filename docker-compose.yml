@@ -60,6 +60,9 @@ services:
       B2_BUCKET: ${B2_BUCKET:-proximo-turno}
       B2_KEY_ID: ${B2_KEY_ID}
       B2_APPLICATION_KEY: ${B2_APPLICATION_KEY}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      QDRANT_URL: ${QDRANT_URL}
+      QDRANT_API_KEY: ${QDRANT_API_KEY}
     healthcheck:
         test: ["CMD-SHELL", "curl -f http://localhost/health || exit 1"]
         interval: 30s
