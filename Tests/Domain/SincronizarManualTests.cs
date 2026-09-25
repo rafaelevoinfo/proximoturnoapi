@@ -122,7 +122,10 @@ public class SincronizarManualTests : IDisposable {
         Assert.Equal(99, _extrator.AlvoVisto?.IdJogo);
         Assert.Equal(1, _extrator.AlvoVisto?.IdJogoLink);
         Assert.Equal("Balde de Caranguejo > Manual", _extrator.AlvoVisto?.Alvo);
-        Assert.Null(EscopoUsoLlm.Atual);
+
+        // Nao se afirma nada sobre EscopoUsoLlm.Atual aqui: AsyncLocal escrito dentro de um
+        // metodo assincrono nao volta para o chamador, entao a assercao passaria mesmo sem o
+        // using. Quem prova o fechamento e EscopoUsoLlmTests.
     }
 
     [Fact]

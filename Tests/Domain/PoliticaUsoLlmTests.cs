@@ -3,6 +3,7 @@ using System.ClientModel.Primitives;
 using System.Net;
 using System.Text;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using OpenAI;
 using ProximoTurnoApi.Infrastructure.IA;
@@ -108,6 +109,41 @@ public class PoliticaUsoLlmTests {
         Assert.Equal(DesfechoLlm.Ok, linha.Desfecho);
     }
 
+    // Um campo de tipo inesperado dentro do usage nao pode derrubar a linha inteira: tokens,
+    // modelo, provider e id continuam valendo mesmo sem o custo.
+    [Theory]
+    [InlineData("null")]
+    [InlineData("\"0.0000343\"")]
+    public async Task CustoComTipoInesperado_GravaORestoDaLinha(string custoBruto) {
+        var chat = Chat(_ => Resposta(HttpStatusCode.OK, JsonOk.Replace("0.00001234", custoBruto)));
+
+        await chat.GetResponseAsync(new ChatMessage(ChatRole.User, "oi"));
+
+        var linha = Assert.Single(_registrador.Registros);
+        Assert.Null(linha.CustoUsd);
+        Assert.Equal(120, linha.TokensEntrada);
+        Assert.Equal(30, linha.TokensSaida);
+        Assert.Equal("deepseek/deepseek-v4-flash-20260423", linha.ModeloRespondeu);
+        Assert.Equal("Parasail", linha.Provider);
+        Assert.Equal("gen-teste-1", linha.IdGeracao);
+        Assert.Equal(DesfechoLlm.Ok, linha.Desfecho);
+    }
+
+    // Aqui a policy fica mais robusta que o SDK: ele lanca em ChatTokenUsage ao ler
+    // prompt_tokens nulo, e a linha do ledger tem que sobreviver a isso.
+    [Fact]
+    public async Task TokensComTipoInesperado_GravaORestoDaLinha() {
+        var chat = Chat(_ => Resposta(HttpStatusCode.OK, JsonOk.Replace("\"prompt_tokens\":120", "\"prompt_tokens\":null")));
+
+        await Assert.ThrowsAnyAsync<Exception>(() => chat.GetResponseAsync(new ChatMessage(ChatRole.User, "oi")));
+
+        var linha = Assert.Single(_registrador.Registros);
+        Assert.Equal(0, linha.TokensEntrada);
+        Assert.Equal(30, linha.TokensSaida);
+        Assert.Equal(0.00001234m, linha.CustoUsd);
+        Assert.Equal("Parasail", linha.Provider);
+    }
+
     [Fact]
     public async Task CorpoNaoJson_GravaStatusEDuracaoSemNumeros() {
         var chat = Chat(_ => new HttpResponseMessage(HttpStatusCode.OK) {
@@ -145,10 +181,61 @@ public class PoliticaUsoLlmTests {
         Assert.Null(linha.CustoUsd);
     }
 
+    // O caso que justifica o PerTry: o timeout e NOSSO, o servidor segue e cobra. Sem linha,
+    // esse gasto fica invisivel - que e exatamente o problema que o ledger existe para matar.
+    [Fact]
+    public async Task TimeoutDoCliente_GravaExcecao() {
+        var chat = Chat(_ => Resposta(HttpStatusCode.OK, JsonOk), atrasoMs: 3000,
+                        timeout: TimeSpan.FromMilliseconds(250));
+
+        await Assert.ThrowsAnyAsync<Exception>(() => chat.GetResponseAsync(new ChatMessage(ChatRole.User, "oi")));
+
+        var linha = Assert.Single(_registrador.Registros);
+        Assert.Equal(DesfechoLlm.Excecao, linha.Desfecho);
+        Assert.Contains("Cancel", linha.Detalhe);
+        Assert.Null(linha.CustoUsd);
+    }
+
+    [Fact]
+    public async Task TimeoutComRetentativa_UmaLinhaPorTentativa() {
+        var chat = Chat(_ => Resposta(HttpStatusCode.OK, JsonOk), tentativas: 2, atrasoMs: 3000,
+                        timeout: TimeSpan.FromMilliseconds(250));
+
+        await Assert.ThrowsAnyAsync<Exception>(() => chat.GetResponseAsync(new ChatMessage(ChatRole.User, "oi")));
+
+        Assert.Equal(3, _registrador.Registros.Count);
+        Assert.All(_registrador.Registros, linha => Assert.Equal(DesfechoLlm.Excecao, linha.Desfecho));
+    }
+
+    // Desligamento e o ponto cego que o spec assume: o chamador cancelou, nao ha resposta para
+    // ler e o DbContext ja pode estar indo embora.
+    [Fact]
+    public async Task CancelamentoDoChamador_NaoGravaLinha() {
+        var chat = Chat(_ => Resposta(HttpStatusCode.OK, JsonOk), atrasoMs: 3000);
+        using var fonte = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => chat.GetResponseAsync(new ChatMessage(ChatRole.User, "oi"), cancellationToken: fonte.Token));
+
+        Assert.Empty(_registrador.Registros);
+    }
+
     [Fact]
     public async Task RegistradorQueLanca_NaoDerrubaAChamada() {
         _registrador.Erro = new InvalidOperationException("ledger fora");
         var chat = Chat(_ => Resposta(HttpStatusCode.OK, JsonOk));
+
+        var resposta = await chat.GetResponseAsync(new ChatMessage(ChatRole.User, "oi"));
+
+        Assert.Equal("ok", resposta.Text);
+    }
+
+    // "A policy nunca lanca" precisa ser propriedade do codigo, nao de uma auditoria: um sink
+    // de log defeituoso nao pode transformar uma chamada paga e concluida em chamada perdida.
+    [Fact]
+    public async Task RegistradorELoggerQueLancam_NaoDerrubamAChamada() {
+        _registrador.Erro = new InvalidOperationException("ledger fora");
+        var chat = Chat(_ => Resposta(HttpStatusCode.OK, JsonOk), logger: new LoggerQueLanca());
 
         var resposta = await chat.GetResponseAsync(new ChatMessage(ChatRole.User, "oi"));
 
@@ -205,30 +292,42 @@ public class PoliticaUsoLlmTests {
     }
 
     // Item 3 do Review Focus: a policy e uma instancia so, compartilhada por chamadas
-    // simultaneas. Estado por chamada guardado em campo misturaria as medicoes.
+    // simultaneas. Cada resposta traz numeros proprios: se a policy guardasse medicao em campo,
+    // as linhas sairiam com numeros trocados ou repetidos.
     [Fact]
-    public async Task ChamadasSimultaneas_UmaLinhaCadaComOsSeusNumeros() {
-        var chat = Chat(_ => Resposta(HttpStatusCode.OK, JsonOk));
+    public async Task ChamadasSimultaneas_CadaLinhaComOsSeusNumeros() {
+        var proxima = 0;
+        var chat = Chat(_ => {
+            var indice = Interlocked.Increment(ref proxima) - 1;
+            return Resposta(HttpStatusCode.OK, JsonOk
+                .Replace("\"prompt_tokens\":120", $"\"prompt_tokens\":{1000 + indice}")
+                .Replace("gen-teste-1", $"gen-teste-{indice}"));
+        });
 
         await Task.WhenAll(Enumerable.Range(0, 8).Select(async _ =>
             await chat.GetResponseAsync(new ChatMessage(ChatRole.User, "oi"))));
 
         Assert.Equal(8, _registrador.Registros.Count);
-        Assert.All(_registrador.Registros, linha => {
-            Assert.Equal(120, linha.TokensEntrada);
-            Assert.Equal(0.00001234m, linha.CustoUsd);
-            Assert.Equal(DesfechoLlm.Ok, linha.Desfecho);
-        });
+        Assert.Equal(Enumerable.Range(1000, 8), _registrador.Registros.Select(l => l.TokensEntrada).OrderBy(t => t));
+        Assert.Equal(8, _registrador.Registros.Select(l => l.IdGeracao).Distinct().Count());
     }
 
-    private IChatClient Chat(Func<HttpRequestMessage, HttpResponseMessage> responder, int tentativas = 0) {
+    private IChatClient Chat(Func<HttpRequestMessage, HttpResponseMessage> responder,
+                             int tentativas = 0,
+                             int atrasoMs = 0,
+                             TimeSpan? timeout = null,
+                             ILogger<PoliticaUsoLlm>? logger = null) {
         var opcoes = new OpenAIClientOptions() {
             Endpoint = new Uri("https://openrouter.ai/api/v1"),
-            Transport = new HttpClientPipelineTransport(new HttpClient(new HandlerFalso(responder))),
+            Transport = new HttpClientPipelineTransport(new HttpClient(new HandlerFalso(responder, atrasoMs))),
             RetryPolicy = new ClientRetryPolicy(maxRetries: tentativas),
         };
 
-        opcoes.AddPolicy(new PoliticaUsoLlm(NullLogger<PoliticaUsoLlm>.Instance, _registrador,
+        if (timeout is not null) {
+            opcoes.NetworkTimeout = timeout.Value;
+        }
+
+        opcoes.AddPolicy(new PoliticaUsoLlm(logger ?? NullLogger<PoliticaUsoLlm>.Instance, _registrador,
                                             "modelo/pedido", OperacaoLlm.Ocr),
                          PipelinePosition.PerTry);
 
@@ -239,8 +338,25 @@ public class PoliticaUsoLlmTests {
     private static HttpResponseMessage Resposta(HttpStatusCode status, string corpo) =>
         new(status) { Content = new StringContent(corpo, Encoding.UTF8, "application/json") };
 
-    private sealed class HandlerFalso(Func<HttpRequestMessage, HttpResponseMessage> _responder) : HttpMessageHandler {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
-            Task.FromResult(_responder(request));
+    private sealed class HandlerFalso(Func<HttpRequestMessage, HttpResponseMessage> _responder, int _atrasoMs = 0)
+        : HttpMessageHandler {
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) {
+            if (_atrasoMs > 0) {
+                await Task.Delay(_atrasoMs, cancellationToken);
+            }
+
+            return _responder(request);
+        }
+    }
+
+    /// <summary>Sink defeituoso: o Logger junta a falha dos providers e relança.</summary>
+    private sealed class LoggerQueLanca : ILogger<PoliticaUsoLlm> {
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state,
+                                Exception? exception, Func<TState, Exception?, string> formatter) =>
+            throw new AggregateException(new InvalidOperationException("sink quebrado"));
     }
 }

@@ -30,10 +30,14 @@ public sealed class PoliticaUsoLlm(ILogger<PoliticaUsoLlm> _logger,
         var relogio = Stopwatch.StartNew();
         try {
             ProcessNext(mensagem, pipeline, indice);
-        } catch (OperationCanceledException) {
-            // Desligamento: nao ha resposta para ler e o DbContext ja pode estar indo embora.
+        } catch (OperationCanceledException) when (mensagem.CancellationToken.IsCancellationRequested) {
+            // Desligamento: o chamador cancelou, nao ha resposta para ler e o DbContext ja pode
+            // estar indo embora. Ponto cego assumido no spec.
             throw;
         } catch (Exception excecao) {
+            // Inclui o timeout do NetworkTimeout, que chega como OperationCanceledException sem
+            // o token do chamador cancelado: o timeout e nosso, o servidor segue e cobra, e sem
+            // linha esse gasto ficaria invisivel - o problema que o ledger existe para matar.
             Entregar(mensagem, relogio, excecao);
             throw;
         }
@@ -45,9 +49,10 @@ public sealed class PoliticaUsoLlm(ILogger<PoliticaUsoLlm> _logger,
         var relogio = Stopwatch.StartNew();
         try {
             await ProcessNextAsync(mensagem, pipeline, indice);
-        } catch (OperationCanceledException) {
+        } catch (OperationCanceledException) when (mensagem.CancellationToken.IsCancellationRequested) {
             throw;
         } catch (Exception excecao) {
+            // Timeout do NetworkTimeout cai aqui: cobrado pelo servidor, invisivel sem linha.
             await EntregarAsync(mensagem, relogio, excecao);
             throw;
         }
@@ -55,37 +60,39 @@ public sealed class PoliticaUsoLlm(ILogger<PoliticaUsoLlm> _logger,
         await EntregarAsync(mensagem, relogio, null);
     }
 
+    // As duas entregas sao try/catch de fora a fora, inclusive em volta da leitura e do proprio
+    // log de falha: o Logger junta a excecao dos providers e relanca, e um sink defeituoso nao
+    // pode transformar uma chamada paga e concluida em chamada perdida. O contrato do registrador
+    // diz que ele nao lanca; confiar nisso seria trocar um gasto perdido por uma chamada perdida.
     private void Entregar(PipelineMessage mensagem, Stopwatch relogio, Exception? excecao) {
-        var registro = Ler(mensagem, relogio, excecao);
-        if (registro is null) {
-            return;
-        }
-
-        // O contrato do registrador diz que ele nao lanca, mas a policy esta no caminho de
-        // uma chamada paga: confiar nisso seria trocar um gasto perdido por uma chamada
-        // perdida.
         try {
-            _registrador.Registrar(registro);
+            var registro = Ler(mensagem, relogio, excecao);
+            if (registro is not null) {
+                _registrador.Registrar(registro);
+            }
         } catch (Exception falha) {
             NaoRegistrou(falha);
         }
     }
 
     private async ValueTask EntregarAsync(PipelineMessage mensagem, Stopwatch relogio, Exception? excecao) {
-        var registro = Ler(mensagem, relogio, excecao);
-        if (registro is null) {
-            return;
-        }
-
         try {
-            await _registrador.RegistrarAsync(registro);
+            var registro = Ler(mensagem, relogio, excecao);
+            if (registro is not null) {
+                await _registrador.RegistrarAsync(registro);
+            }
         } catch (Exception falha) {
             NaoRegistrou(falha);
         }
     }
 
-    private void NaoRegistrou(Exception falha) =>
-        _logger.LogWarning(falha, "Uso de {Modelo} não foi registrado no ledger: {Mensagem}", _modelo, falha.Message);
+    private void NaoRegistrou(Exception falha) {
+        try {
+            _logger.LogWarning(falha, "Uso de {Modelo} não foi registrado no ledger: {Mensagem}", _modelo, falha.Message);
+        } catch {
+            // Ultimo recurso: perder a anotacao do erro e aceitavel; derrubar a chamada nao e.
+        }
+    }
 
     /// <summary>
     /// Nunca lança: uma exceção nossa aqui derrubaria uma chamada de LLM que já foi paga.
@@ -194,12 +201,20 @@ public sealed class PoliticaUsoLlm(ILogger<PoliticaUsoLlm> _logger,
     private static int Inteiro(JsonElement objeto, string propriedade) =>
         objeto.ValueKind == JsonValueKind.Object
         && objeto.TryGetProperty(propriedade, out var valor)
+        // TryGetInt32 lanca se o valor nao for numero, e um campo nulo levaria a linha toda.
+        && valor.ValueKind == JsonValueKind.Number
         && valor.TryGetInt32(out var numero)
             ? numero
             : 0;
 
     private static decimal? Custo(JsonElement uso) {
         if (uso.ValueKind != JsonValueKind.Object || !uso.TryGetProperty("cost", out var valor)) {
+            return null;
+        }
+
+        // Custo nulo, ou vindo como texto, nao pode derrubar tokens, modelo, provider e id: o
+        // resto da linha vale sem ele.
+        if (valor.ValueKind != JsonValueKind.Number) {
             return null;
         }
 

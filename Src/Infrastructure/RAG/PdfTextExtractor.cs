@@ -47,6 +47,16 @@ Seja rigoroso: se páginas ficaram de fora ou trechos ficaram ilegíveis, a nota
             throw new InvalidOperationException("Nenhum modelo de OCR configurado em IAModel.OCR_MODELS.");
         }
 
+        // Os clientes antes do PDF, e fora do try: falta de chave tem que estourar como falta de
+        // chave. Dentro do catch por modelo ela viraria "nenhum modelo conseguiu extrair" no
+        // UltimoErro do manual, depois de carregar 47MB de base64 em memoria a troco de nada.
+        // Uma tentativa por modelo: a cascata ja e a nossa retentativa, o timeout longo existe
+        // porque transcrever um manual leva minutos, e o padrao do SDK sao 4 tentativas - o que
+        // daria 12 chamadas pagas por PDF.
+        var clientes = modelos
+            .Select(modelo => _fabrica.CriarChat(modelo, OperacaoLlm.Ocr, TimeoutRede, tentativas: 1))
+            .ToArray();
+
         var chatOptions = new ChatOptions() {
             Instructions = Instrucoes,
             // Extracao e transcricao: nao ha ganho em diversidade, e cada desvio do token mais
@@ -63,7 +73,7 @@ Seja rigoroso: se páginas ficaram de fora ou trechos ficaram ilegíveis, a nota
 
         while (indice < modelos.Length) {
             var modelo = modelos[indice];
-            var extracao = await TentarExtrairAsync(modelo, conteudoPdf, chatOptions, pdfFilePath, cancellationToken);
+            var extracao = await TentarExtrairAsync(clientes[indice], modelo, conteudoPdf, chatOptions, pdfFilePath, cancellationToken);
 
             if (extracao is not null && (melhorExtracao is null || extracao.Confiabilidade > melhorExtracao.Confiabilidade)) {
                 melhorExtracao = extracao;
@@ -146,6 +156,7 @@ Seja rigoroso: se páginas ficaram de fora ou trechos ficaram ilegíveis, a nota
     /// para que a falha de um modelo não derrube a cadeia inteira.
     /// </summary>
     private async Task<ExtracaoManual?> TentarExtrairAsync(
+        IChatClient chatClient,
         string modelo,
         DataContent conteudoPdf,
         ChatOptions chatOptions,
@@ -154,11 +165,6 @@ Seja rigoroso: se páginas ficaram de fora ou trechos ficaram ilegíveis, a nota
 
         try {
             _logger.LogDebug("Extraindo texto de {PdfFilePath} com o modelo {Modelo}.", pdfFilePath, modelo);
-
-            // Uma tentativa por modelo: a cascata ja e a nossa retentativa, e o timeout longo
-            // existe porque transcrever um manual inteiro leva minutos. O padrao do SDK sao 4
-            // tentativas, o que daria 12 chamadas pagas por PDF.
-            var chatClient = _fabrica.CriarChat(modelo, OperacaoLlm.Ocr, TimeoutRede, tentativas: 1);
 
             var message = new ChatMessage(ChatRole.User, "Extraia o texto deste PDF em formato markdown");
             message.Contents.Add(conteudoPdf);
