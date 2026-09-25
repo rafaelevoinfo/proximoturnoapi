@@ -1,14 +1,13 @@
-using System.ClientModel;
-using System.ClientModel.Primitives;
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using Microsoft.Extensions.AI;
-using OpenAI;
+using ProximoTurnoApi.Application.UseCases.IA;
 using ProximoTurnoApi.Application.UseCases.RAG;
 using ProximoTurnoApi.Domain;
+using ProximoTurnoApi.Infrastructure.Models;
 
 namespace ProximoTurnoApi.Infrastructure.RAG;
 
-public class PdfTextExtractor(ILogger<PdfTextExtractor> _logger) : ITextExtractor {
+public class PdfTextExtractor(ILogger<PdfTextExtractor> _logger, IFabricaOpenRouter _fabrica) : ITextExtractor {
 
     // Acima de ConfiabilidadeAceitavel a extracao e aceita e paramos de gastar modelo.
     // Ate ConfiabilidadeBaixa o modelo atual foi mal demais para este arquivo: o proximo
@@ -43,28 +42,10 @@ Seja rigoroso: se páginas ficaram de fora ou trechos ficaram ilegíveis, a nota
         new(@"<!--\s*CONFIABILIDADE:\s*(\d{1,3})\s*-->", RegexOptions.Compiled | RegexOptions.RightToLeft);
 
     public async Task<ResultadoExtracao> ExtractTextAsync(string pdfFilePath, CancellationToken cancellationToken) {
-        var openRouterApiKey = Environment.GetEnvironmentVariable("OPENROUTER_API_KEY") ?? "";
-        if (string.IsNullOrWhiteSpace(openRouterApiKey)) {
-            throw new InvalidOperationException("OPENROUTER_API_KEY não configurada.");
-        }
-
         var modelos = IAModel.OCR_MODELS;
         if (modelos.Length == 0) {
             throw new InvalidOperationException("Nenhum modelo de OCR configurado em IAModel.OCR_MODELS.");
         }
-
-        var openAiClient = new OpenAIClient(new ApiKeyCredential(openRouterApiKey), new OpenAIClientOptions() {
-            Endpoint = new Uri("https://openrouter.ai/api/v1"),
-
-            // O padrao do System.ClientModel e 100s, curto demais: transcrever um manual
-            // inteiro leva minutos e a chamada morria antes de o modelo terminar.
-            NetworkTimeout = TimeoutRede,
-
-            // Sem isso o SDK tenta 4 vezes por modelo. Como ja temos a cascata de modelos,
-            // seriam ate 12 chamadas por PDF - e um timeout do cliente nao impede o servidor
-            // de concluir e cobrar. Uma retentativa cobre falha transitoria de rede.
-            RetryPolicy = new ClientRetryPolicy(maxRetries: 1),
-        });
 
         var chatOptions = new ChatOptions() {
             Instructions = Instrucoes,
@@ -82,7 +63,7 @@ Seja rigoroso: se páginas ficaram de fora ou trechos ficaram ilegíveis, a nota
 
         while (indice < modelos.Length) {
             var modelo = modelos[indice];
-            var extracao = await TentarExtrairAsync(openAiClient, modelo, conteudoPdf, chatOptions, pdfFilePath, cancellationToken);
+            var extracao = await TentarExtrairAsync(modelo, conteudoPdf, chatOptions, pdfFilePath, cancellationToken);
 
             if (extracao is not null && (melhorExtracao is null || extracao.Confiabilidade > melhorExtracao.Confiabilidade)) {
                 melhorExtracao = extracao;
@@ -165,7 +146,6 @@ Seja rigoroso: se páginas ficaram de fora ou trechos ficaram ilegíveis, a nota
     /// para que a falha de um modelo não derrube a cadeia inteira.
     /// </summary>
     private async Task<ExtracaoManual?> TentarExtrairAsync(
-        OpenAIClient openAiClient,
         string modelo,
         DataContent conteudoPdf,
         ChatOptions chatOptions,
@@ -175,7 +155,10 @@ Seja rigoroso: se páginas ficaram de fora ou trechos ficaram ilegíveis, a nota
         try {
             _logger.LogDebug("Extraindo texto de {PdfFilePath} com o modelo {Modelo}.", pdfFilePath, modelo);
 
-            var chatClient = openAiClient.GetChatClient(modelo).AsIChatClient();
+            // Uma tentativa por modelo: a cascata ja e a nossa retentativa, e o timeout longo
+            // existe porque transcrever um manual inteiro leva minutos. O padrao do SDK sao 4
+            // tentativas, o que daria 12 chamadas pagas por PDF.
+            var chatClient = _fabrica.CriarChat(modelo, OperacaoLlm.Ocr, TimeoutRede, tentativas: 1);
 
             var message = new ChatMessage(ChatRole.User, "Extraia o texto deste PDF em formato markdown");
             message.Contents.Add(conteudoPdf);

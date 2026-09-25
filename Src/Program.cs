@@ -4,6 +4,8 @@ using Microsoft.OpenApi;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.AI;
 using Microsoft.AspNetCore.DataProtection;
+using ProximoTurnoApi.Application.UseCases.IA;
+using ProximoTurnoApi.Infrastructure.IA;
 using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Infrastructure.Repositories;
 using ProximoTurnoApi.Infrastructure.Identity;
@@ -21,9 +23,6 @@ using ProximoTurnoApi.Application.Workers;
 
 
 using Microsoft.Agents.AI;
-using OpenAI;
-using System.ClientModel;
-using System.ClientModel.Primitives;
 using ProximoTurnoApi.Domain;
 using Qdrant.Client;
 using Qdrant.Client.Grpc;
@@ -103,47 +102,22 @@ builder.Services.AddSingleton(_ => {
     return new QdrantClient(new QdrantGrpcClient(channel));
 });
 
-// Cliente de embedding do OpenRouter. Singleton porque o OpenAIClient e thread-safe e
-// segura o pool de conexoes; falhar aqui por falta de chave so derruba a indexacao,
-// que roda em background e ja trata o erro por manual.
-builder.Services.AddSingleton<IEmbeddingGenerator<string, Embedding<float>>>(_ => {
-    var openRouterApiKey = Environment.GetEnvironmentVariable("OPENROUTER_API_KEY");
-    if (string.IsNullOrWhiteSpace(openRouterApiKey)) {
-        throw new InvalidOperationException("OPENROUTER_API_KEY não configurada.");
-    }
+// Toda chamada paga nasce na fabrica, que instala o registro de uso em cada cliente:
+// escapar do ledger passa a exigir intencao, nao esquecimento. Falhar por falta de chave
+// so derruba a indexacao, que roda em background e ja trata o erro por manual.
+builder.Services.AddSingleton<IFabricaOpenRouter, FabricaOpenRouter>();
+builder.Services.AddSingleton<IRegistradorUsoLlm, RegistradorUsoLlm>();
+builder.Services.AddScoped<IUsoLlmRepository, UsoLlmRepository>();
 
-    var openAiClient = new OpenAIClient(new ApiKeyCredential(openRouterApiKey), new OpenAIClientOptions() {
-        Endpoint = new Uri("https://openrouter.ai/api/v1"),
+builder.Services.AddSingleton<IEmbeddingGenerator<string, Embedding<float>>>(sp =>
+    sp.GetRequiredService<IFabricaOpenRouter>().CriarEmbedding(IAModel.EMBEDDING_MODEL));
 
-        // Embedding responde em segundos, ao contrario da transcricao do PDF inteiro.
-        NetworkTimeout = TimeSpan.FromMinutes(2),
-
-        // Chamada curta e idempotente: repetir e barato e resolve falha transitoria.
-        RetryPolicy = new ClientRetryPolicy(maxRetries: 2),
-    });
-
-    return openAiClient.GetEmbeddingClient(IAModel.EMBEDDING_MODEL).AsIEmbeddingGenerator();
-});
-
-// Cliente do revisor do markdown. Chave propria porque o embedding ja registra um
-// cliente OpenRouter, e cada um fala com um modelo diferente.
-builder.Services.AddKeyedSingleton<IChatClient>(LlmMarkdownRevisor.ChaveChat, (_, _) => {
-    var openRouterApiKey = Environment.GetEnvironmentVariable("OPENROUTER_API_KEY");
-    if (string.IsNullOrWhiteSpace(openRouterApiKey)) {
-        throw new InvalidOperationException("OPENROUTER_API_KEY não configurada.");
-    }
-
-    var openAiClient = new OpenAIClient(new ApiKeyCredential(openRouterApiKey), new OpenAIClientOptions() {
-        Endpoint = new Uri("https://openrouter.ai/api/v1"),
-
-        // Um bloco de 4000 caracteres leva dezenas de segundos: o revisor raciocina antes de
-        // responder. Folga para o bloco ruim sem chegar perto da espera do OCR.
-        NetworkTimeout = TimeSpan.FromMinutes(5),
-        RetryPolicy = new ClientRetryPolicy(maxRetries: 2),
-    });
-
-    return openAiClient.GetChatClient(IAModel.REVISOR_MODEL).AsIChatClient();
-});
+// Chave propria porque o embedding ja registra um cliente, e cada um fala com um modelo
+// diferente. Cinco minutos porque cada bloco leva dezenas de segundos: o revisor raciocina
+// antes de responder.
+builder.Services.AddKeyedSingleton<IChatClient>(LlmMarkdownRevisor.ChaveChat, (sp, _) =>
+    sp.GetRequiredService<IFabricaOpenRouter>()
+      .CriarChat(IAModel.REVISOR_MODEL, OperacaoLlm.RevisaoMarkdown, TimeSpan.FromMinutes(5), tentativas: 2));
 
 builder.Services.AddScoped<IRevisorMarkdown, LlmMarkdownRevisor>();
 builder.Services.AddScoped<SincronizarManual>();

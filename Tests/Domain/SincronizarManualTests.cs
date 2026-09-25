@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
+using ProximoTurnoApi.Application.UseCases.IA;
 using ProximoTurnoApi.Application.UseCases.RAG;
 using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Tests.Fakes;
@@ -107,6 +108,21 @@ public class SincronizarManualTests : IDisposable {
         Assert.True(linha.QuantidadeChunks > 0);
         Assert.True(_vetores.Gravados.ContainsKey(1));
         Assert.Equal(2, _env.Markdowns().Length); // {hash}.raw.md e {hash}.md
+    }
+
+    [Fact]
+    public async Task LinkNovo_AbreOEscopoDeAlvoAntesDeChamarLlm() {
+        _env.CriarPdf(NomeArquivo);
+        _repo.Adicionar(1);
+
+        await Executar();
+
+        // Valores do fixture: Executar() usa idJogo 99 e idJogoLink 1, e Adicionar() usa
+        // "Balde de Caranguejo" / "Manual", que ContextoManual.Prefixo junta com " > ".
+        Assert.Equal(99, _extrator.AlvoVisto?.IdJogo);
+        Assert.Equal(1, _extrator.AlvoVisto?.IdJogoLink);
+        Assert.Equal("Balde de Caranguejo > Manual", _extrator.AlvoVisto?.Alvo);
+        Assert.Null(EscopoUsoLlm.Atual);
     }
 
     [Fact]
