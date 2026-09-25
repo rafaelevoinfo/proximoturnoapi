@@ -1,4 +1,4 @@
-using Flunt.Notifications;
+﻿using Flunt.Notifications;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using ProximoTurnoApi.Domain;
@@ -19,6 +19,7 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : Identi
         ConfigureComentario(modelBuilder);
         ConfigureCupom(modelBuilder);
         ConfigureContratoAutentique(modelBuilder);
+        ConfigureUsoLlm(modelBuilder);
 
         modelBuilder.Entity<Cliente>(b => {
             b.HasIndex(c => c.Email).IsUnique();
@@ -117,6 +118,18 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : Identi
              .WithOne()
              .HasForeignKey<JogoLinkIndexacao>(i => i.IdJogoLink)
              .OnDelete(DeleteBehavior.Cascade);
+        });
+    }
+
+    private static void ConfigureUsoLlm(ModelBuilder modelBuilder) {
+        modelBuilder.Entity<UsoLlm>(b => {
+            // As consultas do ledger sao por periodo e por manual.
+            b.HasIndex(u => u.Momento);
+            b.HasIndex(u => u.IdJogoLink);
+
+            // 0.000000343 e um custo real de uma chamada: num ledger, precisao antes de
+            // velocidade de soma.
+            b.Property(u => u.CustoUsd).HasPrecision(18, 10);
         });
     }
 
@@ -258,4 +271,5 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : Identi
     public DbSet<Comentario> Comentarios { get; set; }
     public DbSet<Cupom> Cupons { get; set; }
     public DbSet<ContratoAutentique> ContratosAutentique { get; set; }
+    public DbSet<UsoLlm> UsosLlm { get; set; }
 }
