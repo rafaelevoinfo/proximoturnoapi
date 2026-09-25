@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi;
 using Microsoft.Extensions.FileProviders;
@@ -136,8 +136,9 @@ builder.Services.AddKeyedSingleton<IChatClient>(LlmMarkdownRevisor.ChaveChat, (_
     var openAiClient = new OpenAIClient(new ApiKeyCredential(openRouterApiKey), new OpenAIClientOptions() {
         Endpoint = new Uri("https://openrouter.ai/api/v1"),
 
-        // Um bloco de 4000 caracteres responde em segundos; nao precisa da folga do OCR.
-        NetworkTimeout = TimeSpan.FromMinutes(2),
+        // Um bloco de 4000 caracteres leva dezenas de segundos: o revisor raciocina antes de
+        // responder. Folga para o bloco ruim sem chegar perto da espera do OCR.
+        NetworkTimeout = TimeSpan.FromMinutes(5),
         RetryPolicy = new ClientRetryPolicy(maxRetries: 2),
     });
 

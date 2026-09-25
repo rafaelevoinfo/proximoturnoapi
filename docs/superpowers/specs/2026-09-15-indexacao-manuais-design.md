@@ -15,7 +15,7 @@ Problemas que este design corrige:
 3. PDF repetido: o mesmo arquivo em dois links é extraído (e pago) duas vezes e duplica trechos na busca do mesmo jogo.
 4. Falha sem estado: `Indexado` é bool; uma extração que falha sem gerar `.md` roda a cascata inteira (até o Opus) a cada restart, e todo push na `main` é um restart.
 
-Também entram: OCR começando no Gemini, nome do jogo e do manual no texto do embedding, remoção de `MarkdownExtractor` e `PortaGrpc`, e a nova etapa de revisão com `meta-llama/llama-3.1-8b-instruct`.
+Também entram: OCR começando no Gemini, nome do jogo e do manual no texto do embedding, remoção de `MarkdownExtractor` e `PortaGrpc`, e a nova etapa de revisão com `deepseek/deepseek-v4-flash`.
 
 ## Decisões
 
@@ -27,7 +27,7 @@ Também entram: OCR começando no Gemini, nome do jogo e do manual no texto do e
 | Migração | Migração nova (remove a coluna e cria a tabela). Em produção roda logo após a que cria a coluna; é inofensivo e evita ajuste manual no banco de dev. |
 | Tentativas | Teto de 3 falhas consecutivas por URL. Um `Falhou` esgotado só volta se a URL mudar. |
 | OCR | `OCR_MODELS = ["google/gemini-3.6-flash", "anthropic/claude-opus-5"]`. O Qwen sai. |
-| Revisor | `meta-llama/llama-3.1-8b-instruct`, só texto, por blocos, devolvendo lista de correções validada por travas no código. Não bloqueia a indexação. |
+| Revisor | `deepseek/deepseek-v4-flash`, só texto, por blocos, devolvendo lista de correções validada por travas no código. Não bloqueia a indexação. |
 | Arquivos | Cache por hash na raiz de `uploads/`, que é a pasta coberta pelo backup (`SincronizadorUploads` só lê a raiz). |
 
 ## Modelo de dados
@@ -139,7 +139,7 @@ Lê de uma vez o **estado do link**: o link (tipo, URL, título), o nome do jogo
 - `ResultadoRevisao(string Texto, string? Modelo, int Aplicadas, int Descartadas, bool Completa)`.
 - `RevisaoMarkdown` (`Application/UseCases/RAG`, estático e puro): `DividirEmBlocos` e `ValidarEAplicar`.
 - `LlmMarkdownRevisor` (`Infrastructure/RAG`): recebe `ILogger` e um `IChatClient` com chave `"revisor"`.
-- `Program.cs`: `AddKeyedSingleton<IChatClient>("revisor", ...)` via OpenRouter com `IAModel.REVISOR_MODEL = "meta-llama/llama-3.1-8b-instruct"`, `NetworkTimeout` de 2 minutos e `ClientRetryPolicy(maxRetries: 2)`. `IRevisorMarkdown` é registrado como `Scoped`.
+- `Program.cs`: `AddKeyedSingleton<IChatClient>("revisor", ...)` via OpenRouter com `IAModel.REVISOR_MODEL = "deepseek/deepseek-v4-flash"`, `NetworkTimeout` de 5 minutos e `ClientRetryPolicy(maxRetries: 2)`. `IRevisorMarkdown` é registrado como `Scoped`.
 
 ### Blocos
 
