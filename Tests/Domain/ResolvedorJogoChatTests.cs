@@ -63,4 +63,28 @@ public class ResolvedorJogoChatTests {
     public void MencaoVazia_NaoTrazOpcao(string? mencionado) {
         Assert.Empty(ResolvedorJogoChat.Candidatos(mencionado, Catalogo));
     }
+
+    [Fact]
+    public void CitadosNaMensagem_AchaONomeNoMeioDaFrase() {
+        var ids = ResolvedorJogoChat.CitadosNaMensagem("como pontua no Código Secreto?", Catalogo).Select(j => j.Id);
+
+        Assert.Equal([6], ids);
+    }
+
+    [Fact]
+    public void CitadosNaMensagem_NomeBaseTrazAsVariacoes() {
+        var ids = ResolvedorJogoChat.CitadosNaMensagem("no catan posso trocar?", Catalogo).Select(j => j.Id);
+
+        Assert.Equal([1, 2], ids);
+    }
+
+    [Fact]
+    public void CitadosNaMensagem_SemJogo_Vazio() {
+        Assert.Empty(ResolvedorJogoChat.CitadosNaMensagem("como faço para ganhar pontos?", Catalogo));
+    }
+
+    [Fact]
+    public void CitadosNaMensagem_PalavraDentroDeOutra_NaoConta() {
+        Assert.Empty(ResolvedorJogoChat.CitadosNaMensagem("software de guerra", Catalogo));
+    }
 }

@@ -279,3 +279,16 @@ concessão manual de créditos pelo admin.
 3. Admin: sem limite de crédito.
 4. Boas-vindas: US$ 0,50 de crédito para todo usuário.
 5. O crédito não é exibido para o usuário, só para admins.
+
+## Revisão de 26/09/2026: sem chamada de classificação
+
+A pedido do produto, a etapa de classificação saiu. Cada pergunta faz **uma** chamada de chat
+(DeepSeek `deepseek-v4-flash`) mais o embedding da busca:
+
+- Sem jogo na conversa: nenhuma chamada paga. O catálogo é varrido em memória atrás de um nome
+  de jogo na mensagem; se achar, pede confirmação; se não, pergunta qual é o jogo.
+- Com jogo: busca no manual e resposta. As instruções de sistema trazem as regras (só regras
+  deste jogo, só com base nos trechos, recusar outros assuntos, ignorar pedidos para mudar de
+  papel). Se a pergunta for de outro jogo, o modelo responde só `[[OUTRO_JOGO:nome]]`, e a API
+  transforma isso em confirmação de jogo.
+- `OperacaoLlm` fica com `ChatEmbedding = 3` e `ChatResposta = 4`.

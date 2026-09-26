@@ -11,16 +11,12 @@ namespace ProximoTurnoApi.Tests.Domain;
 
 public class ResponderPerguntaRegrasTests {
 
-    private const string Regra = """{"tipo":"regra","jogo":null}""";
-    private const string RegraCatan = """{"tipo":"regra","jogo":"Catan"}""";
-
     private static readonly UsuarioChat Cliente = new("usuario-1", "cliente@teste.com", Admin: false);
     private static readonly UsuarioChat Admin = new("admin-1", "admin@teste.com", Admin: true);
 
     private readonly FakeChatRegrasRepository _repositorio = new();
     private readonly FakeManualVectorStore _vetores = new();
     private readonly FakeEmbeddingGenerator _embedding = new();
-    private FakeChatClient _classificador = new(Regra);
     private FakeChatClient _redator = new("Na sua vez, você pode trocar 4 recursos iguais com o banco.");
 
     public ResponderPerguntaRegrasTests() {
@@ -39,7 +35,7 @@ public class ResponderPerguntaRegrasTests {
     private ResponderPerguntaRegras Caso() =>
         new(NullLogger<ResponderPerguntaRegras>.Instance,
             new ObterSaldoChat(_repositorio, new FakeCotacaoDolar(5m), ConfiguracaoChat.Padrao),
-            _repositorio, _vetores, _classificador, _redator, _embedding);
+            _repositorio, _vetores, _redator, _embedding);
 
     private static PerguntaChatDTO Pergunta(string mensagem, int? confirmado = null, int? pagina = null) =>
         new() { Mensagem = mensagem, IdJogoConfirmado = confirmado, IdJogoPagina = pagina };
@@ -54,45 +50,63 @@ public class ResponderPerguntaRegrasTests {
         Assert.Equal([new FonteChatDTO(10, "Catan > Comércio")], resposta.Fontes);
     }
 
+    // Pedido do produto: nada de chamada so para classificar a pergunta.
     [Fact]
-    public async Task SemJogo_PerguntaQualJogoSemBuscar() {
+    public async Task UmaPergunta_UmaChamadaDeChatSo() {
+        await Caso().ExecuteAsync(Cliente, Pergunta("Posso trocar com o banco?", pagina: 1));
+
+        Assert.Single(_redator.Recebidos);
+    }
+
+    [Fact]
+    public async Task InstrucoesTrazemAsRegrasDoAssistente() {
+        await Caso().ExecuteAsync(Cliente, Pergunta("Posso trocar com o banco?", pagina: 1));
+
+        var instrucoes = _redator.Opcoes.Single()!.Instructions!;
+        Assert.Contains("SOMENTE dúvidas sobre as regras do jogo Catan", instrucoes);
+        Assert.Contains("[[OUTRO_JOGO:nome do jogo]]", instrucoes);
+        Assert.Contains("recuse", instrucoes);
+        Assert.Contains("Troca 4:1 com o banco.", instrucoes);
+    }
+
+    [Fact]
+    public async Task SemJogoNemCitacao_PerguntaQualJogoSemGastar() {
         var resposta = await Caso().ExecuteAsync(Cliente, Pergunta("Como faz para pontuar?"));
 
         Assert.Equal(TipoRespostaChat.PerguntarJogo, resposta!.Tipo);
-        Assert.Empty(_vetores.JogosBuscados);
+        Assert.Empty(_embedding.Textos);
         Assert.Empty(_redator.Recebidos);
     }
 
     [Fact]
-    public async Task JogoCitadoForaDaPagina_PedeConfirmacaoComOpcoes() {
-        _classificador = new FakeChatClient(RegraCatan);
-
-        var resposta = await Caso().ExecuteAsync(Cliente, Pergunta("No Catan posso trocar com o banco?"));
+    public async Task SemJogoComCitacao_PedeConfirmacaoSemGastar() {
+        var resposta = await Caso().ExecuteAsync(Cliente, Pergunta("No catan posso trocar com o banco?"));
 
         Assert.Equal(TipoRespostaChat.ConfirmarJogo, resposta!.Tipo);
         Assert.Equal([1, 2], resposta.OpcoesJogo.Select(j => j.Id));
-        Assert.Empty(_vetores.JogosBuscados);
+        Assert.Empty(_embedding.Textos);
+        Assert.Empty(_redator.Recebidos);
     }
 
     [Fact]
-    public async Task OutroJogoCitadoNaPaginaDeUmJogo_PedeConfirmacao() {
-        _classificador = new FakeChatClient("""{"tipo":"regra","jogo":"Ticket to Ride"}""");
+    public async Task ModeloApontaOutroJogo_PedeConfirmacao() {
+        _redator = new FakeChatClient("[[OUTRO_JOGO: Ticket to Ride]]");
 
-        var resposta = await Caso().ExecuteAsync(Cliente, Pergunta("E no Ticket to Ride?", pagina: 1));
+        var resposta = await Caso().ExecuteAsync(Cliente, Pergunta("E no Ticket to Ride, como compro cartas?", pagina: 1));
 
         Assert.Equal(TipoRespostaChat.ConfirmarJogo, resposta!.Tipo);
-        Assert.Equal(3, resposta.OpcoesJogo[0].Id);
-        Assert.Empty(_vetores.JogosBuscados);
+        Assert.Equal([3], resposta.OpcoesJogo.Select(j => j.Id));
+        Assert.Equal(new JogoChatDTO(1, "Catan"), resposta.Jogo);
     }
 
     [Fact]
-    public async Task JogoConfirmadoECitadoDeNovo_Responde() {
-        _classificador = new FakeChatClient(RegraCatan);
+    public async Task ModeloApontaJogoForaDoCatalogo_AvisaEMantemOJogo() {
+        _redator = new FakeChatClient("[[OUTRO_JOGO:Monopoly]]");
 
-        var resposta = await Caso().ExecuteAsync(Cliente, Pergunta("No Catan posso trocar com o banco?", confirmado: 1));
+        var resposta = await Caso().ExecuteAsync(Cliente, Pergunta("E no Monopoly?", pagina: 1));
 
-        Assert.Equal(TipoRespostaChat.Resposta, resposta!.Tipo);
-        Assert.Equal([1], _vetores.JogosBuscados);
+        Assert.Equal(TipoRespostaChat.SemManual, resposta!.Tipo);
+        Assert.Equal(new JogoChatDTO(1, "Catan"), resposta.Jogo);
     }
 
     [Fact]
@@ -112,18 +126,6 @@ public class ResponderPerguntaRegrasTests {
     }
 
     [Fact]
-    public async Task ForaDeEscopo_RecusaSemBuscarNemResponder() {
-        _classificador = new FakeChatClient("""{"tipo":"fora_de_escopo","jogo":null}""");
-
-        var resposta = await Caso().ExecuteAsync(Cliente, Pergunta("Me escreve um poema", pagina: 1));
-
-        Assert.Equal(TipoRespostaChat.ForaDeEscopo, resposta!.Tipo);
-        Assert.Equal(ResponderPerguntaRegras.MensagemForaDeEscopo, resposta.Texto);
-        Assert.Empty(_embedding.Textos);
-        Assert.Empty(_redator.Recebidos);
-    }
-
-    [Fact]
     public async Task SaldoEsgotado_MensagemAmigavelSemChamarLlmNenhum() {
         _repositorio.Gasto = 100m;
 
@@ -131,7 +133,6 @@ public class ResponderPerguntaRegrasTests {
 
         Assert.Equal(TipoRespostaChat.SaldoEsgotado, resposta!.Tipo);
         Assert.Equal(ResponderPerguntaRegras.MensagemSaldoEsgotado, resposta.Texto);
-        Assert.Empty(_classificador.Recebidos);
         Assert.Empty(_embedding.Textos);
         Assert.Empty(_redator.Recebidos);
     }
@@ -146,41 +147,23 @@ public class ResponderPerguntaRegrasTests {
     }
 
     [Fact]
-    public async Task JogoSemManual_AvisaSemBuscar() {
+    public async Task JogoSemManual_AvisaSemGastar() {
         var resposta = await Caso().ExecuteAsync(Cliente, Pergunta("Como joga?", pagina: 9));
 
         Assert.Equal(TipoRespostaChat.SemManual, resposta!.Tipo);
-        Assert.Empty(_vetores.JogosBuscados);
+        Assert.Empty(_embedding.Textos);
+        Assert.Empty(_redator.Recebidos);
     }
 
+    // Sem trecho, o modelo ainda decide: pode ser cumprimento, outro assunto ou outro jogo.
     [Fact]
-    public async Task JogoCitadoQueNaoExiste_AvisaSemBuscar() {
-        _classificador = new FakeChatClient("""{"tipo":"regra","jogo":"Monopoly"}""");
-
-        var resposta = await Caso().ExecuteAsync(Cliente, Pergunta("Regras do Monopoly?"));
-
-        Assert.Equal(TipoRespostaChat.SemManual, resposta!.Tipo);
-        Assert.Empty(_vetores.JogosBuscados);
-    }
-
-    [Fact]
-    public async Task ClassificadorFora_SegueComoRegra() {
-        _classificador = new FakeChatClient(FakeChatClient.Falha);
-
-        var resposta = await Caso().ExecuteAsync(Cliente, Pergunta("Posso trocar com o banco?", pagina: 1));
-
-        Assert.Equal(TipoRespostaChat.Resposta, resposta!.Tipo);
-    }
-
-    [Fact]
-    public async Task ManualSemTrechoParecido_NaoChamaORedator() {
+    public async Task ManualSemTrechoParecido_ModeloAindaResponde() {
         _vetores.Trechos.Clear();
 
-        var resposta = await Caso().ExecuteAsync(Cliente, Pergunta("Posso trocar com o banco?", pagina: 1));
+        var resposta = await Caso().ExecuteAsync(Cliente, Pergunta("Oi!", pagina: 1));
 
         Assert.Equal(TipoRespostaChat.Resposta, resposta!.Tipo);
-        Assert.Contains("Não encontrei", resposta.Texto);
-        Assert.Empty(_redator.Recebidos);
+        Assert.Contains("nenhum trecho", _redator.Opcoes.Single()!.Instructions!);
     }
 
     // O gasto de cada etapa precisa ir para o credito de quem perguntou, no jogo certo.
@@ -188,8 +171,8 @@ public class ResponderPerguntaRegrasTests {
     public async Task TodasAsChamadasPagasCarregamOUsuarioEOJogo() {
         await Caso().ExecuteAsync(Cliente, Pergunta("Posso trocar com o banco?", pagina: 1));
 
-        var alvos = _classificador.Alvos.Concat(_embedding.Alvos).Concat(_redator.Alvos).ToList();
-        Assert.Equal(3, alvos.Count);
+        var alvos = _embedding.Alvos.Concat(_redator.Alvos).ToList();
+        Assert.Equal(2, alvos.Count);
         Assert.All(alvos, alvo => {
             Assert.Equal("usuario-1", alvo?.IdUsuario);
             Assert.Equal(1, alvo?.IdJogo);
@@ -213,7 +196,7 @@ public class ResponderPerguntaRegrasTests {
         await caso.ExecuteAsync(Cliente, Pergunta(new string('a', ResponderPerguntaRegras.TamanhoMaximoPergunta + 1), pagina: 1));
 
         Assert.False(caso.IsValid);
-        Assert.Empty(_classificador.Recebidos);
+        Assert.Empty(_redator.Recebidos);
     }
 
     [Fact]
@@ -226,7 +209,6 @@ public class ResponderPerguntaRegrasTests {
 
         await Caso().ExecuteAsync(Cliente, pergunta);
 
-        // Historico recortado mais a pergunta atual.
         Assert.Equal(ResponderPerguntaRegras.MaximoMensagensHistorico + 1, _redator.Recebidos.Single().Count);
         Assert.Equal(ChatRole.User, _redator.Recebidos.Single()[^1].Role);
     }
@@ -243,20 +225,13 @@ public class ResponderPerguntaRegrasTests {
     }
 
     [Theory]
-    [InlineData("""{"tipo":"regra","jogo":"Catan"}""", TipoPergunta.Regra, "Catan")]
-    [InlineData("""{"tipo":"fora_de_escopo","jogo":null}""", TipoPergunta.ForaDeEscopo, null)]
-    [InlineData("""Claro! {"tipo":"saudacao"} """, TipoPergunta.Saudacao, null)]
-    [InlineData("""{"tipo":"outra coisa","jogo":"  "}""", TipoPergunta.Regra, null)]
-    public void InterpretarClassificacao(string resposta, TipoPergunta tipo, string? jogo) {
-        Assert.Equal(new ClassificacaoPergunta(tipo, jogo), ResponderPerguntaRegras.InterpretarClassificacao(resposta));
-    }
-
-    [Theory]
-    [InlineData(null)]
-    [InlineData("sem json")]
-    [InlineData("{quebrado")]
-    public void InterpretarClassificacao_Ilegivel_DevolveNulo(string? resposta) {
-        Assert.Null(ResponderPerguntaRegras.InterpretarClassificacao(resposta));
+    [InlineData("[[OUTRO_JOGO:Catan]]", "Catan")]
+    [InlineData("  [[ outro_jogo : Ticket to Ride ]] ", "Ticket to Ride")]
+    [InlineData("[[OUTRO_JOGO:]]", null)]
+    [InlineData("Resposta normal sobre o jogo.", null)]
+    [InlineData(null, null)]
+    public void ExtrairOutroJogo(string? resposta, string? esperado) {
+        Assert.Equal(esperado, ResponderPerguntaRegras.ExtrairOutroJogo(resposta));
     }
 }
 

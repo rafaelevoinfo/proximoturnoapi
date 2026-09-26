@@ -127,11 +127,8 @@ builder.Services.AddKeyedSingleton<IChatClient>(LlmMarkdownRevisor.ChaveChat, (s
 
 builder.Services.AddScoped<IRevisorMarkdown, LlmMarkdownRevisor>();
 
-// Chat de regras. Um cliente por etapa, cada um com a propria operacao no ledger. Timeouts
-// curtos e uma tentativa so: tem alguem esperando a resposta na tela.
-builder.Services.AddKeyedSingleton<IChatClient>(ResponderPerguntaRegras.ChaveClassificador, (sp, _) =>
-    sp.GetRequiredService<IFabricaOpenRouter>()
-      .CriarChat(IAModel.CHAT_CLASSIFICADOR_MODEL, OperacaoLlm.ChatClassificacao, TimeSpan.FromSeconds(30), tentativas: 1));
+// Chat de regras: uma chamada de chat por pergunta, mais o embedding da busca, cada um com
+// a propria operacao no ledger. Timeout curto e uma tentativa so: tem alguem esperando.
 builder.Services.AddKeyedSingleton<IChatClient>(ResponderPerguntaRegras.ChaveResposta, (sp, _) =>
     sp.GetRequiredService<IFabricaOpenRouter>()
       .CriarChat(IAModel.CHAT_RESPOSTA_MODEL, OperacaoLlm.ChatResposta, TimeSpan.FromSeconds(60), tentativas: 1));

@@ -34,6 +34,46 @@ public static class ResolvedorJogoChat {
     }
 
     /// <summary>
+    /// Jogos do catálogo citados pelo nome dentro de uma mensagem livre ("como pontua no
+    /// Catan?"). Casa por palavra inteira o nome completo ou o nome sem subtítulo, e devolve
+    /// também as variações parecidas, para o usuário escolher. Sem LLM: roda antes de qualquer
+    /// gasto, quando a conversa ainda não tem jogo.
+    /// </summary>
+    public static List<JogoChat> CitadosNaMensagem(string? mensagem, IReadOnlyList<JogoChat> jogos, int maximo = MaximoOpcoes) {
+        var texto = Normalizar(mensagem);
+        if (texto.Length == 0) {
+            return [];
+        }
+
+        var citados = jogos
+            .Select(jogo => (jogo, citado: NomesDoJogo(jogo.Nome).FirstOrDefault(nome => ContemPalavras(texto, nome))))
+            .Where(par => par.citado is not null)
+            .OrderByDescending(par => par.citado!.Length)
+            .ToList();
+
+        return [.. citados
+            .SelectMany(par => Candidatos(par.citado, jogos, maximo).Prepend(par.jogo))
+            .DistinctBy(jogo => jogo.Id)
+            .Take(maximo)];
+    }
+
+    /// <summary>Nome completo e, se houver, o nome antes do subtítulo ("Catan: Cidades" -> "catan").</summary>
+    private static IEnumerable<string> NomesDoJogo(string nome) {
+        var completo = Normalizar(nome);
+        if (completo.Length > 0) {
+            yield return completo;
+        }
+
+        var separador = nome.IndexOfAny([':', '–', '-', '(']);
+        if (separador > 0) {
+            var base_ = Normalizar(nome[..separador]);
+            if (base_.Length > 0 && base_ != completo) {
+                yield return base_;
+            }
+        }
+    }
+
+    /// <summary>
     /// 1 para nome igual; alta quando um contém o outro ("catan" em "catan: cidades e
     /// cavaleiros"); senão, a melhor entre sobreposição de palavras e semelhança de grafia.
     /// </summary>

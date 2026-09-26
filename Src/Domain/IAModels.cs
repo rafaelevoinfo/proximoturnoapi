@@ -13,11 +13,9 @@ public record IAModel {
     // Trocar de modelo invalida os vetores ja gravados: eles precisam ser gerados de novo.
     public const string EMBEDDING_MODEL = "openai/text-embedding-3-small";
 
-    // Chat de regras. O classificador so decide o tipo da pergunta e o jogo citado: o mesmo
-    // modelo barato do revisor basta. A resposta precisa ler trechos e explicar regra em
-    // portugues, e vai no flash que o OCR ja usa.
-    public const string CHAT_CLASSIFICADOR_MODEL = "deepseek/deepseek-v4-flash";
-    public const string CHAT_RESPOSTA_MODEL = "google/gemini-3.6-flash";
+    // Chat de regras: uma chamada por pergunta, que le os trechos do manual e responde. O
+    // mesmo modelo barato do revisor; as regras do que pode ser respondido ficam nas instrucoes.
+    public const string CHAT_RESPOSTA_MODEL = "deepseek/deepseek-v4-flash";
 
     /// <summary>Preço em US$ por milhão de tokens de entrada e de saída.</summary>
     public readonly record struct PrecoPorMilhao(decimal Entrada, decimal Saida);

@@ -162,7 +162,6 @@ public class ObterRelatorioCustosIa(DatabaseContext dbContext, ICotacaoDolar cot
         OperacaoLlm.Ocr => "OCR",
         OperacaoLlm.RevisaoMarkdown => "Revisão do markdown",
         OperacaoLlm.Embedding => "Embedding",
-        OperacaoLlm.ChatClassificacao => "Chat: classificação",
         OperacaoLlm.ChatEmbedding => "Chat: busca",
         OperacaoLlm.ChatResposta => "Chat: resposta",
         _ => operacao.ToString()
