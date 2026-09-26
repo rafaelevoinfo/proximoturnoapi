@@ -163,6 +163,7 @@ builder.Services.AddScoped<CadastroCliente>();
 builder.Services.AddScoped<AtualizarCliente>();
 builder.Services.AddScoped<AtualizarStatusCliente>();
 builder.Services.AddScoped<EnviarEmailsClientes>();
+builder.Services.AddScoped<ExcluirContaCliente>();
 
 // Upload
 builder.Services.AddScoped<UploadManual>();

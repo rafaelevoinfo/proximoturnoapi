@@ -17,6 +17,17 @@ public class AtualizarStatusCliente(IClienteRepository _repository, UserManager<
             return false;
         }
 
+        // Invariante da decisão 2 da spec: DataAnonimizacao != null implica Ativo == false.
+        // Este é o único caminho de escrita em Cliente.Ativo, então é aqui que a invariante se
+        // defende. Recusa nos dois sentidos: "reativar" ressuscitaria uma conta excluída (e o
+        // botão de exclusão LGPD, escondido por DataAnonimizacao, não voltaria para corrigir),
+        // e "inativar" uma conta já excluída não é operação nenhuma.
+        if (cliente.DataAnonimizacao is not null) {
+            logger.LogWarning("Falha ao alterar status: o cliente ID {ClienteId} tem a conta excluída.", id);
+            AddNotification(UseCaseNotification.Create(UseCaseNotificationType.Error, "Não é possível alterar o status de uma conta excluída."));
+            return false;
+        }
+
         var usuarioCliente = await _userManager.FindByEmailAsync(cliente.Email);
         if (!ativo && usuarioCliente != null && await _userManager.IsInRoleAsync(usuarioCliente, Roles.Admin)) {
             logger.LogWarning("Tentativa de inativar o cliente ID {ClienteId} ({Email}), que é um administrador.", id, cliente.Email);

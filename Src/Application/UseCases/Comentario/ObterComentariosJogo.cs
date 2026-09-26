@@ -15,7 +15,11 @@ public class ObterComentariosJogo(
         var query = dbContext.Comentarios
             .Include(c => c.Cliente)
             .Include(c => c.Jogo)
-            .Where(c => c.IdJogo == jogoId && c.Status == StatusComentario.Aprovado)
+            .Where(c => c.IdJogo == jogoId
+                     && c.Status == StatusComentario.Aprovado
+                     // Cinto de segurança: os comentários do cliente já são apagados na exclusão
+                     // de conta, este filtro protege contra linhas órfãs de dados legados.
+                     && c.Cliente.DataAnonimizacao == null)
             .OrderByDescending(c => c.DataHora)
             .AsQueryable();
 
