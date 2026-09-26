@@ -1,4 +1,7 @@
+using Microsoft.Extensions.Logging.Abstractions;
+using ProximoTurnoApi.Infrastructure.IA;
 using ProximoTurnoApi.Infrastructure.RAG;
+using ProximoTurnoApi.Tests.Fakes;
 using Xunit;
 
 namespace ProximoTurnoApi.Tests.Infrastructure;
@@ -134,5 +137,26 @@ public class PdfTextExtractorTests {
         Assert.NotNull(extracao);
         Assert.Equal(0, extracao.Confiabilidade);
         Assert.Contains("CONFIABILIDADE: 99", extracao.Texto);
+    }
+
+    // Falta de chave tem que estourar como falta de chave, e antes de carregar o PDF: se cair no
+    // catch por modelo, o log diz "nenhum modelo conseguiu extrair" e o UltimoErro gravado no
+    // manual mente sobre a causa - com 47MB de base64 carregados em memoria a troco de nada.
+    [Fact]
+    public async Task SemChave_LancaFaltaDeChaveENaoFalhaDeExtracao() {
+        var pdf = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.pdf");
+        await File.WriteAllBytesAsync(pdf, [0x25, 0x50, 0x44, 0x46]);
+
+        try {
+            var fabrica = new FabricaOpenRouter(NullLoggerFactory.Instance, new FakeRegistradorUsoLlm(), () => null);
+            var extrator = new PdfTextExtractor(NullLogger<PdfTextExtractor>.Instance, fabrica);
+
+            var erro = await Assert.ThrowsAsync<InvalidOperationException>(
+                () => extrator.ExtractTextAsync(pdf, CancellationToken.None));
+
+            Assert.Equal("OPENROUTER_API_KEY não configurada.", erro.Message);
+        } finally {
+            File.Delete(pdf);
+        }
     }
 }

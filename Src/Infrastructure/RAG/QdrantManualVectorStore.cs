@@ -1,4 +1,4 @@
-using Qdrant.Client;
+﻿using Qdrant.Client;
 using Qdrant.Client.Grpc;
 using ProximoTurnoApi.Application.UseCases.RAG;
 
@@ -52,8 +52,23 @@ public class QdrantManualVectorStore(ILogger<QdrantManualVectorStore> _logger,
             return;
         }
 
-        await _client.DeleteAsync(Colecao, MatchInt("IdJogoLink", idJogoLink), cancellationToken: cancellationToken);
-        _logger.LogInformation("Vetores do link {IdJogoLink} removidos da coleção {Colecao}.", idJogoLink, Colecao);
+        var filtro = MatchInt("IdJogoLink", idJogoLink);
+
+        // O delete por filtro do Qdrant devolve status, nao quantidade: sem contar antes, o log
+        // anunciaria remocao tambem quando nao havia nada - o que acontece em todo primeiro
+        // indice de um link. A consulta a mais roda uma vez por manual, e evita escrita inutil.
+        var quantidade = await _client.CountAsync(Colecao, filtro, exact: true, cancellationToken: cancellationToken);
+        if (quantidade == 0) {
+            _logger.LogDebug("Link {IdJogoLink} não tinha vetores na coleção {Colecao}.", idJogoLink, Colecao);
+            return;
+        }
+
+        await _client.DeleteAsync(Colecao, filtro, cancellationToken: cancellationToken);
+
+        // A quantidade e informacao nova: vetor sobrando num link que se julgava vazio e sujeira,
+        // e hoje isso era indistinguivel de zero.
+        _logger.LogInformation("{Quantidade} vetores do link {IdJogoLink} removidos da coleção {Colecao}.",
+                               quantidade, idJogoLink, Colecao);
     }
 
     public async Task<IReadOnlyList<int>> ListarIdsLinksAsync(CancellationToken cancellationToken) {
@@ -63,7 +78,10 @@ public class QdrantManualVectorStore(ILogger<QdrantManualVectorStore> _logger,
 
         var facetas = await _client.FacetAsync(Colecao, "IdJogoLink", limit: LimiteFacet, exact: true, cancellationToken: cancellationToken);
 
-        return [.. facetas.Hits.Select(faceta => (int)faceta.Value.IntegerValue)];
+        // O Qdrant devolve faceta com Count 0 para valor que ja nao tem ponto nenhum. Sem este
+        // filtro, a reconciliacao le esses ids como "vetores sobrando", enfileira o link com
+        // IdJogo 0 e manda remover o que nao existe - a cada start da aplicacao.
+        return [.. facetas.Hits.Where(faceta => faceta.Count > 0).Select(faceta => (int)faceta.Value.IntegerValue)];
     }
 
     /// <summary>

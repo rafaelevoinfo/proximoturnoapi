@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using ProximoTurnoApi.Infrastructure.Repositories;
 
@@ -10,9 +11,11 @@ using ProximoTurnoApi.Infrastructure.Repositories;
 namespace ProximoTurnoApi.Migrations
 {
     [DbContext(typeof(DatabaseContext))]
-    partial class DatabaseContextModelSnapshot : ModelSnapshot
+    [Migration("20260826013801_AddDataAnonimizacaoToCliente")]
+    partial class AddDataAnonimizacaoToCliente
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -711,89 +714,6 @@ namespace ProximoTurnoApi.Migrations
                     b.ToTable("JOGO_LINK");
                 });
 
-            modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.JogoLinkIndexacao", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("ID");
-
-                    b.Property<short?>("ConfiabilidadeExtracao")
-                        .HasColumnType("smallint")
-                        .HasColumnName("CONFIABILIDADE_EXTRACAO");
-
-                    b.Property<int?>("CorrecoesAplicadas")
-                        .HasColumnType("int")
-                        .HasColumnName("CORRECOES_APLICADAS");
-
-                    b.Property<int?>("CorrecoesDescartadas")
-                        .HasColumnType("int")
-                        .HasColumnName("CORRECOES_DESCARTADAS");
-
-                    b.Property<DateTime>("DataAtualizacao")
-                        .HasColumnType("datetime(6)")
-                        .HasColumnName("DATA_ATUALIZACAO");
-
-                    b.Property<DateTime?>("DataIndexacao")
-                        .HasColumnType("datetime(6)")
-                        .HasColumnName("DATA_INDEXACAO");
-
-                    b.Property<string>("HashPdf")
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)")
-                        .HasColumnName("HASH_PDF");
-
-                    b.Property<int>("IdJogoLink")
-                        .HasColumnType("int")
-                        .HasColumnName("ID_JOGO_LINK");
-
-                    b.Property<string>("ModeloExtracao")
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)")
-                        .HasColumnName("MODELO_EXTRACAO");
-
-                    b.Property<string>("ModeloRevisao")
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)")
-                        .HasColumnName("MODELO_REVISAO");
-
-                    b.Property<int?>("QuantidadeChunks")
-                        .HasColumnType("int")
-                        .HasColumnName("QUANTIDADE_CHUNKS");
-
-                    b.Property<bool?>("RevisaoCompleta")
-                        .HasColumnType("tinyint(1)")
-                        .HasColumnName("REVISAO_COMPLETA");
-
-                    b.Property<short>("Status")
-                        .HasColumnType("smallint")
-                        .HasColumnName("STATUS");
-
-                    b.Property<int>("Tentativas")
-                        .HasColumnType("int")
-                        .HasColumnName("TENTATIVAS");
-
-                    b.Property<string>("UltimoErro")
-                        .HasMaxLength(1000)
-                        .HasColumnType("varchar(1000)")
-                        .HasColumnName("ULTIMO_ERRO");
-
-                    b.Property<string>("Url")
-                        .IsRequired()
-                        .HasMaxLength(300)
-                        .HasColumnType("varchar(300)")
-                        .HasColumnName("URL");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("HashPdf");
-
-                    b.HasIndex("IdJogoLink")
-                        .IsUnique();
-
-                    b.ToTable("JOGO_LINK_INDEXACAO");
-                });
-
             modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.Tag", b =>
                 {
                     b.Property<int>("Id")
@@ -813,103 +733,6 @@ namespace ProximoTurnoApi.Migrations
                         .IsUnique();
 
                     b.ToTable("TAG");
-                });
-
-            modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.UsoLlm", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("ID");
-
-                    b.Property<string>("Alvo")
-                        .HasMaxLength(200)
-                        .HasColumnType("varchar(200)")
-                        .HasColumnName("ALVO");
-
-                    b.Property<decimal?>("CustoUsd")
-                        .HasPrecision(18, 10)
-                        .HasColumnType("decimal(18,10)")
-                        .HasColumnName("CUSTO_USD");
-
-                    b.Property<short>("Desfecho")
-                        .HasColumnType("smallint")
-                        .HasColumnName("DESFECHO");
-
-                    b.Property<string>("Detalhe")
-                        .HasMaxLength(300)
-                        .HasColumnType("varchar(300)")
-                        .HasColumnName("DETALHE");
-
-                    b.Property<int>("DuracaoMs")
-                        .HasColumnType("int")
-                        .HasColumnName("DURACAO_MS");
-
-                    b.Property<string>("IdGeracao")
-                        .HasMaxLength(80)
-                        .HasColumnType("varchar(80)")
-                        .HasColumnName("ID_GERACAO");
-
-                    b.Property<int?>("IdJogo")
-                        .HasColumnType("int")
-                        .HasColumnName("ID_JOGO");
-
-                    b.Property<int?>("IdJogoLink")
-                        .HasColumnType("int")
-                        .HasColumnName("ID_JOGO_LINK");
-
-                    b.Property<string>("ModeloPedido")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)")
-                        .HasColumnName("MODELO_PEDIDO");
-
-                    b.Property<string>("ModeloRespondeu")
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)")
-                        .HasColumnName("MODELO_RESPONDEU");
-
-                    b.Property<DateTime>("Momento")
-                        .HasColumnType("datetime(6)")
-                        .HasColumnName("MOMENTO");
-
-                    b.Property<short>("Operacao")
-                        .HasColumnType("smallint")
-                        .HasColumnName("OPERACAO");
-
-                    b.Property<string>("Provider")
-                        .HasMaxLength(60)
-                        .HasColumnType("varchar(60)")
-                        .HasColumnName("PROVIDER");
-
-                    b.Property<int>("TokensCache")
-                        .HasColumnType("int")
-                        .HasColumnName("TOKENS_CACHE");
-
-                    b.Property<int>("TokensEntrada")
-                        .HasColumnType("int")
-                        .HasColumnName("TOKENS_ENTRADA");
-
-                    b.Property<int>("TokensRaciocinio")
-                        .HasColumnType("int")
-                        .HasColumnName("TOKENS_RACIOCINIO");
-
-                    b.Property<int>("TokensSaida")
-                        .HasColumnType("int")
-                        .HasColumnName("TOKENS_SAIDA");
-
-                    b.Property<string>("TraceId")
-                        .HasMaxLength(32)
-                        .HasColumnType("varchar(32)")
-                        .HasColumnName("TRACE_ID");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("IdJogoLink");
-
-                    b.HasIndex("Momento");
-
-                    b.ToTable("USO_LLM");
                 });
 
             modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.Usuario", b =>
@@ -1185,15 +1008,6 @@ namespace ProximoTurnoApi.Migrations
                     b.HasOne("ProximoTurnoApi.Infrastructure.Models.Jogo", null)
                         .WithMany("Links")
                         .HasForeignKey("IdJogo")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.JogoLinkIndexacao", b =>
-                {
-                    b.HasOne("ProximoTurnoApi.Infrastructure.Models.JogoLink", null)
-                        .WithOne()
-                        .HasForeignKey("ProximoTurnoApi.Infrastructure.Models.JogoLinkIndexacao", "IdJogoLink")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

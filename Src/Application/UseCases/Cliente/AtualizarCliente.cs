@@ -13,6 +13,11 @@ public class AtualizarCliente(IClienteRepository _repository, ILogger<AtualizarC
             AddNotification(UseCaseNotification.Create(UseCaseNotificationType.Error, $"Cliente de id {clienteDto.Id} não encontrado."));
             return false;
         }
+        if (cliente.DataAnonimizacao is not null) {
+            AddNotification(UseCaseNotification.Create(
+                UseCaseNotificationType.BadRequest, "Não é possível alterar uma conta excluída."));
+            return false;
+        }
         if (!cliente.Ativo) {
             logger.LogWarning("Falha ao atualizar: Cliente ID {ClienteId} está inativo.", clienteDto.Id);
             AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest, $"Cliente de id {clienteDto.Id} está inativo e não pode ser atualizado."));

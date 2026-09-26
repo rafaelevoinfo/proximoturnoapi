@@ -1,5 +1,6 @@
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
 using Microsoft.AspNetCore.Hosting;
+using ProximoTurnoApi.Application.UseCases.IA;
 using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Infrastructure.Repositories;
 
@@ -123,6 +124,11 @@ public class SincronizarManual(IWebHostEnvironment _env,
         }
 
         var contexto = new ContextoManual(estado.NomeJogo, estado.TituloLink);
+
+        // Diz ao ledger a que manual pertence tudo que for gasto daqui para baixo: extracao,
+        // revisao e embedding.
+        using var escopoUso = EscopoUsoLlm.Abrir(estado.IdJogo, estado.IdJogoLink, contexto.Prefixo);
+
         var caminhoRaw = await ExtrairAsync(caminhoPdf, indexacao, cancellationToken);
         var caminhoFinal = await RevisarAsync(caminhoRaw, contexto, indexacao, cancellationToken);
 

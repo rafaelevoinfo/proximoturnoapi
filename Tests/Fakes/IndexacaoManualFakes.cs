@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.FileProviders;
+using ProximoTurnoApi.Application.UseCases.IA;
 using ProximoTurnoApi.Application.UseCases.RAG;
 using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Infrastructure.Repositories;
@@ -155,7 +156,11 @@ public sealed class FakeTextExtractor : ITextExtractor {
     public string Texto { get; set; } = "# Manual\n\n" + string.Join(" ", Enumerable.Repeat("Regra do jogo.", 40));
     public Exception? Erro { get; set; }
 
+    /// <summary>Alvo ambiente visto durante a chamada: prova que o escopo estava aberto.</summary>
+    public AlvoUsoLlm? AlvoVisto { get; private set; }
+
     public Task<ResultadoExtracao> ExtractTextAsync(string filePath, CancellationToken cancellationToken) {
+        AlvoVisto = EscopoUsoLlm.Atual;
         Chamadas++;
         if (Erro is not null) {
             throw Erro;
