@@ -84,6 +84,36 @@ public class QdrantManualVectorStore(ILogger<QdrantManualVectorStore> _logger,
         return [.. facetas.Hits.Where(faceta => faceta.Count > 0).Select(faceta => (int)faceta.Value.IntegerValue)];
     }
 
+    public async Task<IReadOnlyList<TrechoManual>> BuscarAsync(int idJogo, ReadOnlyMemory<float> vetor, int quantidade, CancellationToken cancellationToken) {
+        if (!await _client.CollectionExistsAsync(Colecao, cancellationToken)) {
+            return [];
+        }
+
+        var pontos = await _client.SearchAsync(Colecao, vetor, FiltroBusca(idJogo), limit: (ulong)quantidade,
+                                               cancellationToken: cancellationToken);
+
+        return [.. pontos.Select(Trecho).Where(trecho => trecho.IdJogo == idJogo)];
+    }
+
+    /// <summary>Filtro da busca do chat: um jogo só, sempre.</summary>
+    public static Filter FiltroBusca(int idJogo) => MatchInt("IdJogo", idJogo);
+
+    /// <summary>
+    /// Lê o payload gravado por <see cref="Ponto"/>. O filtro já garante o jogo; a conferência
+    /// do <c>IdJogo</c> em <see cref="BuscarAsync"/> é a segunda trava, barata, contra misturar
+    /// regras de outro jogo na resposta.
+    /// </summary>
+    public static TrechoManual Trecho(ScoredPoint ponto) {
+        var payload = ponto.Payload;
+
+        return new TrechoManual(
+            payload.TryGetValue("IdJogo", out var idJogo) ? (int)idJogo.IntegerValue : 0,
+            payload.TryGetValue("IdJogoLink", out var idLink) ? (int)idLink.IntegerValue : 0,
+            payload.TryGetValue("Titulo", out var titulo) ? titulo.StringValue : "",
+            payload.TryGetValue("Texto", out var texto) ? texto.StringValue : "",
+            ponto.Score);
+    }
+
     /// <summary>
     /// Monta o ponto do Qdrant a partir do chunk. O texto vai no payload porque a busca
     /// precisa devolver a resposta pronta: o conteúdo não existe em nenhum outro lugar.

@@ -109,7 +109,9 @@ Assim a variação do dólar não reescreve o saldo passado.
    `saldoEsgotado` sem gastar nada.
 2. Cada etapa paga abre `EscopoUsoLlm` com `IdUsuario` + `IdJogo`, e o ledger grava sozinho,
    já com `CUSTO_BRL`.
-3. A resposta devolve o saldo recalculado (`null` para admin, exibido como "ilimitado").
+3. **O saldo nunca aparece para o usuário**: nem na resposta do chat, nem em endpoint dele.
+   Só o admin vê o crédito de um cliente (`GET /api/chat/creditos/cliente/{idCliente}`) e o
+   ranking de gasto no dashboard de custos.
 
 Duas requisições simultâneas podem deixar o saldo levemente negativo (centavos). Isso é aceito
 de propósito: bloquear por usuário custaria mais do que o risco. O próximo pedido é recusado.
@@ -162,8 +164,7 @@ Resposta:
   "texto": "...",
   "jogo": { "id": 42, "nome": "Catan" },          // jogo usado, quando houver
   "opcoesJogo": [ { "id": 42, "nome": "Catan" } ], // só em confirmarJogo
-  "fontes": [ { "titulo": "Manual > Comércio", "idJogoLink": 7 } ],
-  "saldo": 3.42
+  "fontes": [ { "titulo": "Manual > Comércio", "idJogoLink": 7 } ]
 }
 ```
 
@@ -187,7 +188,7 @@ freio contra abuso.
 | Método | Rota | Auth | Descrição |
 |---|---|---|---|
 | POST | `/api/chat/mensagens` | `[Authorize]` | Fluxo da decisão 4 |
-| GET | `/api/chat/saldo` | `[Authorize]` | `{ saldo, creditos, debitos }` para o widget |
+| GET | `/api/chat/creditos/cliente/{idCliente}` | `Admin` | Crédito do chat de um cliente (base alugada, crédito, bônus, gasto, saldo, cotação) |
 
 Rate limit (`AddRateLimiter`, janela fixa por usuário, ~10 req/min) no `POST`. Pergunta
 limitada a 500 caracteres; histórico cortado no servidor para os últimos 6 turnos.
@@ -197,21 +198,22 @@ limitada a 500 caracteres; histórico cortado no servidor para os últimos 6 tur
 - `lib/chat-context.tsx`: `ChatProvider` com `jogoPagina`, estado da conversa, `abrir()`.
   Entra no `app/layout.tsx` dentro do `AuthProvider`.
 - `components/chat-regras/`: botão flutuante e painel (shadcn `Sheet` no mobile, card no
-  desktop), lista de mensagens, chips de confirmação de jogo, rodapé com saldo.
+  desktop), lista de mensagens, chips de confirmação de jogo. **Sem saldo na tela.**
 - Oculto quando `usePathname().startsWith("/admin")`. Não existe layout de admin separado,
   então o filtro fica no próprio widget.
 - Deslogado: o painel mostra "Entre para tirar dúvidas de regras" com um link para `/login`.
 - `app/jogos/[id]/page.tsx` chama `setJogoPagina({ id, nome })` ao carregar e limpa ao sair.
   Botão "Dúvidas sobre as regras?" na página abre o chat já filtrado. Trocar de página de jogo
   com o chat aberto inicia uma conversa nova com o novo jogo.
-- Rotas proxy `app/api/chat/mensagens/route.ts` e `app/api/chat/saldo/route.ts` no padrão de
+- Rota proxy `app/api/chat/mensagens/route.ts` (e a de créditos, usada só no admin) no padrão de
   `app/api/relatorios/custos-ia/route.ts` (`getBaseHeaders`, `handleApiError`).
 - Conversa em `sessionStorage` (sobrevive à navegação, some ao fechar a aba).
 
 ## Admin
 
-- `/admin/custos-ia`: as novas operações aparecem com rótulo; filtro opcional por usuário;
-  card "Top usuários do chat por custo".
+- `/admin/custos-ia`: as novas operações aparecem com rótulo; card "Top usuários do chat por
+  custo" e a cotação em uso (e de onde veio).
+- `/admin/clientes`: crédito do chat de cada cliente, no detalhe do cliente.
 
 ## Fora do escopo da v1
 
@@ -243,7 +245,7 @@ concessão manual de créditos pelo admin.
 4. **Cotação**: `ICotacaoDolar` com AwesomeAPI, cache de 6 h e fallback para a `.env`.
    `RegistradorUsoLlm` preenche `CUSTO_BRL` quando há usuário. Testes com `HttpMessageHandler`
    falso: sucesso, erro com cache, erro sem cache (usa o padrão), JSON inesperado.
-   **Créditos**: `ICreditosChatRepository` + use case `ObterSaldoChat` (decisão 2). Testes:
+   **Créditos**: `IChatRegrasRepository` + use case `ObterSaldoChat` (decisão 2). Testes:
    item cancelado/pendente não conta; renovação conta; cupom e taxa de entrega não mudam o
    crédito; usuário sem aluguel tem só o bônus; admin não é bloqueado.
 5. **Resolução de jogo**: busca de candidatos por nome entre jogos ativos com manual
@@ -276,3 +278,4 @@ concessão manual de créditos pelo admin.
 2. Cotação: API gratuita (AwesomeAPI), com valor fixo na `.env` como fallback.
 3. Admin: sem limite de crédito.
 4. Boas-vindas: US$ 0,50 de crédito para todo usuário.
+5. O crédito não é exibido para o usuário, só para admins.

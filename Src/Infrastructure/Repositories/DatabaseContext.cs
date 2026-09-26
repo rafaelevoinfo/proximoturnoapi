@@ -126,10 +126,14 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : Identi
             // As consultas do ledger sao por periodo e por manual.
             b.HasIndex(u => u.Momento);
             b.HasIndex(u => u.IdJogoLink);
+            // O saldo do chat soma o gasto de um usuario a cada pergunta.
+            b.HasIndex(u => u.IdUsuario);
 
             // 0.000000343 e um custo real de uma chamada: num ledger, precisao antes de
             // velocidade de soma.
             b.Property(u => u.CustoUsd).HasPrecision(18, 10);
+            b.Property(u => u.CustoBrl).HasPrecision(18, 10);
+            b.Property(u => u.CotacaoUsdBrl).HasPrecision(10, 4);
         });
     }
 

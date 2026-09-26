@@ -12,4 +12,32 @@ public record IAModel {
     // Embedding dos chunks do manual. 1536 dimensoes, $0.02/M tokens.
     // Trocar de modelo invalida os vetores ja gravados: eles precisam ser gerados de novo.
     public const string EMBEDDING_MODEL = "openai/text-embedding-3-small";
+
+    // Chat de regras. O classificador so decide o tipo da pergunta e o jogo citado: o mesmo
+    // modelo barato do revisor basta. A resposta precisa ler trechos e explicar regra em
+    // portugues, e vai no flash que o OCR ja usa.
+    public const string CHAT_CLASSIFICADOR_MODEL = "deepseek/deepseek-v4-flash";
+    public const string CHAT_RESPOSTA_MODEL = "google/gemini-3.6-flash";
+
+    /// <summary>Preço em US$ por milhão de tokens de entrada e de saída.</summary>
+    public readonly record struct PrecoPorMilhao(decimal Entrada, decimal Saida);
+
+    /// <summary>
+    /// Só para estimar o gasto quando a OpenRouter não devolve <c>usage.cost</c>: custo
+    /// nulo não pode sair de graça do crédito do usuário. O valor real, quando vem, manda.
+    /// </summary>
+    public static readonly IReadOnlyDictionary<string, PrecoPorMilhao> PRECOS = new Dictionary<string, PrecoPorMilhao> {
+        ["google/gemini-3.6-flash"] = new(0.75m, 3.75m),
+        ["anthropic/claude-opus-5"] = new(5m, 25m),
+        ["deepseek/deepseek-v4-flash"] = new(0.049m, 0.098m),
+        ["openai/text-embedding-3-small"] = new(0.02m, 0m),
+    };
+
+    /// <summary>Modelo fora da tabela é estimado pelo mais caro dela: errar para cima.</summary>
+    public static readonly PrecoPorMilhao PRECO_DESCONHECIDO = new(5m, 25m);
+
+    public static decimal EstimarCustoUsd(string modelo, int tokensEntrada, int tokensSaida) {
+        var preco = PRECOS.TryGetValue(modelo, out var conhecido) ? conhecido : PRECO_DESCONHECIDO;
+        return (tokensEntrada * preco.Entrada + tokensSaida * preco.Saida) / 1_000_000m;
+    }
 }

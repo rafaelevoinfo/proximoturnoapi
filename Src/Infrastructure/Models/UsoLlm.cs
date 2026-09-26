@@ -7,7 +7,13 @@ namespace ProximoTurnoApi.Infrastructure.Models;
 public enum OperacaoLlm : short {
     Ocr = 0,
     RevisaoMarkdown = 1,
-    Embedding = 2
+    Embedding = 2,
+    /// <summary>Chat de regras: decide se a pergunta é sobre regra e de que jogo fala.</summary>
+    ChatClassificacao = 3,
+    /// <summary>Chat de regras: vetoriza a pergunta para a busca no manual.</summary>
+    ChatEmbedding = 4,
+    /// <summary>Chat de regras: escreve a resposta a partir dos trechos do manual.</summary>
+    ChatResposta = 5
 }
 
 /// <summary>Como a chamada terminou. Só <see cref="Ok"/> significa que o gasto rendeu algo.</summary>
@@ -41,6 +47,13 @@ public class UsoLlm : BaseModel {
 
     [Column("OPERACAO")]
     public OperacaoLlm Operacao { get; set; }
+
+    /// <summary>
+    /// Quem gerou o gasto, quando foi um usuário (chat de regras). Nulo na indexação, que é
+    /// custo da loja. Sem FK pelo mesmo motivo do link: excluir a conta não apaga o gasto.
+    /// </summary>
+    [Column("ID_USUARIO"), MaxLength(255)]
+    public string? IdUsuario { get; set; }
 
     [Column("ID_JOGO")]
     public int? IdJogo { get; set; }
@@ -77,6 +90,18 @@ public class UsoLlm : BaseModel {
     /// <summary>Nulo é "não sei quanto custou"; zero é "não custou".</summary>
     [Column("CUSTO_USD")]
     public decimal? CustoUsd { get; set; }
+
+    /// <summary>
+    /// O gasto em reais, convertido na hora da chamada. Só existe quando há usuário: é o que
+    /// sai do crédito dele, e congelar aqui impede a variação do dólar de reescrever o saldo.
+    /// Quando <see cref="CustoUsd"/> vem nulo, é a estimativa pelos tokens.
+    /// </summary>
+    [Column("CUSTO_BRL")]
+    public decimal? CustoBrl { get; set; }
+
+    /// <summary>Cotação usada para chegar em <see cref="CustoBrl"/>.</summary>
+    [Column("COTACAO_USD_BRL")]
+    public decimal? CotacaoUsdBrl { get; set; }
 
     [Column("DURACAO_MS")]
     public int DuracaoMs { get; set; }

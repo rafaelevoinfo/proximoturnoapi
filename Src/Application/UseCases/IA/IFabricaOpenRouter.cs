@@ -12,5 +12,9 @@ public interface IFabricaOpenRouter {
     /// <param name="operacao">Para que serve este cliente. Vai em toda linha do ledger.</param>
     IChatClient CriarChat(string modelo, OperacaoLlm operacao, TimeSpan timeout, int tentativas);
 
-    IEmbeddingGenerator<string, Embedding<float>> CriarEmbedding(string modelo);
+    /// <param name="operacao">
+    /// Padrão <see cref="OperacaoLlm.Embedding"/>, o da indexação. O chat pede o próprio, para
+    /// o gasto de busca não se misturar ao de indexar manual no relatório.
+    /// </param>
+    IEmbeddingGenerator<string, Embedding<float>> CriarEmbedding(string modelo, OperacaoLlm operacao = OperacaoLlm.Embedding);
 }

@@ -26,6 +26,12 @@ using Microsoft.Agents.AI;
 using ProximoTurnoApi.Domain;
 using Qdrant.Client;
 using Qdrant.Client.Grpc;
+using System.Security.Claims;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
+using ProximoTurnoApi.Application.Controllers;
+using ProximoTurnoApi.Application.DTOs;
+using ProximoTurnoApi.Application.UseCases.Chat;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -120,6 +126,42 @@ builder.Services.AddKeyedSingleton<IChatClient>(LlmMarkdownRevisor.ChaveChat, (s
       .CriarChat(IAModel.REVISOR_MODEL, OperacaoLlm.RevisaoMarkdown, TimeSpan.FromMinutes(5), tentativas: 2));
 
 builder.Services.AddScoped<IRevisorMarkdown, LlmMarkdownRevisor>();
+
+// Chat de regras. Um cliente por etapa, cada um com a propria operacao no ledger. Timeouts
+// curtos e uma tentativa so: tem alguem esperando a resposta na tela.
+builder.Services.AddKeyedSingleton<IChatClient>(ResponderPerguntaRegras.ChaveClassificador, (sp, _) =>
+    sp.GetRequiredService<IFabricaOpenRouter>()
+      .CriarChat(IAModel.CHAT_CLASSIFICADOR_MODEL, OperacaoLlm.ChatClassificacao, TimeSpan.FromSeconds(30), tentativas: 1));
+builder.Services.AddKeyedSingleton<IChatClient>(ResponderPerguntaRegras.ChaveResposta, (sp, _) =>
+    sp.GetRequiredService<IFabricaOpenRouter>()
+      .CriarChat(IAModel.CHAT_RESPOSTA_MODEL, OperacaoLlm.ChatResposta, TimeSpan.FromSeconds(60), tentativas: 1));
+builder.Services.AddKeyedSingleton<IEmbeddingGenerator<string, Embedding<float>>>(ResponderPerguntaRegras.ChaveEmbedding, (sp, _) =>
+    sp.GetRequiredService<IFabricaOpenRouter>().CriarEmbedding(IAModel.EMBEDDING_MODEL, OperacaoLlm.ChatEmbedding));
+
+builder.Services.AddHttpClient(CotacaoDolarAwesomeApi.NomeHttpClient, cliente => cliente.Timeout = TimeSpan.FromSeconds(5));
+builder.Services.AddSingleton<ICotacaoDolar>(sp => new CotacaoDolarAwesomeApi(
+    sp.GetRequiredService<ILogger<CotacaoDolarAwesomeApi>>(),
+    sp.GetRequiredService<IHttpClientFactory>(),
+    LerDecimal(builder.Configuration, "COTACAO_USD_BRL_PADRAO", 5.50m)));
+builder.Services.AddSingleton(new ConfiguracaoChat(
+    LerDecimal(builder.Configuration, "CHAT_PERCENTUAL_CREDITO", ConfiguracaoChat.Padrao.PercentualCredito),
+    LerDecimal(builder.Configuration, "CHAT_BONUS_USD", ConfiguracaoChat.Padrao.BonusUsd)));
+builder.Services.AddScoped<IChatRegrasRepository, ChatRegrasRepository>();
+builder.Services.AddScoped<ObterSaldoChat>();
+builder.Services.AddScoped<ResponderPerguntaRegras>();
+
+// Cada pergunta custa dinheiro: um limite por usuario segura clique repetido e script.
+builder.Services.AddRateLimiter(opcoes => {
+    opcoes.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    opcoes.AddPolicy(ChatController.PoliticaLimite, contexto => RateLimitPartition.GetFixedWindowLimiter(
+        contexto.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? contexto.Connection.RemoteIpAddress?.ToString() ?? "anonimo",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+    opcoes.OnRejected = async (contexto, cancellationToken) => {
+        await contexto.HttpContext.Response.WriteAsJsonAsync(
+            ApiResultDTO<string>.CreateFailureResult("Muitas perguntas em pouco tempo. Aguarde um minuto e tente de novo."),
+            cancellationToken);
+    };
+});
 builder.Services.AddScoped<SincronizarManual>();
 
 builder.Services.AddHostedService<IndexacaoManuaisWorker>();
@@ -236,6 +278,12 @@ if (app.Environment.IsDevelopment()) {
 
 app.UseCors();
 
+// Depois da autenticacao, que o WebApplication instala no inicio do pipeline: o limite do
+// chat e por usuario.
+app.UseAuthentication();
+app.UseAuthorization();
+app.UseRateLimiter();
+
 var uploadsPath = Path.Combine(app.Environment.ContentRootPath, "wwwroot", "uploads");
 if (!Directory.Exists(uploadsPath)) {
     Directory.CreateDirectory(uploadsPath);
@@ -292,6 +340,10 @@ using (RastreioBackground.Iniciar("Inicializacao")) {
 
 app.Run();
 
+
+static decimal LerDecimal(IConfiguration configuracao, string chave, decimal padrao) =>
+    decimal.TryParse(configuracao[chave], System.Globalization.NumberStyles.Number,
+                     System.Globalization.CultureInfo.InvariantCulture, out var valor) ? valor : padrao;
 
 static class Extensions {
     public static void AddIdentityUser(this IServiceCollection services) {

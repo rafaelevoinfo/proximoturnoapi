@@ -148,6 +148,15 @@ public sealed class FakeManualVectorStore : IManualVectorStore {
 
     public Task<IReadOnlyList<int>> ListarIdsLinksAsync(CancellationToken cancellationToken) =>
         Task.FromResult<IReadOnlyList<int>>(IdsComVetores);
+
+    /// <summary>Trechos que a busca devolve, de qualquer jogo: o fake filtra como o Qdrant.</summary>
+    public List<TrechoManual> Trechos { get; } = [];
+    public List<int> JogosBuscados { get; } = [];
+
+    public Task<IReadOnlyList<TrechoManual>> BuscarAsync(int idJogo, ReadOnlyMemory<float> vetor, int quantidade, CancellationToken cancellationToken) {
+        JogosBuscados.Add(idJogo);
+        return Task.FromResult<IReadOnlyList<TrechoManual>>([.. Trechos.Where(t => t.IdJogo == idJogo).Take(quantidade)]);
+    }
 }
 
 public sealed class FakeTextExtractor : ITextExtractor {

@@ -63,6 +63,9 @@ services:
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
       QDRANT_URL: ${QDRANT_URL}
       QDRANT_API_KEY: ${QDRANT_API_KEY}
+      CHAT_PERCENTUAL_CREDITO: ${CHAT_PERCENTUAL_CREDITO:-0.10}
+      CHAT_BONUS_USD: ${CHAT_BONUS_USD:-0.50}
+      COTACAO_USD_BRL_PADRAO: ${COTACAO_USD_BRL_PADRAO:-5.50}
     healthcheck:
         test: ["CMD-SHELL", "curl -f http://localhost/health || exit 1"]
         interval: 30s
