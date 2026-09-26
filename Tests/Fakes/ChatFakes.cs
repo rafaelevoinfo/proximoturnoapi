@@ -1,6 +1,7 @@
 using System.Net;
 using Microsoft.Extensions.AI;
 using ProximoTurnoApi.Application.UseCases.IA;
+using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Infrastructure.Repositories;
 
 namespace ProximoTurnoApi.Tests.Fakes;
@@ -105,4 +106,41 @@ public sealed class FakeCotacaoHandler : HttpMessageHandler {
 public sealed class FakeHttpClientFactory(HttpMessageHandler handler) : IHttpClientFactory {
 
     public HttpClient CreateClient(string name) => new(handler, disposeHandler: false);
+}
+
+/// <summary>Guarda as conversas em memória, como o banco guardaria, com o id gerado no insert.</summary>
+public sealed class FakeChatConversaRepository : IChatConversaRepository {
+
+    private int _proximoId = 1;
+
+    public List<ChatConversa> Conversas { get; } = [];
+    public List<ChatMensagem> Mensagens { get; } = [];
+    public List<string> UsuariosExcluidos { get; } = [];
+
+    public Task<ChatConversa?> ObterAsync(Guid chave, string idUsuario) {
+        var conversa = Conversas.FirstOrDefault(c => c.Chave == chave && c.IdUsuario == idUsuario);
+        // Copia, como o AsNoTracking: quem le nao pode mudar o que esta gravado.
+        return Task.FromResult(conversa is null ? null : new ChatConversa {
+            Id = conversa.Id, Chave = conversa.Chave, IdUsuario = conversa.IdUsuario, IdJogo = conversa.IdJogo,
+            Sessao = conversa.Sessao, DataCriacao = conversa.DataCriacao, DataAtualizacao = conversa.DataAtualizacao,
+        });
+    }
+
+    public Task SalvarAsync(ChatConversa conversa, ChatMensagem mensagem) {
+        if (conversa.Id == 0) {
+            conversa.Id = _proximoId++;
+        }
+
+        Conversas.RemoveAll(c => c.Id == conversa.Id);
+        Conversas.Add(conversa);
+        mensagem.IdConversa = conversa.Id;
+        Mensagens.Add(mensagem);
+        return Task.CompletedTask;
+    }
+
+    public Task ExcluirDoUsuarioAsync(string idUsuario) {
+        UsuariosExcluidos.Add(idUsuario);
+        Conversas.RemoveAll(c => c.IdUsuario == idUsuario);
+        return Task.CompletedTask;
+    }
 }

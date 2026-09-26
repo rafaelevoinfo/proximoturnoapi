@@ -164,6 +164,7 @@ public class ObterRelatorioCustosIa(DatabaseContext dbContext, ICotacaoDolar cot
         OperacaoLlm.Embedding => "Embedding",
         OperacaoLlm.ChatEmbedding => "Chat: busca",
         OperacaoLlm.ChatResposta => "Chat: resposta",
+        OperacaoLlm.ChatResumo => "Chat: resumo do histórico",
         _ => operacao.ToString()
     };
 

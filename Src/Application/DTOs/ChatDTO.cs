@@ -3,31 +3,24 @@ using ProximoTurnoApi.Application.UseCases.IA;
 
 namespace ProximoTurnoApi.Application.DTOs;
 
-// Texto em vez de numero so nos enums do chat: a API nao tem conversor global, e liga-lo
-// mudaria o contrato de todos os outros endpoints.
-[JsonConverter(typeof(JsonStringEnumConverter<PapelMensagemChat>))]
-public enum PapelMensagemChat {
-    Usuario,
-    Assistente
-}
-
-public record MensagemChatDTO {
-    public PapelMensagemChat Papel { get; set; }
-    public string Texto { get; set; } = "";
-}
-
 public record PerguntaChatDTO {
+    /// <summary>
+    /// Conversa em andamento, devolvida pela resposta anterior. A memória fica na API: o front
+    /// não manda histórico.
+    /// </summary>
+    public Guid? IdConversa { get; set; }
+
     /// <summary>Jogo que o usuário já confirmou nesta conversa.</summary>
     public int? IdJogoConfirmado { get; set; }
 
     /// <summary>Jogo da página de onde o chat foi aberto, se houver.</summary>
     public int? IdJogoPagina { get; set; }
 
-    public List<MensagemChatDTO> Historico { get; set; } = [];
-
     public string Mensagem { get; set; } = "";
 }
 
+// Texto em vez de numero so nos enums do chat: a API nao tem conversor global, e liga-lo
+// mudaria o contrato de todos os outros endpoints.
 [JsonConverter(typeof(JsonStringEnumConverter<TipoRespostaChat>))]
 public enum TipoRespostaChat {
     Resposta,
@@ -49,6 +42,9 @@ public record FonteChatDTO(int IdJogoLink, string Titulo);
 public record RespostaChatDTO {
     public TipoRespostaChat Tipo { get; init; }
     public string Texto { get; init; } = "";
+
+    /// <summary>Conversa a que a resposta pertence. O front manda de volta na próxima pergunta.</summary>
+    public Guid? IdConversa { get; init; }
 
     /// <summary>Jogo a que a resposta se refere. O front guarda como jogo confirmado.</summary>
     public JogoChatDTO? Jogo { get; init; }

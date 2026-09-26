@@ -292,3 +292,21 @@ A pedido do produto, a etapa de classificação saiu. Cada pergunta faz **uma** 
   papel). Se a pergunta for de outro jogo, o modelo responde só `[[OUTRO_JOGO:nome]]`, e a API
   transforma isso em confirmação de jogo.
 - `OperacaoLlm` fica com `ChatEmbedding = 3` e `ChatResposta = 4`.
+
+## Revisão de 26/09/2026: memória com Microsoft Agent Framework
+
+- A resposta passa por um `ChatClientAgent` (MAF 1.17) sobre o mesmo `IChatClient` da fábrica,
+  então o ledger e o débito de crédito não mudam.
+- A memória é o `AgentSession` com `InMemoryChatHistoryProvider`, serializada e gravada em
+  `CHAT_CONVERSA.SESSAO` a cada turno. O front só guarda o `idConversa` e não manda histórico.
+  Conversa de outro usuário ou de outro jogo não é lida: começa uma nova.
+- Sem corte fixo de mensagens: o `SummarizingChatReducer` resume as antigas quando a memória
+  passa de 40 mensagens e mantém as 20 mais recentes. O resumo é uma chamada paga
+  (`OperacaoLlm.ChatResumo`) debitada de quem perguntou. A redução roda ao gravar, então a
+  sessão já vai resumida para o banco.
+- `CHAT_MENSAGEM` guarda cada turno sem redução: pergunta, resposta, tipo e os trechos que a
+  busca RAG devolveu (JSON com link, título, texto e score). Os trechos vão nas instruções da
+  execução, não na sessão, para não encarecer as perguntas seguintes.
+- Pergunta que o modelo aponta como de outro jogo fica em `CHAT_MENSAGEM`, mas não entra na
+  memória da conversa.
+- Exclusão de conta (LGPD) apaga as conversas do usuário.

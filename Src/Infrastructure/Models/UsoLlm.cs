@@ -11,7 +11,9 @@ public enum OperacaoLlm : short {
     /// <summary>Chat de regras: vetoriza a pergunta para a busca no manual.</summary>
     ChatEmbedding = 3,
     /// <summary>Chat de regras: escreve a resposta a partir dos trechos do manual.</summary>
-    ChatResposta = 4
+    ChatResposta = 4,
+    /// <summary>Chat de regras: resume as mensagens antigas quando a conversa fica longa.</summary>
+    ChatResumo = 5
 }
 
 /// <summary>Como a chamada terminou. Só <see cref="Ok"/> significa que o gasto rendeu algo.</summary>

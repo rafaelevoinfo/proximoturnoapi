@@ -17,7 +17,9 @@ public class ResponderPerguntaRegrasTests {
     private readonly FakeChatRegrasRepository _repositorio = new();
     private readonly FakeManualVectorStore _vetores = new();
     private readonly FakeEmbeddingGenerator _embedding = new();
+    private readonly FakeChatConversaRepository _conversas = new();
     private FakeChatClient _redator = new("Na sua vez, você pode trocar 4 recursos iguais com o banco.");
+    private IChatReducer? _redutor;
 
     public ResponderPerguntaRegrasTests() {
         _repositorio.Jogos.AddRange([
@@ -35,10 +37,10 @@ public class ResponderPerguntaRegrasTests {
     private ResponderPerguntaRegras Caso() =>
         new(NullLogger<ResponderPerguntaRegras>.Instance,
             new ObterSaldoChat(_repositorio, new FakeCotacaoDolar(5m), ConfiguracaoChat.Padrao),
-            _repositorio, _vetores, _redator, _embedding);
+            _repositorio, _conversas, _vetores, _redator, _embedding, _redutor);
 
-    private static PerguntaChatDTO Pergunta(string mensagem, int? confirmado = null, int? pagina = null) =>
-        new() { Mensagem = mensagem, IdJogoConfirmado = confirmado, IdJogoPagina = pagina };
+    private static PerguntaChatDTO Pergunta(string mensagem, int? confirmado = null, int? pagina = null, Guid? conversa = null) =>
+        new() { Mensagem = mensagem, IdJogoConfirmado = confirmado, IdJogoPagina = pagina, IdConversa = conversa };
 
     [Fact]
     public async Task AbertoNaPaginaDoJogo_RespondeSemPerguntarOJogo() {
@@ -200,28 +202,109 @@ public class ResponderPerguntaRegrasTests {
     }
 
     [Fact]
-    public async Task HistoricoLongo_EhCortadoAntesDaChamada() {
-        var pergunta = Pergunta("E se empatar?", pagina: 1);
-        pergunta.Historico = [.. Enumerable.Range(0, 20).Select(i => new MensagemChatDTO {
-            Papel = i % 2 == 0 ? PapelMensagemChat.Usuario : PapelMensagemChat.Assistente,
-            Texto = $"mensagem {i}"
-        })];
+    public async Task SegundaPergunta_ModeloRecebeAMemoriaDaConversa() {
+        _redator = new FakeChatClient("Troque 4 iguais com o banco.", "Com porto 3:1 fica mais barato.");
 
-        await Caso().ExecuteAsync(Cliente, pergunta);
+        var primeira = await Caso().ExecuteAsync(Cliente, Pergunta("Posso trocar com o banco?", pagina: 1));
+        var segunda = await Caso().ExecuteAsync(Cliente, Pergunta("E com porto?", pagina: 1, conversa: primeira!.IdConversa));
 
-        Assert.Equal(ResponderPerguntaRegras.MaximoMensagensHistorico + 1, _redator.Recebidos.Single().Count);
-        Assert.Equal(ChatRole.User, _redator.Recebidos.Single()[^1].Role);
+        Assert.Equal(primeira.IdConversa, segunda!.IdConversa);
+        var enviadas = _redator.Recebidos[1].Select(m => (m.Role, m.Text)).ToList();
+        Assert.Equal([
+            (ChatRole.User, "Posso trocar com o banco?"),
+            (ChatRole.Assistant, "Troque 4 iguais com o banco."),
+            (ChatRole.User, "E com porto?"),
+        ], enviadas);
     }
 
     [Fact]
-    public void TextoParaBusca_LevaAPerguntaAnteriorDoUsuario() {
-        List<MensagemChatDTO> historico = [
-            new() { Papel = PapelMensagemChat.Usuario, Texto = "Como funciona o ladrão?" },
-            new() { Papel = PapelMensagemChat.Assistente, Texto = "Quando sai 7..." },
-        ];
+    public async Task ContinuacaoCurta_BuscaComAPerguntaAnterior() {
+        var primeira = await Caso().ExecuteAsync(Cliente, Pergunta("Como funciona o ladrão?", pagina: 1));
+        await Caso().ExecuteAsync(Cliente, Pergunta("E se eu tiver 8 cartas?", pagina: 1, conversa: primeira!.IdConversa));
 
-        Assert.Equal("Como funciona o ladrão?\nE se eu tiver 8 cartas?",
-                     ResponderPerguntaRegras.TextoParaBusca("E se eu tiver 8 cartas?", historico));
+        Assert.Equal("Como funciona o ladrão?\nE se eu tiver 8 cartas?", _embedding.Textos[^1]);
+    }
+
+    [Fact]
+    public async Task ConversaDeOutroUsuario_NaoEhLida() {
+        var primeira = await Caso().ExecuteAsync(Cliente, Pergunta("Posso trocar com o banco?", pagina: 1));
+        var outro = new UsuarioChat("usuario-2", "outro@teste.com", Admin: false);
+
+        var resposta = await Caso().ExecuteAsync(outro, Pergunta("E com porto?", pagina: 1, conversa: primeira!.IdConversa));
+
+        Assert.NotEqual(primeira.IdConversa, resposta!.IdConversa);
+        Assert.Single(_redator.Recebidos[1]);
+    }
+
+    [Fact]
+    public async Task ConversaDeOutroJogo_ComecaDoZero() {
+        var primeira = await Caso().ExecuteAsync(Cliente, Pergunta("Posso trocar com o banco?", pagina: 1));
+
+        var resposta = await Caso().ExecuteAsync(Cliente, Pergunta("Como compro cartas?", confirmado: 3, conversa: primeira!.IdConversa));
+
+        Assert.NotEqual(primeira.IdConversa, resposta!.IdConversa);
+        Assert.Single(_redator.Recebidos[1]);
+    }
+
+    [Fact]
+    public async Task CadaTurno_GravaPerguntaRespostaETrechosDaBusca() {
+        await Caso().ExecuteAsync(Cliente, Pergunta("Posso trocar com o banco?", pagina: 1));
+
+        var conversa = Assert.Single(_conversas.Conversas);
+        Assert.Equal("usuario-1", conversa.IdUsuario);
+        Assert.Equal(1, conversa.IdJogo);
+        Assert.NotNull(conversa.Sessao);
+
+        var turno = Assert.Single(_conversas.Mensagens);
+        Assert.Equal("Posso trocar com o banco?", turno.Pergunta);
+        Assert.Equal("Na sua vez, você pode trocar 4 recursos iguais com o banco.", turno.Resposta);
+        Assert.Equal(TipoRespostaChat.Resposta, turno.Tipo);
+
+        var trechos = System.Text.Json.JsonSerializer.Deserialize<List<TrechoManual>>(turno.Trechos!);
+        Assert.Equal([new TrechoManual(1, 10, "Catan > Comércio", "Troca 4:1 com o banco.", 0.9f)], trechos);
+    }
+
+    // Os trechos vao nas instrucoes da execucao: guardados na sessao, encareceriam toda
+    // pergunta seguinte sem ajudar, porque cada pergunta busca de novo.
+    [Fact]
+    public async Task TrechosNaoFicamNaMemoria() {
+        await Caso().ExecuteAsync(Cliente, Pergunta("Posso trocar com o banco?", pagina: 1));
+
+        Assert.DoesNotContain("Troca 4:1", _conversas.Conversas.Single().Sessao);
+    }
+
+    [Fact]
+    public async Task PerguntaDeOutroJogo_NaoEntraNaMemoria() {
+        _redator = new FakeChatClient("Troque 4 iguais com o banco.", "[[OUTRO_JOGO:Ticket to Ride]]", "Com porto é 3:1.");
+
+        var primeira = await Caso().ExecuteAsync(Cliente, Pergunta("Posso trocar com o banco?", pagina: 1));
+        await Caso().ExecuteAsync(Cliente, Pergunta("E no Ticket to Ride?", pagina: 1, conversa: primeira!.IdConversa));
+        await Caso().ExecuteAsync(Cliente, Pergunta("E com porto?", pagina: 1, conversa: primeira.IdConversa));
+
+        Assert.DoesNotContain(_redator.Recebidos[2], m => m.Text.Contains("Ticket"));
+        // O turno desviado fica registrado, so nao vira memoria do modelo.
+        Assert.Equal(3, _conversas.Mensagens.Count);
+        Assert.Equal(TipoRespostaChat.ConfirmarJogo, _conversas.Mensagens[1].Tipo);
+    }
+
+    [Fact]
+    public async Task Redutor_EncolheAMemoriaGravada() {
+#pragma warning disable MEAI001 // redutor experimental do Microsoft.Extensions.AI, como no Program.cs
+        _redutor = new MessageCountingChatReducer(2);
+#pragma warning restore MEAI001
+        _redator = new FakeChatClient("r1", "r2", "r3");
+
+        var primeira = await Caso().ExecuteAsync(Cliente, Pergunta("p1", pagina: 1));
+        await Caso().ExecuteAsync(Cliente, Pergunta("p2", pagina: 1, conversa: primeira!.IdConversa));
+        await Caso().ExecuteAsync(Cliente, Pergunta("p3", pagina: 1, conversa: primeira.IdConversa));
+
+        // Duas mensagens de memoria (o que o redutor deixou) mais a pergunta atual.
+        Assert.Equal(["p2", "r2", "p3"], _redator.Recebidos[2].Select(m => m.Text));
+    }
+
+    [Fact]
+    public void TextoParaBusca_SemHistorico_EhSoAPergunta() {
+        Assert.Equal("Oi", ResponderPerguntaRegras.TextoParaBusca("Oi", []));
     }
 
     [Theory]
@@ -243,8 +326,6 @@ public class ChatDTOJsonTests {
         var json = System.Text.Json.JsonSerializer.Serialize(new RespostaChatDTO { Tipo = TipoRespostaChat.ConfirmarJogo });
         Assert.Contains("\"ConfirmarJogo\"", json);
 
-        var pergunta = System.Text.Json.JsonSerializer.Deserialize<PerguntaChatDTO>(
-            """{"Mensagem":"oi","Historico":[{"Papel":"Assistente","Texto":"ola"}]}""");
-        Assert.Equal(PapelMensagemChat.Assistente, pergunta!.Historico[0].Papel);
+        Assert.Equal(TipoRespostaChat.SemManual, System.Text.Json.JsonSerializer.Deserialize<TipoRespostaChat>("\"SemManual\""));
     }
 }

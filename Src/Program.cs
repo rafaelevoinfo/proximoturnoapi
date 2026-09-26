@@ -135,6 +135,23 @@ builder.Services.AddKeyedSingleton<IChatClient>(ResponderPerguntaRegras.ChaveRes
 builder.Services.AddKeyedSingleton<IEmbeddingGenerator<string, Embedding<float>>>(ResponderPerguntaRegras.ChaveEmbedding, (sp, _) =>
     sp.GetRequiredService<IFabricaOpenRouter>().CriarEmbedding(IAModel.EMBEDDING_MODEL, OperacaoLlm.ChatEmbedding));
 
+// Memoria do chat: sem corte fixo. Passando de ResumoLimiteMensagens mensagens, as mais
+// antigas viram um resumo e ficam as ResumoMensagensMantidas mais recentes. O resumo e uma
+// chamada paga e cai no credito de quem perguntou, com operacao propria no ledger.
+// SummarizingChatReducer ainda e marcado como experimental (MEAI001) no Microsoft.Extensions.AI:
+// a API pode mudar numa atualizacao do pacote, e a quebra aparece aqui, na compilacao.
+#pragma warning disable MEAI001
+builder.Services.AddKeyedSingleton<IChatReducer>(ResponderPerguntaRegras.ChaveRedutor, (sp, _) =>
+    new SummarizingChatReducer(
+        sp.GetRequiredService<IFabricaOpenRouter>()
+          .CriarChat(IAModel.CHAT_RESPOSTA_MODEL, OperacaoLlm.ChatResumo, TimeSpan.FromSeconds(60), tentativas: 1),
+        targetCount: ResponderPerguntaRegras.ResumoMensagensMantidas,
+        threshold: ResponderPerguntaRegras.ResumoLimiteMensagens - ResponderPerguntaRegras.ResumoMensagensMantidas) {
+        SummarizationPrompt = ResponderPerguntaRegras.InstrucoesResumo,
+    });
+#pragma warning restore MEAI001
+builder.Services.AddScoped<IChatConversaRepository, ChatConversaRepository>();
+
 builder.Services.AddHttpClient(CotacaoDolarAwesomeApi.NomeHttpClient, cliente => cliente.Timeout = TimeSpan.FromSeconds(5));
 builder.Services.AddSingleton<ICotacaoDolar>(sp => new CotacaoDolarAwesomeApi(
     sp.GetRequiredService<ILogger<CotacaoDolarAwesomeApi>>(),

@@ -20,6 +20,7 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : Identi
         ConfigureCupom(modelBuilder);
         ConfigureContratoAutentique(modelBuilder);
         ConfigureUsoLlm(modelBuilder);
+        ConfigureChat(modelBuilder);
 
         modelBuilder.Entity<Cliente>(b => {
             b.HasIndex(c => c.Email).IsUnique();
@@ -134,6 +135,25 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : Identi
             b.Property(u => u.CustoUsd).HasPrecision(18, 10);
             b.Property(u => u.CustoBrl).HasPrecision(18, 10);
             b.Property(u => u.CotacaoUsdBrl).HasPrecision(10, 4);
+        });
+    }
+
+    private static void ConfigureChat(ModelBuilder modelBuilder) {
+        modelBuilder.Entity<ChatConversa>(b => {
+            b.HasIndex(c => c.Chave).IsUnique();
+            b.HasIndex(c => c.IdUsuario);
+            b.Property(c => c.Sessao).HasColumnType("longtext");
+            b.HasMany(c => c.Mensagens)
+             .WithOne()
+             .HasForeignKey(m => m.IdConversa)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ChatMensagem>(b => {
+            b.Property(m => m.Tipo).HasConversion<short>();
+            b.Property(m => m.Pergunta).HasColumnType("text");
+            b.Property(m => m.Resposta).HasColumnType("text");
+            b.Property(m => m.Trechos).HasColumnType("longtext");
         });
     }
 
@@ -276,4 +296,6 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : Identi
     public DbSet<Cupom> Cupons { get; set; }
     public DbSet<ContratoAutentique> ContratosAutentique { get; set; }
     public DbSet<UsoLlm> UsosLlm { get; set; }
+    public DbSet<ChatConversa> ChatConversas { get; set; }
+    public DbSet<ChatMensagem> ChatMensagens { get; set; }
 }

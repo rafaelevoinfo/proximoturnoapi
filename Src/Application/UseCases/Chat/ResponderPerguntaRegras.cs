@@ -1,9 +1,12 @@
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
+using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 using ProximoTurnoApi.Application.DTOs;
 using ProximoTurnoApi.Application.UseCases.IA;
 using ProximoTurnoApi.Application.UseCases.RAG;
+using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Infrastructure.Repositories;
 
 namespace ProximoTurnoApi.Application.UseCases.Chat;
@@ -16,21 +19,37 @@ public sealed record UsuarioChat(string Id, string? Email, bool Admin);
 /// chat por pergunta. A ordem das etapas é o que garante as regras do produto: saldo antes
 /// de qualquer gasto, jogo definido antes da busca — que por sua vez só aceita um jogo — e
 /// a recusa do que não é regra fica a cargo das instruções do modelo.
+/// <para>
+/// A memória da conversa é a sessão do agente do Microsoft Agent Framework, gravada no banco
+/// a cada turno. O histórico não tem corte fixo: quando cresce, o redutor resume as mensagens
+/// antigas e a sessão é gravada já resumida.
+/// </para>
 /// </summary>
 public partial class ResponderPerguntaRegras(ILogger<ResponderPerguntaRegras> _logger,
                                              ObterSaldoChat _obterSaldo,
                                              IChatRegrasRepository _repositorio,
+                                             IChatConversaRepository _conversas,
                                              IManualVectorStore _vetores,
                                              [FromKeyedServices(ResponderPerguntaRegras.ChaveResposta)] IChatClient _redator,
-                                             [FromKeyedServices(ResponderPerguntaRegras.ChaveEmbedding)] IEmbeddingGenerator<string, Embedding<float>> _embedding)
+                                             [FromKeyedServices(ResponderPerguntaRegras.ChaveEmbedding)] IEmbeddingGenerator<string, Embedding<float>> _embedding,
+                                             [FromKeyedServices(ResponderPerguntaRegras.ChaveRedutor)] IChatReducer? _redutor)
     : UseCaseBasico {
 
     public const string ChaveResposta = "chat-resposta";
     public const string ChaveEmbedding = "chat-embedding";
+    public const string ChaveRedutor = "chat-redutor";
 
     public const int TamanhoMaximoPergunta = 500;
-    public const int MaximoMensagensHistorico = 6;
-    private const int TamanhoMaximoMensagemHistorico = 2000;
+
+    /// <summary>Acima deste total de mensagens na memória, as antigas são resumidas.</summary>
+    public const int ResumoLimiteMensagens = 40;
+
+    /// <summary>Mensagens recentes que ficam inteiras depois do resumo.</summary>
+    public const int ResumoMensagensMantidas = 20;
+
+    public const string InstrucoesResumo = @"Resuma a conversa acima entre um usuário e o assistente de regras de um jogo de tabuleiro.
+Mantenha as dúvidas feitas, as regras já explicadas e qualquer situação de jogo que o usuário descreveu (número de jogadores, cartas na mão, placar etc.).
+Não invente regras nem acrescente informação. Escreva em português do Brasil, em poucos parágrafos curtos.";
     private const int QuantidadeTrechos = 6;
     private const int MaximoFontes = 4;
 
@@ -92,10 +111,33 @@ Trechos do manual de {0}:
             return SemManual(jogoAtual);
         }
 
-        var historico = Recortar(pergunta.Historico);
+        var conversa = await ConversaAsync(pergunta.IdConversa, usuario, jogoAtual);
         using (EscopoUsoLlm.Abrir(jogoAtual.Id, null, $"Chat de regras / {jogoAtual.Nome}", usuario.Id)) {
-            return await ResponderAsync(mensagem, historico, jogoAtual, cancellationToken);
+            return await ResponderAsync(mensagem, conversa, jogoAtual, cancellationToken);
         }
+    }
+
+    /// <summary>
+    /// A conversa em andamento, se for deste usuário e deste jogo. Chave desconhecida, de outro
+    /// usuário ou de outro jogo começa uma conversa nova: memória de outro manual confundiria o
+    /// modelo, e a de outra pessoa nem pode ser lida.
+    /// </summary>
+    private async Task<ChatConversa> ConversaAsync(Guid? chave, UsuarioChat usuario, JogoChat jogo) {
+        if (chave is not null) {
+            var existente = await _conversas.ObterAsync(chave.Value, usuario.Id);
+            if (existente is not null && existente.IdJogo == jogo.Id) {
+                return existente;
+            }
+        }
+
+        var agora = DateTime.Now;
+        return new ChatConversa {
+            Chave = Guid.NewGuid(),
+            IdUsuario = usuario.Id,
+            IdJogo = jogo.Id,
+            DataCriacao = agora,
+            DataAtualizacao = agora,
+        };
     }
 
     /// <summary>
@@ -116,12 +158,31 @@ Trechos do manual de {0}:
             : Confirmar(candidatos, jogoAtual: null);
     }
 
-    private async Task<RespostaChatDTO> ResponderAsync(string mensagem, IReadOnlyList<MensagemChatDTO> historico,
-                                                       JogoChat jogo, CancellationToken cancellationToken) {
-        var consulta = TextoParaBusca(mensagem, historico);
+    private async Task<RespostaChatDTO> ResponderAsync(string mensagem, ChatConversa conversa, JogoChat jogo,
+                                                       CancellationToken cancellationToken) {
+        var historico = new InMemoryChatHistoryProvider(new InMemoryChatHistoryProviderOptions {
+            ChatReducer = _redutor,
+            // Reduz ao gravar, e nao ao ler: a sessao que vai para o banco ja sai resumida.
+            ReducerTriggerEvent = InMemoryChatHistoryProviderOptions.ChatReducerTriggerEvent.AfterMessageAdded,
+        });
+        var agente = new ChatClientAgent(_redator, new ChatClientAgentOptions {
+            Name = "assistente-de-regras",
+            ChatHistoryProvider = historico,
+            // Sem ferramentas: o pipeline padrao do agente (invocacao de funcoes) nao tem o que fazer.
+            UseProvidedChatClientAsIs = true,
+        });
+
+        var sessao = conversa.Sessao is null
+            ? await agente.CreateSessionAsync(cancellationToken)
+            : await agente.DeserializeSessionAsync(JsonDocument.Parse(conversa.Sessao).RootElement, cancellationToken: cancellationToken);
+
+        var consulta = TextoParaBusca(mensagem, historico.GetMessages(sessao));
         var vetores = await _embedding.GenerateAsync([consulta], cancellationToken: cancellationToken);
         var trechos = await _vetores.BuscarAsync(jogo.Id, vetores[0].Vector, QuantidadeTrechos, cancellationToken);
 
+        // Os trechos vao nas instrucoes desta execucao, e nao no historico: cada pergunta busca
+        // de novo, e guardar trechos velhos na sessao so encareceria as proximas chamadas. O
+        // registro deles fica em CHAT_MENSAGEM.
         // Mesmo sem trecho parecido o modelo e chamado: a mensagem pode ser cumprimento,
         // assunto fora de regra ou outro jogo, e quem decide isso sao as instrucoes.
         var opcoes = new ChatOptions {
@@ -131,24 +192,50 @@ Trechos do manual de {0}:
             MaxOutputTokens = 700,
         };
 
-        var resposta = await _redator.GetResponseAsync(Mensagens(historico, mensagem), opcoes, cancellationToken);
-        var texto = resposta.Text?.Trim() ?? "";
+        var resultado = await agente.RunAsync(mensagem, sessao, new ChatClientAgentRunOptions(opcoes), cancellationToken);
+        var texto = resultado.Text?.Trim() ?? "";
 
+        RespostaChatDTO resposta;
         var outroJogo = ExtrairOutroJogo(texto);
         if (outroJogo is not null) {
-            return await TrocarDeJogoAsync(outroJogo, jogo);
+            // A pergunta era de outro jogo: nao entra na memoria desta conversa.
+            resposta = await TrocarDeJogoAsync(outroJogo, jogo);
+        } else {
+            conversa.Sessao = (await agente.SerializeSessionAsync(sessao, cancellationToken: cancellationToken)).GetRawText();
+            resposta = new RespostaChatDTO {
+                Tipo = TipoRespostaChat.Resposta,
+                Texto = texto.Length == 0 ? "Não consegui montar a resposta agora. Pode tentar de novo?" : texto,
+                Jogo = Dto(jogo),
+                Fontes = [.. trechos
+                    .Select(t => new FonteChatDTO(t.IdJogoLink, t.Titulo))
+                    .Where(f => !string.IsNullOrWhiteSpace(f.Titulo))
+                    .Distinct()
+                    .Take(MaximoFontes)],
+            };
         }
 
-        return new RespostaChatDTO {
-            Tipo = TipoRespostaChat.Resposta,
-            Texto = texto.Length == 0 ? "Não consegui montar a resposta agora. Pode tentar de novo?" : texto,
-            Jogo = Dto(jogo),
-            Fontes = [.. trechos
-                .Select(t => new FonteChatDTO(t.IdJogoLink, t.Titulo))
-                .Where(f => !string.IsNullOrWhiteSpace(f.Titulo))
-                .Distinct()
-                .Take(MaximoFontes)],
-        };
+        await GravarAsync(conversa, mensagem, texto, resposta.Tipo, trechos);
+        return resposta with { IdConversa = conversa.Chave };
+    }
+
+    private async Task GravarAsync(ChatConversa conversa, string pergunta, string resposta, TipoRespostaChat tipo,
+                                   IReadOnlyList<TrechoManual> trechos) {
+        var agora = DateTime.Now;
+        conversa.DataAtualizacao = agora;
+
+        try {
+            await _conversas.SalvarAsync(conversa, new ChatMensagem {
+                Momento = agora,
+                Pergunta = pergunta,
+                Resposta = resposta,
+                Tipo = tipo,
+                Trechos = JsonSerializer.Serialize(trechos),
+            });
+        } catch (Exception ex) {
+            // A resposta ja foi paga e esta pronta: falhar ao gravar custa a memoria desta
+            // pergunta, nao a resposta do usuario.
+            _logger.LogError(ex, "Falha ao gravar a conversa {Chave} do chat de regras: {Mensagem}", conversa.Chave, ex.Message);
+        }
     }
 
     /// <summary>
@@ -208,10 +295,10 @@ Trechos do manual de {0}:
 
     /// <summary>
     /// Uma continuação curta ("e se empatar?") não acha nada sozinha no manual: a pergunta
-    /// anterior do usuário vai junto para a busca.
+    /// anterior do usuário, tirada da memória da conversa, vai junto para a busca.
     /// </summary>
-    public static string TextoParaBusca(string mensagem, IReadOnlyList<MensagemChatDTO> historico) {
-        var anterior = historico.LastOrDefault(m => m.Papel == PapelMensagemChat.Usuario)?.Texto;
+    public static string TextoParaBusca(string mensagem, IEnumerable<ChatMessage> historico) {
+        var anterior = historico.LastOrDefault(m => m.Role == ChatRole.User)?.Text;
         return string.IsNullOrWhiteSpace(anterior) ? mensagem : $"{anterior}\n{mensagem}";
     }
 
@@ -224,26 +311,6 @@ Trechos do manual de {0}:
         }
 
         return texto.ToString();
-    }
-
-    /// <summary>
-    /// O histórico vem do navegador: é cortado aqui, em quantidade e tamanho, para uma
-    /// conversa longa (ou forjada) não virar uma chamada cara.
-    /// </summary>
-    public static List<MensagemChatDTO> Recortar(IEnumerable<MensagemChatDTO>? historico) =>
-        [.. (historico ?? [])
-            .Where(m => !string.IsNullOrWhiteSpace(m.Texto))
-            .TakeLast(MaximoMensagensHistorico)
-            .Select(m => m with {
-                Texto = m.Texto.Length > TamanhoMaximoMensagemHistorico ? m.Texto[..TamanhoMaximoMensagemHistorico] : m.Texto
-            })];
-
-    private static List<ChatMessage> Mensagens(IEnumerable<MensagemChatDTO> historico, string mensagem) {
-        var mensagens = historico
-            .Select(m => new ChatMessage(m.Papel == PapelMensagemChat.Assistente ? ChatRole.Assistant : ChatRole.User, m.Texto))
-            .ToList();
-        mensagens.Add(new ChatMessage(ChatRole.User, mensagem));
-        return mensagens;
     }
 
     private static JogoChatDTO? Dto(JogoChat? jogo) => jogo is null ? null : new JogoChatDTO(jogo.Id, jogo.Nome);
