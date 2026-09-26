@@ -144,6 +144,7 @@ builder.Services.AddScoped<CancelarPedido>();
 builder.Services.AddScoped<RenovarPedido>();
 builder.Services.AddScoped<DevolverItensPedido>();
 builder.Services.AddScoped<ObterRelatorioFaturamento>();
+builder.Services.AddScoped<ObterRelatorioCustosIa>();
 
 // Comentarios
 builder.Services.AddScoped<SalvarComentario>();
