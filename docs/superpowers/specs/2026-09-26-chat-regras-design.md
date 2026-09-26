@@ -9,7 +9,8 @@ Qdrant (coleção `manuais`, payload com `IdJogo`). Regras de negócio:
 
 1. Aparece em todas as páginas não administrativas (tudo fora de `/admin`).
 2. Só usuário logado conversa. Deslogado vê o botão, mas o painel convida a entrar.
-3. Crédito = 10% do valor de cada aluguel. Cada requisição abate o custo real que gerou.
+3. Crédito = 10% do valor base de cada aluguel, mais US$ 0,50 de boas-vindas. Cada requisição
+   abate o custo real que gerou. Admin não tem limite.
 4. Toda busca é restrita a **um** jogo. Aberto a partir de `/jogos/[id]`, o jogo já vem
    definido. Fora dela, ou quando o usuário muda de assunto para outro jogo, o chat
    **confirma o jogo antes de buscar**.
@@ -58,29 +59,57 @@ Separar do `Embedding = 2` da indexação mantém o relatório de custos legíve
 
 ### 2. Saldo derivado, sem tabela de saldo
 
+Saldo em **R$**, calculado na hora:
+
 ```
-creditos_rs = Σ 10% × (ValorTotal − taxa de entrega)  dos pedidos do cliente com status Entregue ou Devolvido
-debitos_rs  = Σ custo_rs(linha)                     das linhas de USO_LLM com ID_USUARIO = usuário
-saldo_rs    = creditos_rs − debitos_rs
+bonus_rs    = 0,50 USD × cotação do momento da consulta               (boas-vindas, todo usuário)
+creditos_rs = Σ 10% × ItemPedido.Valor  dos itens do cliente com status Entregue ou Devolvido
+debitos_rs  = Σ USO_LLM.CUSTO_BRL       das linhas com ID_USUARIO = usuário
+saldo_rs    = bonus_rs + creditos_rs − debitos_rs
 ```
 
-- `ValorTotal` já sai líquido do cupom (`Pedido.CalcularTotal`), mas inclui a `TAXA_ENTREGA`,
-  que não é aluguel e por isso é descontada da base.
-- Calculado na hora, sem tabela de saldo nem job. Não tem como divergir do ledger, e o
-  "renova no próximo aluguel" sai de graça: o pedido novo entrega e o saldo sobe.
-- **Quando o aluguel conta:** no status `Entregue` (depois `Devolvido`). `Pendente` não conta
-  (pode ser cancelado); `Cancelado` nunca conta. Uma renovação é um `Pedido` novo e conta.
-- `custo_rs(linha) = (CustoUsd ?? estimativa pelos tokens) × COTACAO_USD_BRL`. A cotação é
-  uma variável de ambiente (`.env`), revista manualmente. A estimativa usa preço por token
-  configurado em `IAModel` para os modelos do chat. Custo nulo **não** pode sair de graça.
-- O percentual (10%) fica em configuração (`CHAT_PERCENTUAL_CREDITO`).
-- Performance: são duas somas indexadas por usuário. Não precisa de cache na v1.
+- **Base do crédito = valor base do aluguel**: o `Valor` de cada item (preço do período),
+  sem descontar cupom e sem a taxa de entrega. A soma é por **item**, porque o status também
+  é por item: um item cancelado dentro de um pedido entregue não gera crédito.
+- **Quando o aluguel conta:** item `Entregue` (depois `Devolvido`). `Pendente` não conta
+  (ainda pode ser cancelado); `Cancelado` nunca conta. Na renovação, o item antigo vira
+  `Devolvido` e o novo nasce no pedido de renovação: os dois geram crédito, como dois aluguéis.
+- Sem tabela de saldo nem job: não tem como divergir do ledger, e o "renova no próximo
+  aluguel" sai de graça, porque o item entregue já aumenta o saldo.
+- **Bônus de boas-vindas** de US$ 0,50 para todo usuário logado, inclusive quem nunca alugou.
+  Convertido pela cotação atual; oscila alguns centavos com o dólar, o que é aceitável para um
+  bônus. Configurável (`CHAT_BONUS_USD`), assim como o percentual (`CHAT_PERCENTUAL_CREDITO`).
+- **Admin não tem limite**: usuário com role `Admin` pula a checagem de saldo. O gasto dele
+  continua indo para o ledger com `ID_USUARIO`, para aparecer no relatório.
+- Performance: duas somas indexadas por usuário. Não precisa de cache na v1.
 
-### 3. Controle de saldo por requisição
+### 3. Cotação USD → BRL e débito congelado
 
-1. Antes de qualquer chamada paga: `saldo ≤ 0`? Responde `saldoEsgotado`, sem gastar nada.
-2. Cada etapa paga abre `EscopoUsoLlm` com `IdUsuario` + `IdJogo`, e o ledger grava sozinho.
-3. A resposta devolve o saldo recalculado.
+O `usage.cost` vem em USD. O débito é convertido **no momento da chamada** e gravado em reais
+numa coluna nova `USO_LLM.CUSTO_BRL decimal NULL` (e a cotação usada em `COTACAO_USD_BRL`).
+Assim a variação do dólar não reescreve o saldo passado.
+
+- **Fonte da cotação:** AwesomeAPI (`https://economia.awesomeapi.com.br/json/last/USD-BRL`),
+  que é gratuita, não pede chave e é mantida no Brasil. Usa-se o campo `ask`.
+- `ICotacaoDolar` (singleton) guarda o valor em memória por **6 horas**. Se a API falhar,
+  usa o último valor obtido; sem nenhum, usa o valor fixo `COTACAO_USD_BRL_PADRAO` da `.env`.
+  A cotação **nunca** derruba o chat.
+- Só linhas com `ID_USUARIO` preenchido ganham `CUSTO_BRL`: a indexação não consome crédito
+  e não precisa da consulta.
+- Se `CustoUsd` vier nulo, o valor em USD é **estimado pelos tokens** com o preço por token
+  configurado em `IAModel` para os modelos do chat. Custo nulo não pode sair de graça.
+- O dashboard de custos mostra a cotação em uso e se ela veio da API ou do valor padrão.
+
+> A rede deste ambiente de desenvolvimento bloqueia APIs externas, então a AwesomeAPI não pôde
+> ser testada aqui. O fallback para o valor fixo cobre o caso de ela estar fora do ar.
+
+### 3.1 Controle de saldo por requisição
+
+1. Antes de qualquer chamada paga: se o usuário não é admin e `saldo ≤ 0`, responde
+   `saldoEsgotado` sem gastar nada.
+2. Cada etapa paga abre `EscopoUsoLlm` com `IdUsuario` + `IdJogo`, e o ledger grava sozinho,
+   já com `CUSTO_BRL`.
+3. A resposta devolve o saldo recalculado (`null` para admin, exibido como "ilimitado").
 
 Duas requisições simultâneas podem deixar o saldo levemente negativo (centavos). Isso é aceito
 de propósito: bloquear por usuário custaria mais do que o risco. O próximo pedido é recusado.
@@ -102,7 +131,7 @@ POST /api/chat/mensagens
 
 Fluxo no use case `ResponderPerguntaRegras`:
 
-1. **Saldo** (decisão 3).
+1. **Saldo** (decisão 3.1).
 2. **Classificação** (modelo barato, saída JSON estruturada) devolve
    `{ tipo: "regra" | "fora_de_escopo" | "saudacao", jogoMencionado: string | null }`.
    - `fora_de_escopo` → recusa padrão, sem busca.
@@ -187,12 +216,12 @@ limitada a 500 caracteres; histórico cortado no servidor para os últimos 6 tur
 ## Fora do escopo da v1
 
 Streaming, histórico persistido no servidor, feedback 👍/👎, compra avulsa de créditos,
-cotação automática do dólar.
+concessão manual de créditos pelo admin.
 
 ## Riscos
 
-- **Cotação fixa** desatualizada distorce o débito. Mitigação: env var revisada e exibida no
-  dashboard.
+- **AwesomeAPI fora do ar ou mudando o formato**: cache de 6 h, último valor conhecido e, por
+  fim, o valor fixo da `.env`. O dashboard mostra de onde veio a cotação.
 - **Custo nulo** (provider sem `usage.cost`): coberto pela estimativa por token.
 - **Manual mal indexado** gera resposta ruim. O prompt obriga a dizer "não encontrei no manual"
   em vez de inventar, e as fontes aparecem na resposta.
@@ -203,7 +232,7 @@ cotação automática do dólar.
 
 ### API (`proximoturnoapi`)
 
-1. **Ledger por usuário**: `ID_USUARIO` em `UsoLlm` + índice + migration; `AlvoUsoLlm`/
+1. **Ledger por usuário**: `ID_USUARIO`, `CUSTO_BRL` e `COTACAO_USD_BRL` em `UsoLlm` + índice + migration; `AlvoUsoLlm`/
    `EscopoUsoLlm` com usuário; `RegistradorUsoLlm.Montar` copia. Novos valores em
    `OperacaoLlm`. Testes: `Montar` com e sem usuário; escopo aninhado restaura o anterior.
 2. **Fábrica**: sobrecarga `CriarEmbedding(modelo, operacao)`. Modelos do chat e preços de
@@ -211,9 +240,12 @@ cotação automática do dólar.
 3. **Busca vetorial**: `IManualVectorStore.BuscarAsync(int idJogo, ReadOnlyMemory<float>,
    int topK, CancellationToken)` com filtro `IdJogo` obrigatório. Teste de integração garante
    que nenhum ponto de outro jogo volta.
-4. **Créditos**: `ICreditosChatRepository` + use case `ObterSaldoChat` (fórmula da decisão 2,
-   config de percentual e cotação). Testes: pedido cancelado/pendente não conta; renovação
-   conta; custo nulo usa estimativa; usuário sem cliente tem saldo 0.
+4. **Cotação**: `ICotacaoDolar` com AwesomeAPI, cache de 6 h e fallback para a `.env`.
+   `RegistradorUsoLlm` preenche `CUSTO_BRL` quando há usuário. Testes com `HttpMessageHandler`
+   falso: sucesso, erro com cache, erro sem cache (usa o padrão), JSON inesperado.
+   **Créditos**: `ICreditosChatRepository` + use case `ObterSaldoChat` (decisão 2). Testes:
+   item cancelado/pendente não conta; renovação conta; cupom e taxa de entrega não mudam o
+   crédito; usuário sem aluguel tem só o bônus; admin não é bloqueado.
 5. **Resolução de jogo**: busca de candidatos por nome entre jogos ativos com manual
    indexado. Testes com nomes parecidos ("Catan" × "Catan: Cidades e Cavaleiros").
 6. **Use case `ResponderPerguntaRegras`** (herda `UseCaseBasico`, Flunt): orquestra as etapas
@@ -235,15 +267,12 @@ cotação automática do dólar.
 
 14. Cenários manuais: aberto em `/jogos/[id]` responde sem confirmar; aberto na home pede o
     jogo; troca de jogo no meio da conversa pede confirmação; pergunta fora do tema é recusada;
-    saldo zerado mostra a mensagem amigável; entregar um pedido novo libera o chat; o widget
-    não aparece em `/admin/*`.
+    saldo zerado mostra a mensagem amigável; entregar um pedido novo libera o chat; admin
+    conversa sem saldo; usuário novo começa com o bônus; o widget não aparece em `/admin/*`.
 
-## Perguntas em aberto
+## Decisões do produto (26/09/2026)
 
-1. **Base dos 10%**: valor pago pelo aluguel, já com cupom e sem a taxa de entrega (proposta),
-   ou o valor bruto dos itens?
-2. **Cotação USD→BRL**: valor fixo em env var (proposta) ou alguma margem/markup sobre o custo?
-3. **Admins** logados nas páginas públicas: usam sem limite de crédito, ou seguem a mesma
-   regra dos clientes?
-4. **Saldo inicial**: cliente que ainda não alugou nada vê o chat com saldo zero (proposta)
-   ou ganha um crédito de boas-vindas para experimentar?
+1. Base do crédito: valor base do aluguel (preço do item, sem cupom e sem taxa de entrega).
+2. Cotação: API gratuita (AwesomeAPI), com valor fixo na `.env` como fallback.
+3. Admin: sem limite de crédito.
+4. Boas-vindas: US$ 0,50 de crédito para todo usuário.
