@@ -29,7 +29,8 @@ public class ExcluirContaClienteTests {
                     FakePedidoRepository pedidos,
                     FakeContratoRepository contratos,
                     FakeUserManager users,
-                    FakeEmailService email) Montar(
+                    FakeEmailService email,
+                    FakeChatConversaRepository conversas) Montar(
         Cliente? cliente = null,
         bool isAdmin = false) {
 
@@ -40,12 +41,13 @@ public class ExcluirContaClienteTests {
         var usuario = new Usuario { Id = "u1", Email = cliente.Email, Nome = cliente.Nome };
         var users = new FakeUserManager(usuario, isAdmin);
         var email = new FakeEmailService();
+        var conversas = new FakeChatConversaRepository();
 
         var useCase = new ExcluirContaCliente(
-            clientes, pedidos, contratos, users, email,
+            clientes, pedidos, contratos, conversas, users, email,
             NullLogger<ExcluirContaCliente>.Instance);
 
-        return (useCase, clientes, pedidos, contratos, users, email);
+        return (useCase, clientes, pedidos, contratos, users, email, conversas);
     }
 
     // Pedido.Status tem setter privado. O caminho é o mesmo de PedidoTests.cs: montar o pedido
@@ -128,7 +130,7 @@ public class ExcluirContaClienteTests {
 
     [Fact]
     public async Task Recusa_QuandoClienteNaoExiste() {
-        var (useCase, _, _, _, _, _) = Montar();
+        var (useCase, _, _, _, _, _, _) = Montar();
 
         var ok = await useCase.ExecuteAsync(999, "senha", solicitadoPorAdmin: false, idUsuarioAtor: "u1");
 
@@ -142,7 +144,7 @@ public class ExcluirContaClienteTests {
         var dataOriginal = new DateTime(2026, 1, 1);
         cliente.DataAnonimizacao = dataOriginal;
         cliente.Ativo = false;
-        var (useCase, _, _, _, _, email) = Montar(cliente);
+        var (useCase, _, _, _, _, email, _) = Montar(cliente);
 
         var ok = await useCase.ExecuteAsync(1, "senha", solicitadoPorAdmin: false, idUsuarioAtor: "u1");
 
@@ -156,7 +158,7 @@ public class ExcluirContaClienteTests {
 
     [Fact]
     public async Task Recusa_QuandoSenhaIncorreta() {
-        var (useCase, _, _, _, users, _) = Montar();
+        var (useCase, _, _, _, users, _, _) = Montar();
         users.SenhaCorreta = false;
 
         var ok = await useCase.ExecuteAsync(1, "errada", solicitadoPorAdmin: false, idUsuarioAtor: "u1");
@@ -167,7 +169,7 @@ public class ExcluirContaClienteTests {
 
     [Fact]
     public async Task NaoPedeSenha_QuandoSolicitadoPorAdmin() {
-        var (useCase, _, _, _, users, _) = Montar();
+        var (useCase, _, _, _, users, _, _) = Montar();
         users.SenhaCorreta = false;
 
         var ok = await useCase.ExecuteAsync(1, senha: null, solicitadoPorAdmin: true, idUsuarioAtor: "admin-1");
@@ -179,7 +181,7 @@ public class ExcluirContaClienteTests {
     public async Task Recusa_QuandoClienteImportadoSemUsuario_SolicitadoPeloProprioTitular() {
         // Cliente importado nunca definiu senha (sem login no Identity). Sem admin, isso
         // tem que falhar fechado na guarda de senha — não há como autenticar o titular.
-        var (useCase, _, _, _, users, _) = Montar();
+        var (useCase, _, _, _, users, _, _) = Montar();
         users.UsuarioPorEmail = null;
 
         var ok = await useCase.ExecuteAsync(1, "senha", solicitadoPorAdmin: false, idUsuarioAtor: "u1");
@@ -193,7 +195,7 @@ public class ExcluirContaClienteTests {
     public async Task Permite_QuandoClienteImportadoSemUsuario_SolicitadoPorAdmin() {
         // Sem usuarioCliente, a guarda de admin (usuarioCliente is not null && ...) é
         // curto-circuitada e a exclusão segue sem Identity user para deletar.
-        var (useCase, _, _, _, users, _) = Montar();
+        var (useCase, _, _, _, users, _, _) = Montar();
         users.UsuarioPorEmail = null;
 
         var ok = await useCase.ExecuteAsync(1, senha: null, solicitadoPorAdmin: true, idUsuarioAtor: "admin-1");
@@ -213,7 +215,7 @@ public class ExcluirContaClienteTests {
 
     [Fact]
     public async Task Recusa_QuandoAlvoEhAdmin() {
-        var (useCase, _, _, _, _, _) = Montar(isAdmin: true);
+        var (useCase, _, _, _, _, _, _) = Montar(isAdmin: true);
 
         var ok = await useCase.ExecuteAsync(1, "senha", solicitadoPorAdmin: false, idUsuarioAtor: "u1");
 
@@ -227,7 +229,7 @@ public class ExcluirContaClienteTests {
         // administrador (5). Se as duas fossem trocadas de lugar, a recusa aqui viraria
         // a mensagem de admin em vez da de pedidos, e este teste pegaria a regressão.
         var cliente = NovoCliente();
-        var (useCase, _, pedidos, _, _, _) = Montar(cliente, isAdmin: true);
+        var (useCase, _, pedidos, _, _, _, _) = Montar(cliente, isAdmin: true);
         pedidos.Pedidos.Add(PedidoPendente(cliente));
 
         var ok = await useCase.ExecuteAsync(1, "senha", solicitadoPorAdmin: false, idUsuarioAtor: "u1");
@@ -241,7 +243,7 @@ public class ExcluirContaClienteTests {
     [Fact]
     public async Task Recusa_ComPedidoPendente() {
         var cliente = NovoCliente();
-        var (useCase, _, pedidos, _, _, _) = Montar(cliente);
+        var (useCase, _, pedidos, _, _, _, _) = Montar(cliente);
         pedidos.Pedidos.Add(PedidoPendente(cliente));
 
         var ok = await useCase.ExecuteAsync(1, "senha", solicitadoPorAdmin: false, idUsuarioAtor: "u1");
@@ -254,7 +256,7 @@ public class ExcluirContaClienteTests {
     [Fact]
     public async Task Recusa_ComPedidoParcialmenteDevolvido_ListaSoOsJogosAindaComOCliente() {
         var cliente = NovoCliente();
-        var (useCase, _, pedidos, _, _, _) = Montar(cliente);
+        var (useCase, _, pedidos, _, _, _, _) = Montar(cliente);
         pedidos.Pedidos.Add(PedidoParcialmenteDevolvido(cliente));
 
         var ok = await useCase.ExecuteAsync(1, "senha", solicitadoPorAdmin: false, idUsuarioAtor: "u1");
@@ -268,7 +270,7 @@ public class ExcluirContaClienteTests {
     [Fact]
     public async Task Recusa_ComPedidoEntregue() {
         var cliente = NovoCliente();
-        var (useCase, _, pedidos, _, _, _) = Montar(cliente);
+        var (useCase, _, pedidos, _, _, _, _) = Montar(cliente);
         pedidos.Pedidos.Add(PedidoEntregue(cliente));
 
         var ok = await useCase.ExecuteAsync(1, "senha", solicitadoPorAdmin: false, idUsuarioAtor: "u1");
@@ -280,7 +282,7 @@ public class ExcluirContaClienteTests {
     [Fact]
     public async Task Permite_QuandoTodosOsPedidosForamDevolvidos() {
         var cliente = NovoCliente();
-        var (useCase, _, pedidos, _, _, _) = Montar(cliente);
+        var (useCase, _, pedidos, _, _, _, _) = Montar(cliente);
         pedidos.Pedidos.Add(PedidoDevolvido(cliente));
 
         var ok = await useCase.ExecuteAsync(1, "senha", solicitadoPorAdmin: false, idUsuarioAtor: "u1");
@@ -291,7 +293,7 @@ public class ExcluirContaClienteTests {
 
     [Fact]
     public async Task Permite_QuandoSemPedidoNenhum() {
-        var (useCase, _, _, _, _, _) = Montar();
+        var (useCase, _, _, _, _, _, _) = Montar();
 
         var ok = await useCase.ExecuteAsync(1, "senha", solicitadoPorAdmin: false, idUsuarioAtor: "u1");
 
@@ -302,7 +304,7 @@ public class ExcluirContaClienteTests {
     [Fact]
     public async Task Anonimiza_TodosOsCamposPessoais() {
         var cliente = NovoCliente(7);
-        var (useCase, _, _, _, _, _) = Montar(cliente);
+        var (useCase, _, _, _, _, _, _) = Montar(cliente);
 
         var ok = await useCase.ExecuteAsync(7, "senha", solicitadoPorAdmin: false, idUsuarioAtor: "u1");
 
@@ -327,10 +329,10 @@ public class ExcluirContaClienteTests {
         b.Telefone = "11888887777";
         b.Cpf = "98765432100";
 
-        var (useCaseA, _, _, _, _, _) = Montar(a);
+        var (useCaseA, _, _, _, _, _, _) = Montar(a);
         await useCaseA.ExecuteAsync(10, "senha", solicitadoPorAdmin: false, idUsuarioAtor: "u1");
 
-        var (useCaseB, _, _, _, _, _) = Montar(b);
+        var (useCaseB, _, _, _, _, _, _) = Montar(b);
         await useCaseB.ExecuteAsync(11, "senha", solicitadoPorAdmin: false, idUsuarioAtor: "u1");
 
         Assert.NotEqual(a.Email, b.Email);
@@ -339,7 +341,7 @@ public class ExcluirContaClienteTests {
 
     [Fact]
     public async Task Apaga_ComentariosListaDesejosEContratos() {
-        var (useCase, clientes, _, contratos, _, _) = Montar(NovoCliente(3));
+        var (useCase, clientes, _, contratos, _, _, _) = Montar(NovoCliente(3));
 
         await useCase.ExecuteAsync(3, "senha", solicitadoPorAdmin: false, idUsuarioAtor: "u1");
 
@@ -349,7 +351,7 @@ public class ExcluirContaClienteTests {
 
     [Fact]
     public async Task Deleta_UsuarioDoIdentity() {
-        var (useCase, _, _, _, users, _) = Montar(NovoCliente(4));
+        var (useCase, _, _, _, users, _, _) = Montar(NovoCliente(4));
 
         await useCase.ExecuteAsync(4, "senha", solicitadoPorAdmin: false, idUsuarioAtor: "u1");
 
@@ -358,7 +360,7 @@ public class ExcluirContaClienteTests {
 
     [Fact]
     public async Task EnviaEmailDeConfirmacao_ParaOEnderecoReal() {
-        var (useCase, _, _, _, _, email) = Montar(NovoCliente(5));
+        var (useCase, _, _, _, _, email, _) = Montar(NovoCliente(5));
 
         await useCase.ExecuteAsync(5, "senha", solicitadoPorAdmin: false, idUsuarioAtor: "u1");
 
@@ -373,7 +375,7 @@ public class ExcluirContaClienteTests {
     [Fact]
     public async Task FalhaNoEmail_NaoDesfazAExclusao() {
         var cliente = NovoCliente(6);
-        var (useCase, _, _, _, _, email) = Montar(cliente);
+        var (useCase, _, _, _, _, email, _) = Montar(cliente);
         email.LancarErro = true;
 
         var ok = await useCase.ExecuteAsync(6, "senha", solicitadoPorAdmin: false, idUsuarioAtor: "u1");
@@ -384,7 +386,7 @@ public class ExcluirContaClienteTests {
 
     [Fact]
     public async Task Sucesso_AbreTransacao_AtualizaClienteEFazCommit_SemRollback() {
-        var (useCase, clientes, _, _, _, _) = Montar(NovoCliente(8));
+        var (useCase, clientes, _, _, _, _, _) = Montar(NovoCliente(8));
 
         var ok = await useCase.ExecuteAsync(8, "senha", solicitadoPorAdmin: false, idUsuarioAtor: "u1");
 
@@ -395,7 +397,7 @@ public class ExcluirContaClienteTests {
     [Fact]
     public async Task Recusa_QuandoIdentityFalhaAoDeletar_FazRollback() {
         var cliente = NovoCliente(9);
-        var (useCase, clientes, _, _, users, _) = Montar(cliente);
+        var (useCase, clientes, _, _, users, _, _) = Montar(cliente);
         users.FalharDelete = true;
 
         var ok = await useCase.ExecuteAsync(9, "senha", solicitadoPorAdmin: false, idUsuarioAtor: "u1");
@@ -408,12 +410,22 @@ public class ExcluirContaClienteTests {
     [Fact]
     public async Task ExcecaoNoMeioDaTransacao_FazRollbackEPropaga() {
         var cliente = NovoCliente(12);
-        var (useCase, clientes, _, _, _, _) = Montar(cliente);
+        var (useCase, clientes, _, _, _, _, _) = Montar(cliente);
         clientes.LancarErroAoExcluirDadosVinculados = true;
 
         await Assert.ThrowsAsync<InvalidOperationException>(
             () => useCase.ExecuteAsync(12, "senha", solicitadoPorAdmin: false, idUsuarioAtor: "u1"));
 
         Assert.Equal(new[] { "Start", "Rollback" }, clientes.Chamadas);
+    }
+
+    [Fact]
+    public async Task Sucesso_ApagaAsConversasDoChatDoUsuario() {
+        var (useCase, _, _, _, _, _, conversas) = Montar();
+
+        var ok = await useCase.ExecuteAsync(1, "senha-correta", solicitadoPorAdmin: true, idUsuarioAtor: "admin");
+
+        Assert.True(ok);
+        Assert.Equal(["u1"], conversas.UsuariosExcluidos);
     }
 }

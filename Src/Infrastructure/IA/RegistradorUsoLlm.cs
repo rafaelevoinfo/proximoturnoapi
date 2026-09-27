@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using ProximoTurnoApi.Application.UseCases.IA;
+using ProximoTurnoApi.Domain;
 using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Infrastructure.Repositories;
 
@@ -10,7 +11,8 @@ namespace ProximoTurnoApi.Infrastructure.IA;
 /// pertence — e grava. Singleton, porque quem o chama são os clientes de LLM, que também são.
 /// </summary>
 public class RegistradorUsoLlm(ILogger<RegistradorUsoLlm> _logger,
-                               IServiceScopeFactory _scopeFactory) : IRegistradorUsoLlm {
+                               IServiceScopeFactory _scopeFactory,
+                               ICotacaoDolar _cotacao) : IRegistradorUsoLlm {
 
     public async Task RegistrarAsync(RegistroUsoLlm registro) {
         try {
@@ -19,7 +21,7 @@ public class RegistradorUsoLlm(ILogger<RegistradorUsoLlm> _logger,
             using var scope = _scopeFactory.CreateScope();
             var repositorio = scope.ServiceProvider.GetRequiredService<IUsoLlmRepository>();
 
-            await repositorio.RegistrarAsync(Montar(registro));
+            await repositorio.RegistrarAsync(Montar(registro, _cotacao.Atual.Valor));
             Logar(registro);
         } catch (Exception excecao) {
             Falhou(excecao, registro);
@@ -31,7 +33,7 @@ public class RegistradorUsoLlm(ILogger<RegistradorUsoLlm> _logger,
             using var scope = _scopeFactory.CreateScope();
             var repositorio = scope.ServiceProvider.GetRequiredService<IUsoLlmRepository>();
 
-            repositorio.Registrar(Montar(registro));
+            repositorio.Registrar(Montar(registro, _cotacao.Atual.Valor));
             Logar(registro);
         } catch (Exception excecao) {
             Falhou(excecao, registro);
@@ -41,14 +43,21 @@ public class RegistradorUsoLlm(ILogger<RegistradorUsoLlm> _logger,
     /// <summary>
     /// Monta a linha. Todo texto é cortado no tamanho da coluna: no MySQL em modo estrito,
     /// um corpo de erro comprido derrubaria o insert e perderíamos justamente a linha do erro.
+    /// <para>
+    /// Com usuário no escopo, o gasto é convertido para reais agora, com a cotação recebida:
+    /// é o que sai do crédito dele. A cotação vem por parâmetro, e não é buscada aqui, porque
+    /// este caminho não pode fazer I/O externo nem lançar.
+    /// </para>
     /// </summary>
-    public static UsoLlm Montar(RegistroUsoLlm registro) {
+    public static UsoLlm Montar(RegistroUsoLlm registro, decimal? cotacaoUsdBrl = null) {
         var alvo = EscopoUsoLlm.Atual;
+        var comUsuario = alvo?.IdUsuario is not null && cotacaoUsdBrl is not null;
 
         return new UsoLlm {
             Momento = DateTime.Now,
             TraceId = Activity.Current?.TraceId.ToString(),
             Operacao = registro.Operacao,
+            IdUsuario = Cortar(alvo?.IdUsuario, 255),
             IdJogo = alvo?.IdJogo,
             IdJogoLink = alvo?.IdJogoLink,
             Alvo = Cortar(alvo?.Alvo, 200),
@@ -60,12 +69,22 @@ public class RegistradorUsoLlm(ILogger<RegistradorUsoLlm> _logger,
             TokensRaciocinio = registro.TokensRaciocinio,
             TokensCache = registro.TokensCache,
             CustoUsd = registro.CustoUsd,
+            CustoBrl = comUsuario ? CustoUsdEfetivo(registro) * cotacaoUsdBrl : null,
+            CotacaoUsdBrl = comUsuario ? cotacaoUsdBrl : null,
             DuracaoMs = registro.DuracaoMs,
             Desfecho = registro.Desfecho,
             Detalhe = Cortar(registro.Detalhe, 300),
             IdGeracao = Cortar(registro.IdGeracao, 80),
         };
     }
+
+    /// <summary>
+    /// O custo que a OpenRouter informou ou, sem ele, a estimativa pelos tokens. Estima pelo
+    /// modelo pedido: o que respondeu vem com sufixo de versão e não bate com a tabela.
+    /// </summary>
+    public static decimal CustoUsdEfetivo(RegistroUsoLlm registro) =>
+        registro.CustoUsd
+        ?? IAModel.EstimarCustoUsd(registro.ModeloPedido, registro.TokensEntrada, registro.TokensSaida);
 
     private static string? Cortar(string? valor, int tamanho) =>
         valor is null || valor.Length <= tamanho ? valor : valor[..tamanho];

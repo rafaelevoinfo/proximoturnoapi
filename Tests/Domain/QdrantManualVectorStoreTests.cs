@@ -68,4 +68,26 @@ public class QdrantManualVectorStoreTests {
 
         Assert.Equal(QdrantManualVectorStore.COLECAO_MANUAIS, QdrantManualVectorStore.NomeColecao(env));
     }
+
+    [Fact]
+    public void FiltroBusca_ExigeOJogo() {
+        var filtro = QdrantManualVectorStore.FiltroBusca(42);
+
+        var condicao = Assert.Single(filtro.Must);
+        Assert.Equal("IdJogo", condicao.Field.Key);
+        Assert.Equal(42, condicao.Field.Match.Integer);
+    }
+
+    [Fact]
+    public void Trecho_LeOPayloadGravadoPeloPonto() {
+        var ponto = QdrantManualVectorStore.Ponto(7, 14, Embedding());
+        var pontuado = new Qdrant.Client.Grpc.ScoredPoint { Score = 0.83f };
+        foreach (var (chave, valor) in ponto.Payload) {
+            pontuado.Payload[chave] = valor;
+        }
+
+        var trecho = QdrantManualVectorStore.Trecho(pontuado);
+
+        Assert.Equal(new TrechoManual(7, 14, "Azul > Turno", "Escolha uma fábrica.", 0.83f), trecho);
+    }
 }

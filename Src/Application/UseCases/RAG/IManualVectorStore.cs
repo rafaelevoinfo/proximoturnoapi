@@ -1,5 +1,8 @@
 namespace ProximoTurnoApi.Application.UseCases.RAG;
 
+/// <summary>Um pedaço de manual devolvido pela busca, com a similaridade à pergunta.</summary>
+public sealed record TrechoManual(int IdJogo, int IdJogoLink, string Titulo, string Texto, float Score);
+
 public interface IManualVectorStore {
 
     /// <summary>
@@ -20,4 +23,11 @@ public interface IManualVectorStore {
     /// aqui e não deveria estar vira job de remoção.
     /// </summary>
     Task<IReadOnlyList<int>> ListarIdsLinksAsync(CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Trechos do manual mais parecidos com a pergunta, sempre de um jogo só. O jogo é
+    /// obrigatório de propósito: uma busca sem filtro misturaria regras de jogos diferentes
+    /// na mesma resposta, e isso não pode depender da disciplina de quem chama.
+    /// </summary>
+    Task<IReadOnlyList<TrechoManual>> BuscarAsync(int idJogo, ReadOnlyMemory<float> vetor, int quantidade, CancellationToken cancellationToken);
 }

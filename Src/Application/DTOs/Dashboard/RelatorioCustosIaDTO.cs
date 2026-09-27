@@ -1,3 +1,4 @@
+using ProximoTurnoApi.Application.UseCases.IA;
 using ProximoTurnoApi.Infrastructure.Models;
 
 namespace ProximoTurnoApi.Application.DTOs;
@@ -19,6 +20,21 @@ public class RelatorioCustosIaDTO
     public List<CustoIaOperacaoDTO> PorOperacao { get; set; } = [];
     public List<CustoIaDesfechoDTO> PorDesfecho { get; set; } = [];
     public List<CustoIaModeloDTO> PorModelo { get; set; } = [];
+    /// <summary>Quem mais gastou no chat de regras no período, sem considerar o filtro de modelo.</summary>
+    public List<CustoIaUsuarioDTO> TopUsuariosChat { get; set; } = [];
+    /// <summary>Cotação que o chat está usando agora para debitar o crédito.</summary>
+    public decimal CotacaoUsdBrl { get; set; }
+    public FonteCotacao FonteCotacao { get; set; }
+}
+
+public class CustoIaUsuarioDTO
+{
+    public string IdUsuario { get; set; } = string.Empty;
+    /// <summary>Nulo quando a conta já foi excluída: o gasto fica, o dono não.</summary>
+    public string? Email { get; set; }
+    public int TotalRequisicoes { get; set; }
+    public decimal CustoUsd { get; set; }
+    public decimal CustoBrl { get; set; }
 }
 
 public class CustoIaOperacaoDTO

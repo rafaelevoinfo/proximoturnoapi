@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using ProximoTurnoApi.Infrastructure.Repositories;
 
@@ -10,9 +11,11 @@ using ProximoTurnoApi.Infrastructure.Repositories;
 namespace ProximoTurnoApi.Migrations
 {
     [DbContext(typeof(DatabaseContext))]
-    partial class DatabaseContextModelSnapshot : ModelSnapshot
+    [Migration("20260926215221_ChatRegrasUsoLlmUsuario")]
+    partial class ChatRegrasUsoLlmUsuario
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -273,88 +276,6 @@ namespace ProximoTurnoApi.Migrations
                     b.HasIndex("ID_CATEGORIA");
 
                     b.ToTable("CATEGORIA_PERIODO", (string)null);
-                });
-
-            modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.ChatConversa", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("ID");
-
-                    b.Property<Guid>("Chave")
-                        .HasColumnType("char(36)")
-                        .HasColumnName("CHAVE");
-
-                    b.Property<DateTime>("DataAtualizacao")
-                        .HasColumnType("datetime(6)")
-                        .HasColumnName("DATA_ATUALIZACAO");
-
-                    b.Property<DateTime>("DataCriacao")
-                        .HasColumnType("datetime(6)")
-                        .HasColumnName("DATA_CRIACAO");
-
-                    b.Property<int>("IdJogo")
-                        .HasColumnType("int")
-                        .HasColumnName("ID_JOGO");
-
-                    b.Property<string>("IdUsuario")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)")
-                        .HasColumnName("ID_USUARIO");
-
-                    b.Property<string>("Sessao")
-                        .HasColumnType("longtext")
-                        .HasColumnName("SESSAO");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Chave")
-                        .IsUnique();
-
-                    b.HasIndex("IdUsuario");
-
-                    b.ToTable("CHAT_CONVERSA");
-                });
-
-            modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.ChatMensagem", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("ID");
-
-                    b.Property<int>("IdConversa")
-                        .HasColumnType("int")
-                        .HasColumnName("ID_CONVERSA");
-
-                    b.Property<DateTime>("Momento")
-                        .HasColumnType("datetime(6)")
-                        .HasColumnName("MOMENTO");
-
-                    b.Property<string>("Pergunta")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("PERGUNTA");
-
-                    b.Property<string>("Resposta")
-                        .HasColumnType("text")
-                        .HasColumnName("RESPOSTA");
-
-                    b.Property<short>("Tipo")
-                        .HasColumnType("smallint")
-                        .HasColumnName("TIPO");
-
-                    b.Property<string>("Trechos")
-                        .HasColumnType("longtext")
-                        .HasColumnName("TRECHOS");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("IdConversa");
-
-                    b.ToTable("CHAT_MENSAGEM");
                 });
 
             modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.Cliente", b =>
@@ -1182,15 +1103,6 @@ namespace ProximoTurnoApi.Migrations
                     b.Navigation("Categoria");
                 });
 
-            modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.ChatMensagem", b =>
-                {
-                    b.HasOne("ProximoTurnoApi.Infrastructure.Models.ChatConversa", null)
-                        .WithMany("Mensagens")
-                        .HasForeignKey("IdConversa")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.Comentario", b =>
                 {
                     b.HasOne("ProximoTurnoApi.Infrastructure.Models.Cliente", "Cliente")
@@ -1314,11 +1226,6 @@ namespace ProximoTurnoApi.Migrations
             modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.Categoria", b =>
                 {
                     b.Navigation("Periodos");
-                });
-
-            modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.ChatConversa", b =>
-                {
-                    b.Navigation("Mensagens");
                 });
 
             modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.Jogo", b =>

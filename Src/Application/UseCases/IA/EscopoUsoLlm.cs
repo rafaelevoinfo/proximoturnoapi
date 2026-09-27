@@ -1,7 +1,10 @@
 namespace ProximoTurnoApi.Application.UseCases.IA;
 
-/// <summary>O que estava sendo feito quando a chamada de LLM saiu.</summary>
-public sealed record AlvoUsoLlm(int? IdJogo, int? IdJogoLink, string? Alvo);
+/// <summary>
+/// O que estava sendo feito quando a chamada de LLM saiu. <see cref="IdUsuario"/> só vem
+/// preenchido quando o gasto sai do crédito de alguém (chat de regras).
+/// </summary>
+public sealed record AlvoUsoLlm(int? IdJogo, int? IdJogoLink, string? Alvo, string? IdUsuario = null);
 
 /// <summary>
 /// Diz ao ledger a que manual pertence o gasto. Ambiente em vez de parâmetro porque entre
@@ -15,9 +18,9 @@ public static class EscopoUsoLlm {
     public static AlvoUsoLlm? Atual => _atual.Value;
 
     /// <summary>Consumir com <c>using</c>: descartar restaura o escopo anterior.</summary>
-    public static IDisposable Abrir(int? idJogo, int? idJogoLink, string? alvo) {
+    public static IDisposable Abrir(int? idJogo, int? idJogoLink, string? alvo, string? idUsuario = null) {
         var anterior = _atual.Value;
-        _atual.Value = new AlvoUsoLlm(idJogo, idJogoLink, alvo);
+        _atual.Value = new AlvoUsoLlm(idJogo, idJogoLink, alvo, idUsuario);
         return new Escopo(anterior);
     }
 

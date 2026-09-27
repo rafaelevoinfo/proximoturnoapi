@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using ProximoTurnoApi.Application.DTOs;
+using ProximoTurnoApi.Application.UseCases.IA;
 using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Infrastructure.Repositories;
 
@@ -19,7 +20,7 @@ public record GrupoUsoLlm(
     long TokensCache,
     long DuracaoMs);
 
-public class ObterRelatorioCustosIa(DatabaseContext dbContext) : UseCaseBasico
+public class ObterRelatorioCustosIa(DatabaseContext dbContext, ICotacaoDolar cotacaoDolar) : UseCaseBasico
 {
     public async Task<RelatorioCustosIaDTO> ExecuteAsync(DateOnly? dataInicial, DateOnly? dataFinal, string? modelo)
     {
@@ -60,7 +61,43 @@ public class ObterRelatorioCustosIa(DatabaseContext dbContext) : UseCaseBasico
 
         var relatorio = Montar(grupos);
         relatorio.ModelosDisponiveis = modelosDisponiveis;
+        relatorio.TopUsuariosChat = await TopUsuariosChatAsync(periodo);
+
+        var cotacao = await cotacaoDolar.ObterAsync();
+        relatorio.CotacaoUsdBrl = cotacao.Valor;
+        relatorio.FonteCotacao = cotacao.Fonte;
         return relatorio;
+    }
+
+    private const int QuantidadeTopUsuarios = 10;
+
+    private async Task<List<CustoIaUsuarioDTO>> TopUsuariosChatAsync(IQueryable<UsoLlm> periodo)
+    {
+        var top = await periodo
+            .Where(u => u.IdUsuario != null)
+            .GroupBy(u => u.IdUsuario!)
+            .Select(g => new CustoIaUsuarioDTO
+            {
+                IdUsuario = g.Key,
+                TotalRequisicoes = g.Count(),
+                CustoUsd = g.Sum(u => u.CustoUsd) ?? 0m,
+                CustoBrl = g.Sum(u => u.CustoBrl) ?? 0m
+            })
+            .OrderByDescending(u => u.CustoBrl)
+            .Take(QuantidadeTopUsuarios)
+            .ToListAsync();
+
+        var ids = top.Select(u => u.IdUsuario).ToList();
+        var emails = await dbContext.Users
+            .Where(u => ids.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id, u => u.Email);
+
+        foreach (var usuario in top)
+        {
+            usuario.Email = emails.GetValueOrDefault(usuario.IdUsuario);
+        }
+
+        return top;
     }
 
     public static RelatorioCustosIaDTO Montar(IReadOnlyCollection<GrupoUsoLlm> grupos)
@@ -125,6 +162,9 @@ public class ObterRelatorioCustosIa(DatabaseContext dbContext) : UseCaseBasico
         OperacaoLlm.Ocr => "OCR",
         OperacaoLlm.RevisaoMarkdown => "Revisão do markdown",
         OperacaoLlm.Embedding => "Embedding",
+        OperacaoLlm.ChatEmbedding => "Chat: busca",
+        OperacaoLlm.ChatResposta => "Chat: resposta",
+        OperacaoLlm.ChatResumo => "Chat: resumo do histórico",
         _ => operacao.ToString()
     };
 

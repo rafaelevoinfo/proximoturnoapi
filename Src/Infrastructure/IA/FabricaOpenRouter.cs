@@ -21,7 +21,7 @@ public class FabricaOpenRouter : IFabricaOpenRouter {
     private readonly Func<string?> _lerChave;
 
     private readonly ConcurrentDictionary<ChaveCliente, IChatClient> _chats = new();
-    private readonly ConcurrentDictionary<string, IEmbeddingGenerator<string, Embedding<float>>> _embeddings = new();
+    private readonly ConcurrentDictionary<(string Modelo, OperacaoLlm Operacao), IEmbeddingGenerator<string, Embedding<float>>> _embeddings = new();
 
     public FabricaOpenRouter(ILoggerFactory loggerFactory, IRegistradorUsoLlm registrador, Func<string?>? lerChave = null) {
         _loggerFactory = loggerFactory;
@@ -42,10 +42,10 @@ public class FabricaOpenRouter : IFabricaOpenRouter {
                         chave => Cliente(chave.Modelo, chave.Operacao, chave.Timeout, chave.Tentativas)
                                  .GetChatClient(chave.Modelo).AsIChatClient());
 
-    public IEmbeddingGenerator<string, Embedding<float>> CriarEmbedding(string modelo) =>
-        _embeddings.GetOrAdd(modelo,
-                             m => Cliente(m, OperacaoLlm.Embedding, TimeoutEmbedding, TentativasEmbedding)
-                                  .GetEmbeddingClient(m).AsIEmbeddingGenerator());
+    public IEmbeddingGenerator<string, Embedding<float>> CriarEmbedding(string modelo, OperacaoLlm operacao = OperacaoLlm.Embedding) =>
+        _embeddings.GetOrAdd((modelo, operacao),
+                             chave => Cliente(chave.Modelo, chave.Operacao, TimeoutEmbedding, TentativasEmbedding)
+                                      .GetEmbeddingClient(chave.Modelo).AsIEmbeddingGenerator());
 
     /// <summary>
     /// A chave é lida aqui, na primeira vez que alguém pede um cliente, e não no construtor:

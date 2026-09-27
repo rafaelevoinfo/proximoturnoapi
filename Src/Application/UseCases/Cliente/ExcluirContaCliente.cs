@@ -9,13 +9,15 @@ namespace ProximoTurnoApi.Application.UseCases;
 
 /// <summary>
 /// Atende o direito de eliminação do titular (LGPD Art. 18, VI): anonimiza o cliente,
-/// apaga comentários, lista de desejos, contratos locais e o login do Identity.
+/// apaga comentários, lista de desejos, contratos locais, conversas do chat de regras e o
+/// login do Identity.
 /// O histórico de pedidos é preservado por obrigação fiscal (Art. 16, I).
 /// </summary>
 public class ExcluirContaCliente(
     IClienteRepository clienteRepository,
     IPedidoRepository pedidoRepository,
     IContratoRepository contratoRepository,
+    IChatConversaRepository chatConversaRepository,
     UserManager<Usuario> userManager,
     IEmailService emailService,
     ILogger<ExcluirContaCliente> logger) : UseCaseBasico {
@@ -115,6 +117,10 @@ public class ExcluirContaCliente(
             await clienteRepository.UpdateAsync(cliente);
 
             if (usuarioCliente is not null) {
+                // As perguntas feitas ao chat sao texto livre do titular. O gasto em USO_LLM fica:
+                // guarda so o id do usuario, que deixa de existir junto com o login.
+                await chatConversaRepository.ExcluirDoUsuarioAsync(usuarioCliente.Id);
+
                 var resultado = await userManager.DeleteAsync(usuarioCliente);
                 if (!resultado.Succeeded) {
                     foreach (var erro in resultado.Errors) {
