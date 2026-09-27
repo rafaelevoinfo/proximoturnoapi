@@ -50,7 +50,6 @@ public class ResponderPerguntaRegrasTests {
         Assert.Equal(TipoRespostaChat.Resposta, resposta!.Tipo);
         Assert.Equal(new JogoChatDTO(1, "Catan"), resposta.Jogo);
         Assert.Equal([1], _vetores.JogosBuscados);
-        Assert.Equal([new FonteChatDTO(10, "Catan > Comércio")], resposta.Fontes);
     }
 
     // Pedido do produto: nada de chamada so para classificar a pergunta.
@@ -312,12 +311,11 @@ public class ResponderPerguntaRegrasTests {
     public async Task TrechoAbaixoDoScoreMinimo_NaoVaiParaOModeloMasFicaGravado() {
         _vetores.Trechos.Add(new TrechoManual(1, 11, "Catan > Ladrão", "Ao sair 7, mova o ladrão.", 0.12f));
 
-        var resposta = await Caso().ExecuteAsync(Cliente, Pergunta("Posso trocar com o banco?", pagina: 1));
+        await Caso().ExecuteAsync(Cliente, Pergunta("Posso trocar com o banco?", pagina: 1));
 
         var instrucoes = _redator.Opcoes.Single()!.Instructions!;
         Assert.Contains("Troca 4:1 com o banco.", instrucoes);
         Assert.DoesNotContain("mova o ladrão", instrucoes);
-        Assert.Equal([10], resposta!.Fontes.Select(f => f.IdJogoLink));
 
         using var trechos = System.Text.Json.JsonDocument.Parse(_conversas.Mensagens.Single().Trechos!);
         Assert.Equal([true, false], trechos.RootElement.EnumerateArray().Select(t => t.GetProperty("Usado").GetBoolean()));
@@ -328,12 +326,11 @@ public class ResponderPerguntaRegrasTests {
         _vetores.Trechos.Clear();
         _vetores.Trechos.Add(new TrechoManual(1, 11, "Catan > Ladrão", "Ao sair 7, mova o ladrão.", 0.12f));
 
-        var resposta = await Caso().ExecuteAsync(Cliente, Pergunta("Qual a capital da França?", pagina: 1));
+        await Caso().ExecuteAsync(Cliente, Pergunta("Qual a capital da França?", pagina: 1));
 
         var instrucoes = _redator.Opcoes.Single()!.Instructions!;
         Assert.Contains(ContextoManualProvider.SemTrechos, instrucoes);
         Assert.DoesNotContain("mova o ladrão", instrucoes);
-        Assert.Empty(resposta!.Fontes);
     }
 
     // As regras fixas vem do agente e os trechos do provider: as duas partes chegam juntas ao

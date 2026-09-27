@@ -33,8 +33,6 @@ public enum TipoRespostaChat {
 
 public record JogoChatDTO(int Id, string Nome);
 
-public record FonteChatDTO(int IdJogoLink, string Titulo);
-
 /// <summary>
 /// Resposta do chat. Não carrega saldo de propósito: o crédito do usuário só é visível
 /// para admin (<see cref="SaldoChatDTO"/>).
@@ -51,8 +49,6 @@ public record RespostaChatDTO {
 
     /// <summary>Só em <see cref="TipoRespostaChat.ConfirmarJogo"/>.</summary>
     public List<JogoChatDTO> OpcoesJogo { get; init; } = [];
-
-    public List<FonteChatDTO> Fontes { get; init; } = [];
 }
 
 /// <summary>Crédito do chat de um usuário. Exposto só para admin.</summary>
