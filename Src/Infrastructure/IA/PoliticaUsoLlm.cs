@@ -24,8 +24,6 @@ public sealed class PoliticaUsoLlm(ILogger<PoliticaUsoLlm> _logger,
     // Um corpo de erro inteiro nao cabe na coluna e nao acrescenta nada depois do comeco.
     private const int TamanhoTrecho = 200;
 
-    private int _avisouStreaming;
-
     public override void Process(PipelineMessage mensagem, IReadOnlyList<PipelinePolicy> pipeline, int indice) {
         var relogio = Stopwatch.StartNew();
         try {
@@ -42,7 +40,9 @@ public sealed class PoliticaUsoLlm(ILogger<PoliticaUsoLlm> _logger,
             throw;
         }
 
-        Entregar(mensagem, relogio, null);
+        if (!AcompanharStreaming(mensagem, relogio)) {
+            Entregar(mensagem, relogio, null);
+        }
     }
 
     public override async ValueTask ProcessAsync(PipelineMessage mensagem, IReadOnlyList<PipelinePolicy> pipeline, int indice) {
@@ -57,7 +57,86 @@ public sealed class PoliticaUsoLlm(ILogger<PoliticaUsoLlm> _logger,
             throw;
         }
 
-        await EntregarAsync(mensagem, relogio, null);
+        if (!AcompanharStreaming(mensagem, relogio)) {
+            await EntregarAsync(mensagem, relogio, null);
+        }
+    }
+
+    /// <summary>
+    /// Resposta em streaming bem-sucedida: o corpo ainda não chegou, então não há o que ler
+    /// agora. O corpo é trocado por um <see cref="StreamUsoLlm"/>, que repassa tudo ao SDK e
+    /// entrega o uso quando o fluxo termina. O alvo do ledger é capturado aqui, porque quando
+    /// o fluxo acabar quem estiver lendo pode já estar em outro escopo.
+    /// </summary>
+    /// <returns>true quando o registro fica por conta do stream.</returns>
+    private bool AcompanharStreaming(PipelineMessage mensagem, Stopwatch relogio) {
+        try {
+            var resposta = mensagem.Response;
+            if (mensagem.BufferResponse || resposta?.ContentStream is null || resposta.Status is < 200 or >= 300) {
+                return false;
+            }
+
+            var alvo = EscopoUsoLlm.Atual;
+            resposta.ContentStream = new StreamUsoLlm(
+                resposta.ContentStream,
+                uso => {
+                    using var escopo = Restaurar(alvo);
+                    Entregar(uso, relogio);
+                },
+                async uso => {
+                    using var escopo = Restaurar(alvo);
+                    await EntregarAsync(uso, relogio);
+                });
+            return true;
+        } catch (Exception falha) {
+            NaoRegistrou(falha);
+            return false;
+        }
+    }
+
+    private static IDisposable? Restaurar(AlvoUsoLlm? alvo) =>
+        alvo is null ? null : EscopoUsoLlm.Abrir(alvo.IdJogo, alvo.IdJogoLink, alvo.Alvo, alvo.IdUsuario);
+
+    private void Entregar(UsoSse uso, Stopwatch relogio) {
+        try {
+            _registrador.Registrar(Ler(uso, relogio));
+        } catch (Exception falha) {
+            NaoRegistrou(falha);
+        }
+    }
+
+    private async ValueTask EntregarAsync(UsoSse uso, Stopwatch relogio) {
+        try {
+            await _registrador.RegistrarAsync(Ler(uso, relogio));
+        } catch (Exception falha) {
+            NaoRegistrou(falha);
+        }
+    }
+
+    /// <summary>
+    /// Linha do ledger de uma resposta em streaming. Sem <c>usage</c> e sem <c>[DONE]</c>, o
+    /// fluxo foi interrompido (usuário saiu, conexão caiu): o servidor pode ter cobrado, mas não
+    /// disse quanto, e a linha registra isso como exceção.
+    /// </summary>
+    public RegistroUsoLlm Ler(UsoSse uso, Stopwatch relogio) {
+        relogio.Stop();
+        var duracao = (int)Math.Min(relogio.ElapsedMilliseconds, int.MaxValue);
+        var interrompido = !uso.TemUso && !uso.Concluido;
+
+        return new RegistroUsoLlm(
+            _operacao,
+            _modelo,
+            uso.Modelo,
+            uso.Provider,
+            uso.TokensEntrada,
+            uso.TokensSaida,
+            uso.TokensRaciocinio,
+            uso.TokensCache,
+            uso.CustoUsd,
+            duracao,
+            interrompido ? DesfechoLlm.Excecao : Desfecho(true, uso.FinishReason),
+            interrompido ? "Streaming interrompido antes do fim." : uso.FinishReason is null or "stop" ? null : uso.FinishReason,
+            uso.IdGeracao);
     }
 
     // As duas entregas sao try/catch de fora a fora, inclusive em volta da leitura e do proprio
@@ -113,12 +192,9 @@ public sealed class PoliticaUsoLlm(ILogger<PoliticaUsoLlm> _logger,
             }
 
             if (!mensagem.BufferResponse) {
-                // Streaming: o corpo nao esta em memoria e consumi-lo aqui roubaria o do SDK.
-                if (Interlocked.Exchange(ref _avisouStreaming, 1) == 0) {
-                    _logger.LogDebug("Chamada em streaming para {Modelo} não entra no ledger.", _modelo);
-                }
-
-                return null;
+                // Streaming que nao foi acompanhado: resposta de erro, cujo corpo o SDK ainda vai
+                // ler. Nao se toca nele; o status basta.
+                return Simples(duracao, DesfechoLlm.ErroHttp, $"HTTP {resposta.Status}");
             }
 
             var httpOk = resposta.Status is >= 200 and < 300;

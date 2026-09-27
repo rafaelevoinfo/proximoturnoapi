@@ -3,6 +3,7 @@ using System.ClientModel.Primitives;
 using System.Net;
 using System.Text;
 using Microsoft.Extensions.AI;
+using ProximoTurnoApi.Application.UseCases.IA;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using OpenAI;
@@ -333,6 +334,114 @@ public class PoliticaUsoLlmTests {
 
         return new OpenAIClient(new ApiKeyCredential("sk-falsa"), opcoes)
             .GetChatClient("modelo/pedido").AsIChatClient();
+    }
+
+    // Streaming como a OpenRouter manda: texto em pedacos, finish_reason no penultimo e usage
+    // (com custo) no ultimo, antes do [DONE].
+    private const string SseOk =
+        "data: {\"id\":\"gen-sse-1\",\"model\":\"deepseek/deepseek-v4-flash-20260423\",\"provider\":\"Parasail\",\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":\"Tro\"},\"finish_reason\":null}]}\n\n" +
+        ": OPENROUTER PROCESSING\n\n" +
+        "data: {\"id\":\"gen-sse-1\",\"model\":\"deepseek/deepseek-v4-flash-20260423\",\"provider\":\"Parasail\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"que 4:1\"},\"finish_reason\":\"stop\"}]}\n\n" +
+        "data: {\"id\":\"gen-sse-1\",\"model\":\"deepseek/deepseek-v4-flash-20260423\",\"provider\":\"Parasail\",\"choices\":[],\"usage\":{\"prompt_tokens\":900,\"completion_tokens\":42,\"cost\":0.0000512,\"prompt_tokens_details\":{\"cached_tokens\":3},\"completion_tokens_details\":{\"reasoning_tokens\":0}}}\n\n" +
+        "data: [DONE]\n\n";
+
+    private static HttpResponseMessage RespostaSse(string corpo) =>
+        new(HttpStatusCode.OK) { Content = new StringContent(corpo, Encoding.UTF8, "text/event-stream") };
+
+    [Fact]
+    public async Task Streaming_UsuarioRecebeOTextoELedgerGravaCustoDoUltimoPedaco() {
+        var chat = Chat(_ => RespostaSse(SseOk));
+
+        var texto = new StringBuilder();
+        await foreach (var pedaco in chat.GetStreamingResponseAsync(new ChatMessage(ChatRole.User, "oi"))) {
+            texto.Append(pedaco.Text);
+        }
+
+        Assert.Equal("Troque 4:1", texto.ToString());
+        var linha = Assert.Single(_registrador.Registros);
+        Assert.Equal("deepseek/deepseek-v4-flash-20260423", linha.ModeloRespondeu);
+        Assert.Equal("Parasail", linha.Provider);
+        Assert.Equal(900, linha.TokensEntrada);
+        Assert.Equal(42, linha.TokensSaida);
+        Assert.Equal(3, linha.TokensCache);
+        Assert.Equal(0.0000512m, linha.CustoUsd);
+        Assert.Equal("gen-sse-1", linha.IdGeracao);
+        Assert.Equal(DesfechoLlm.Ok, linha.Desfecho);
+        Assert.Null(linha.Detalhe);
+    }
+
+    // O gasto de uma resposta em streaming so e conhecido no fim, quando quem le pode estar em
+    // outro escopo. A linha tem que sair com o alvo de quando a chamada foi feita.
+    [Fact]
+    public async Task Streaming_LinhaLevaOAlvoDeQuandoAChamadaSaiu() {
+        var chat = Chat(_ => RespostaSse(SseOk));
+        IAsyncEnumerator<ChatResponseUpdate> leitor;
+
+        using (EscopoUsoLlm.Abrir(17, null, "Chat de regras / Catan", "usuario-1")) {
+            leitor = chat.GetStreamingResponseAsync(new ChatMessage(ChatRole.User, "oi")).GetAsyncEnumerator();
+            await leitor.MoveNextAsync();
+        }
+
+        while (await leitor.MoveNextAsync()) { }
+        await leitor.DisposeAsync();
+
+        Assert.Single(_registrador.Registros);
+        Assert.Equal("usuario-1", _registrador.Alvos.Single()?.IdUsuario);
+        Assert.Equal(17, _registrador.Alvos.Single()?.IdJogo);
+    }
+
+    // Conexao que cai no meio: o corpo termina sem usage e sem [DONE]. O servidor pode ter
+    // cobrado, mas nao disse quanto.
+    [Fact]
+    public async Task Streaming_InterrompidoAntesDoFim_GravaComoExcecao() {
+        var cortado = SseOk[..SseOk.IndexOf(": OPENROUTER", StringComparison.Ordinal)];
+        var chat = Chat(_ => RespostaSse(cortado));
+
+        await foreach (var _ in chat.GetStreamingResponseAsync(new ChatMessage(ChatRole.User, "oi"))) { }
+
+        var linha = Assert.Single(_registrador.Registros);
+        Assert.Equal(DesfechoLlm.Excecao, linha.Desfecho);
+        Assert.Equal("Streaming interrompido antes do fim.", linha.Detalhe);
+        Assert.Equal("gen-sse-1", linha.IdGeracao);
+    }
+
+    [Fact]
+    public async Task Streaming_FinishLength_GravaTruncado() {
+        var chat = Chat(_ => RespostaSse(SseOk.Replace("\"finish_reason\":\"stop\"", "\"finish_reason\":\"length\"")));
+
+        await foreach (var _ in chat.GetStreamingResponseAsync(new ChatMessage(ChatRole.User, "oi"))) { }
+
+        var linha = Assert.Single(_registrador.Registros);
+        Assert.Equal(DesfechoLlm.Truncado, linha.Desfecho);
+        Assert.Equal("length", linha.Detalhe);
+        Assert.Equal(0.0000512m, linha.CustoUsd);
+    }
+
+    // Sem include_usage o provedor pode omitir o usage do streaming, e a chamada sairia sem custo.
+    [Fact]
+    public async Task Streaming_PedeOUsoNaRequisicao() {
+        string? corpo = null;
+        var chat = Chat(requisicao => {
+            corpo = requisicao.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+            return RespostaSse(SseOk);
+        });
+
+        await foreach (var _ in chat.GetStreamingResponseAsync(new ChatMessage(ChatRole.User, "oi"))) { }
+
+        Assert.Contains("\"include_usage\":true", corpo);
+    }
+
+    [Fact]
+    public void UsoSse_LinhaQuebradaEComentario_NaoLancam() {
+        var uso = new UsoSse();
+
+        uso.LerLinha(": OPENROUTER PROCESSING");
+        uso.LerLinha("data: {quebrado");
+        uso.LerLinha("event: qualquer");
+        uso.LerLinha("data: [DONE]");
+
+        Assert.True(uso.Concluido);
+        Assert.False(uso.TemUso);
     }
 
     private static HttpResponseMessage Resposta(HttpStatusCode status, string corpo) =>

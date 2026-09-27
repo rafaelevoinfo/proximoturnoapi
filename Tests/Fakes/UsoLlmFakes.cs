@@ -34,6 +34,9 @@ public sealed class FakeRegistradorUsoLlm : IRegistradorUsoLlm {
     private readonly Lock _trava = new();
 
     public List<RegistroUsoLlm> Registros { get; } = [];
+
+    /// <summary>Alvo ambiente visto em cada registro, na mesma ordem de <see cref="Registros"/>.</summary>
+    public List<AlvoUsoLlm?> Alvos { get; } = [];
     public Exception? Erro { get; set; }
 
     public Task RegistrarAsync(RegistroUsoLlm registro) {
@@ -49,6 +52,7 @@ public sealed class FakeRegistradorUsoLlm : IRegistradorUsoLlm {
         // Duas chamadas simultaneas registram pela mesma instancia: a lista tem que aguentar.
         lock (_trava) {
             Registros.Add(registro);
+            Alvos.Add(EscopoUsoLlm.Atual);
         }
     }
 }

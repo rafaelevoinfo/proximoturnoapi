@@ -57,12 +57,42 @@ public sealed class FakeChatClient(params string[] respostas) : IChatClient {
         return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, resposta)));
     }
 
-    public IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default) =>
-        throw new NotImplementedException();
+    /// <summary>A mesma resposta pronta, entregue em pedaços de até 12 caracteres.</summary>
+    public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default) {
+        var resposta = await GetResponseAsync(messages, options, cancellationToken);
+        var texto = resposta.Text;
+
+        for (var inicio = 0; inicio < texto.Length; inicio += 12) {
+            cancellationToken.ThrowIfCancellationRequested();
+            yield return new ChatResponseUpdate(ChatRole.Assistant, texto.Substring(inicio, Math.Min(12, texto.Length - inicio)));
+        }
+    }
 
     public object? GetService(Type serviceType, object? serviceKey = null) => null;
 
     public void Dispose() { }
+}
+
+/// <summary>Guarda o que o caso de uso mandou para a tela, na ordem.</summary>
+public sealed class FakeSaidaChat : ProximoTurnoApi.Application.UseCases.Chat.ISaidaChat {
+
+    public List<ProximoTurnoApi.Application.DTOs.RespostaChatDTO> Cabecalhos { get; } = [];
+    public List<string> Trechos { get; } = [];
+
+    /// <summary>Executado a cada trecho escrito; serve para simular o usuário saindo no meio.</summary>
+    public Action? AoEscrever { get; set; }
+
+    public Task IniciarAsync(ProximoTurnoApi.Application.DTOs.RespostaChatDTO cabecalho, CancellationToken cancellationToken) {
+        Cabecalhos.Add(cabecalho);
+        return Task.CompletedTask;
+    }
+
+    public Task EscreverAsync(string trecho, CancellationToken cancellationToken) {
+        Trechos.Add(trecho);
+        AoEscrever?.Invoke();
+        return Task.CompletedTask;
+    }
 }
 
 public sealed class FakeEmbeddingGenerator : IEmbeddingGenerator<string, Embedding<float>> {
