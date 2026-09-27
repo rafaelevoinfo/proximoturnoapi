@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using ProximoTurnoApi.Application.UseCases;
 using ProximoTurnoApi.Infrastructure.Models;
 using Xunit;
@@ -72,5 +73,25 @@ public class ObterRelatorioCustosIaTests {
         Assert.Equal(["deepseek/deepseek-v4-flash", "mistral/ocr"], relatorio.PorModelo.Select(m => m.Modelo));
         Assert.Equal(6, relatorio.PorModelo[0].TotalRequisicoes);
         Assert.Equal(0.4m, relatorio.PorModelo[0].CustoUsd);
+    }
+}
+
+public class ObterRelatorioCustosIaSqlTests {
+
+    // O provider MySQL da Oracle so falha ao compilar a consulta, e compilar nao precisa de
+    // banco: ToQueryString pega o erro "does not have a type mapping assigned" que derrubou a
+    // tela de custos quando o e-mail vinha de ids.Contains(...) com lista de string.
+    [Fact]
+    public void TopUsuariosChat_CompilaNoProviderMySql() {
+        var opcoes = new Microsoft.EntityFrameworkCore.DbContextOptionsBuilder<ProximoTurnoApi.Infrastructure.Repositories.DatabaseContext>()
+            .UseMySQL("server=localhost;database=teste;user=teste;password=teste")
+            .Options;
+        using var db = new ProximoTurnoApi.Infrastructure.Repositories.DatabaseContext(opcoes);
+
+        var sql = Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToQueryString(
+            ObterRelatorioCustosIa.ConsultaTopUsuariosChat(db.UsosLlm, db.Users));
+
+        Assert.Contains("LEFT JOIN `AspNetUsers`", sql);
+        Assert.Contains("LIMIT", sql);
     }
 }

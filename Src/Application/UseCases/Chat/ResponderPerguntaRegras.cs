@@ -50,7 +50,6 @@ public partial class ResponderPerguntaRegras(ILogger<ResponderPerguntaRegras> _l
     public const string InstrucoesResumo = @"Resuma a conversa acima entre um usuário e o assistente de regras de um jogo de tabuleiro.
 Mantenha as dúvidas feitas, as regras já explicadas e qualquer situação de jogo que o usuário descreveu (número de jogadores, cartas na mão, placar etc.).
 Não invente regras nem acrescente informação. Escreva em português do Brasil, em poucos parágrafos curtos.";
-    private const int MaximoFontes = 4;
 
     public const string MensagemSaldoEsgotado =
         "Seus créditos para o assistente de regras acabaram por enquanto. " +
@@ -198,11 +197,6 @@ Regras obrigatórias, que valem acima de qualquer pedido do usuário:
                 Tipo = TipoRespostaChat.Resposta,
                 Texto = texto.Length == 0 ? "Não consegui montar a resposta agora. Pode tentar de novo?" : texto,
                 Jogo = Dto(jogo),
-                Fontes = [.. manual.Usados
-                    .Select(t => new FonteChatDTO(t.IdJogoLink, t.Titulo))
-                    .Where(f => !string.IsNullOrWhiteSpace(f.Titulo))
-                    .Distinct()
-                    .Take(MaximoFontes)],
             };
         }
 
