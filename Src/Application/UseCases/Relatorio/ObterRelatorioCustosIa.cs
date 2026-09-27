@@ -71,12 +71,21 @@ public class ObterRelatorioCustosIa(DatabaseContext dbContext, ICotacaoDolar cot
 
     private const int QuantidadeTopUsuarios = 10;
 
-    private async Task<List<CustoIaUsuarioDTO>> TopUsuariosChatAsync(IQueryable<UsoLlm> periodo)
+    private Task<List<CustoIaUsuarioDTO>> TopUsuariosChatAsync(IQueryable<UsoLlm> periodo) =>
+        ConsultaTopUsuariosChat(periodo, dbContext.Users).ToListAsync();
+
+    /// <summary>
+    /// Os usuários que mais gastaram no chat, já com o e-mail, numa consulta só. O e-mail vem
+    /// por LEFT JOIN, e não por uma segunda consulta com <c>ids.Contains(...)</c>: o provider
+    /// MySQL da Oracle não traduz lista de string como parâmetro ("does not have a type mapping
+    /// assigned"). Conta excluída fica sem e-mail, mas o gasto continua na lista.
+    /// </summary>
+    public static IQueryable<CustoIaUsuarioDTO> ConsultaTopUsuariosChat(IQueryable<UsoLlm> periodo, IQueryable<Usuario> usuarios)
     {
-        var top = await periodo
+        var top = periodo
             .Where(u => u.IdUsuario != null)
             .GroupBy(u => u.IdUsuario!)
-            .Select(g => new CustoIaUsuarioDTO
+            .Select(g => new
             {
                 IdUsuario = g.Key,
                 TotalRequisicoes = g.Count(),
@@ -84,20 +93,20 @@ public class ObterRelatorioCustosIa(DatabaseContext dbContext, ICotacaoDolar cot
                 CustoBrl = g.Sum(u => u.CustoBrl) ?? 0m
             })
             .OrderByDescending(u => u.CustoBrl)
-            .Take(QuantidadeTopUsuarios)
-            .ToListAsync();
+            .Take(QuantidadeTopUsuarios);
 
-        var ids = top.Select(u => u.IdUsuario).ToList();
-        var emails = await dbContext.Users
-            .Where(u => ids.Contains(u.Id))
-            .ToDictionaryAsync(u => u.Id, u => u.Email);
-
-        foreach (var usuario in top)
-        {
-            usuario.Email = emails.GetValueOrDefault(usuario.IdUsuario);
-        }
-
-        return top;
+        return from t in top
+               join usuario in usuarios on t.IdUsuario equals usuario.Id into encontrados
+               from usuario in encontrados.DefaultIfEmpty()
+               orderby t.CustoBrl descending
+               select new CustoIaUsuarioDTO
+               {
+                   IdUsuario = t.IdUsuario,
+                   Email = usuario != null ? usuario.Email : null,
+                   TotalRequisicoes = t.TotalRequisicoes,
+                   CustoUsd = t.CustoUsd,
+                   CustoBrl = t.CustoBrl
+               };
     }
 
     public static RelatorioCustosIaDTO Montar(IReadOnlyCollection<GrupoUsoLlm> grupos)
