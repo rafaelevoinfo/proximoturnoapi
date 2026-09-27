@@ -37,6 +37,7 @@ public class ResponderPerguntaRegrasTests {
     private ResponderPerguntaRegras Caso() =>
         new(NullLogger<ResponderPerguntaRegras>.Instance,
             new ObterSaldoChat(_repositorio, new FakeCotacaoDolar(5m), ConfiguracaoChat.Padrao),
+            ConfiguracaoChat.Padrao,
             _repositorio, _conversas, _vetores, _redator, _embedding, _redutor);
 
     private static PerguntaChatDTO Pergunta(string mensagem, int? confirmado = null, int? pagina = null, Guid? conversa = null) =>
@@ -260,8 +261,13 @@ public class ResponderPerguntaRegrasTests {
         Assert.Equal("Na sua vez, você pode trocar 4 recursos iguais com o banco.", turno.Resposta);
         Assert.Equal(TipoRespostaChat.Resposta, turno.Tipo);
 
-        var trechos = System.Text.Json.JsonSerializer.Deserialize<List<TrechoManual>>(turno.Trechos!);
-        Assert.Equal([new TrechoManual(1, 10, "Catan > Comércio", "Troca 4:1 com o banco.", 0.9f)], trechos);
+        using var trechos = System.Text.Json.JsonDocument.Parse(turno.Trechos!);
+        var trecho = Assert.Single(trechos.RootElement.EnumerateArray());
+        Assert.Equal(10, trecho.GetProperty("IdJogoLink").GetInt32());
+        Assert.Equal("Catan > Comércio", trecho.GetProperty("Titulo").GetString());
+        Assert.Equal("Troca 4:1 com o banco.", trecho.GetProperty("Texto").GetString());
+        Assert.Equal(0.9f, trecho.GetProperty("Score").GetSingle());
+        Assert.True(trecho.GetProperty("Usado").GetBoolean());
     }
 
     // Os trechos vao nas instrucoes da execucao: guardados na sessao, encareceriam toda
@@ -303,8 +309,48 @@ public class ResponderPerguntaRegrasTests {
     }
 
     [Fact]
+    public async Task TrechoAbaixoDoScoreMinimo_NaoVaiParaOModeloMasFicaGravado() {
+        _vetores.Trechos.Add(new TrechoManual(1, 11, "Catan > Ladrão", "Ao sair 7, mova o ladrão.", 0.12f));
+
+        var resposta = await Caso().ExecuteAsync(Cliente, Pergunta("Posso trocar com o banco?", pagina: 1));
+
+        var instrucoes = _redator.Opcoes.Single()!.Instructions!;
+        Assert.Contains("Troca 4:1 com o banco.", instrucoes);
+        Assert.DoesNotContain("mova o ladrão", instrucoes);
+        Assert.Equal([10], resposta!.Fontes.Select(f => f.IdJogoLink));
+
+        using var trechos = System.Text.Json.JsonDocument.Parse(_conversas.Mensagens.Single().Trechos!);
+        Assert.Equal([true, false], trechos.RootElement.EnumerateArray().Select(t => t.GetProperty("Usado").GetBoolean()));
+    }
+
+    [Fact]
+    public async Task NenhumTrechoAcimaDoScoreMinimo_ModeloSabeQueNaoHaTrecho() {
+        _vetores.Trechos.Clear();
+        _vetores.Trechos.Add(new TrechoManual(1, 11, "Catan > Ladrão", "Ao sair 7, mova o ladrão.", 0.12f));
+
+        var resposta = await Caso().ExecuteAsync(Cliente, Pergunta("Qual a capital da França?", pagina: 1));
+
+        var instrucoes = _redator.Opcoes.Single()!.Instructions!;
+        Assert.Contains(ContextoManualProvider.SemTrechos, instrucoes);
+        Assert.DoesNotContain("mova o ladrão", instrucoes);
+        Assert.Empty(resposta!.Fontes);
+    }
+
+    // As regras fixas vem do agente e os trechos do provider: as duas partes chegam juntas ao
+    // modelo, e nenhuma delas fica na memoria da conversa.
+    [Fact]
+    public async Task InstrucoesJuntamRegrasDoAgenteETrechosDoProvider() {
+        await Caso().ExecuteAsync(Cliente, Pergunta("Posso trocar com o banco?", pagina: 1));
+
+        var instrucoes = _redator.Opcoes.Single()!.Instructions!;
+        Assert.Contains("Regras obrigatórias", instrucoes);
+        Assert.Contains("Trechos do manual de Catan:", instrucoes);
+        Assert.DoesNotContain("Regras obrigatórias", _conversas.Conversas.Single().Sessao);
+    }
+
+    [Fact]
     public void TextoParaBusca_SemHistorico_EhSoAPergunta() {
-        Assert.Equal("Oi", ResponderPerguntaRegras.TextoParaBusca("Oi", []));
+        Assert.Equal("Oi", ContextoManualProvider.TextoParaBusca("Oi", []));
     }
 
     [Theory]

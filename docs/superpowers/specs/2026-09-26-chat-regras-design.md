@@ -310,3 +310,13 @@ A pedido do produto, a etapa de classificação saiu. Cada pergunta faz **uma** 
 - Pergunta que o modelo aponta como de outro jogo fica em `CHAT_MENSAGEM`, mas não entra na
   memória da conversa.
 - Exclusão de conta (LGPD) apaga as conversas do usuário.
+
+## Revisão de 27/09/2026: RAG como AIContextProvider e score mínimo
+
+- A busca no manual saiu do caso de uso e virou `ContextoManualProvider : AIContextProvider`,
+  registrado no agente. A cada execução ele busca e devolve os trechos como
+  `AIContext.Instructions`, que o MAF trata como transitórias: somam-se às regras fixas do
+  agente e não entram na sessão.
+- Só vão ao modelo os trechos com similaridade ≥ `CHAT_SCORE_MINIMO` (padrão 0,30). A busca
+  continua trazendo os 6 melhores, e todos ficam em `CHAT_MENSAGEM.TRECHOS` com `Score` e
+  `Usado`, para calibrar o corte com perguntas reais.

@@ -159,7 +159,8 @@ builder.Services.AddSingleton<ICotacaoDolar>(sp => new CotacaoDolarAwesomeApi(
     LerDecimal(builder.Configuration, "COTACAO_USD_BRL_PADRAO", 5.50m)));
 builder.Services.AddSingleton(new ConfiguracaoChat(
     LerDecimal(builder.Configuration, "CHAT_PERCENTUAL_CREDITO", ConfiguracaoChat.Padrao.PercentualCredito),
-    LerDecimal(builder.Configuration, "CHAT_BONUS_USD", ConfiguracaoChat.Padrao.BonusUsd)));
+    LerDecimal(builder.Configuration, "CHAT_BONUS_USD", ConfiguracaoChat.Padrao.BonusUsd),
+    (float)LerDecimal(builder.Configuration, "CHAT_SCORE_MINIMO", (decimal)ConfiguracaoChat.ScoreMinimoPadrao)));
 builder.Services.AddScoped<IChatRegrasRepository, ChatRegrasRepository>();
 builder.Services.AddScoped<ObterSaldoChat>();
 builder.Services.AddScoped<ResponderPerguntaRegras>();
