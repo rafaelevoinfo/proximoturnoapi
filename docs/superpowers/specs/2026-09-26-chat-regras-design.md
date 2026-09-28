@@ -320,3 +320,20 @@ A pedido do produto, a etapa de classificação saiu. Cada pergunta faz **uma** 
 - Só vão ao modelo os trechos com similaridade ≥ `CHAT_SCORE_MINIMO` (padrão 0,30). A busca
   continua trazendo os 6 melhores, e todos ficam em `CHAT_MENSAGEM.TRECHOS` com `Score` e
   `Usado`, para calibrar o corte com perguntas reais.
+
+## Revisão de 27/09/2026: resposta em streaming
+
+- `POST /api/chat/mensagens` responde em SSE. Erro de validação ou de login continua JSON com o
+  status HTTP normal. Depois disso: evento `resposta` quando não passa pelo modelo (sem saldo,
+  perguntar/confirmar jogo, sem manual), ou `inicio` (conversa e jogo), vários `texto` e `fim`
+  (resposta completa); `erro` se algo falhar no meio.
+- O agente usa `RunStreamingAsync`. A sessão e o turno em `CHAT_MENSAGEM` só são gravados no fim
+  do fluxo; se o usuário sair no meio, a pergunta não entra na memória.
+- Ledger: a `PoliticaUsoLlm` troca o corpo da resposta em streaming por um `StreamUsoLlm`, que
+  repassa os bytes ao SDK e lê o `usage` (com custo) do último pedaço SSE. O registro sai quando
+  o fluxo termina, com o alvo capturado no início da chamada. Fluxo interrompido sem `usage`
+  vira linha com desfecho `Excecao`. O SDK já pede `stream_options.include_usage`.
+- Sai o marcador `[[OUTRO_JOGO:...]]`: a troca de jogo é só pelo botão "Trocar jogo". Se a
+  pergunta for de outro jogo, as instruções mandam o modelo indicar esse botão.
+- O front passa a chamar a API .NET direto (sem a rota proxy do Next), então o domínio do site
+  precisa estar liberado no CORS da API, como já está em produção.

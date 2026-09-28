@@ -21,24 +21,51 @@ public class ChatController(ILogger<ChatController> logger,
 
     public const string PoliticaLimite = "chat";
 
+    /// <summary>
+    /// Pergunta ao assistente. Erro de validação ou de login volta como JSON, com o status
+    /// HTTP de sempre. Daí em diante a resposta é SSE: um evento <c>resposta</c> quando não
+    /// passa pelo modelo, ou <c>inicio</c>, vários <c>texto</c> e <c>fim</c> quando passa.
+    /// </summary>
     [HttpPost("mensagens")]
     [EnableRateLimiting(PoliticaLimite)]
-    public async Task<IActionResult> EnviarMensagem([FromBody] PerguntaChatDTO pergunta, CancellationToken cancellationToken) {
-        return await EncapsulateRequestAsync(async () => {
-            var usuario = await _userManager.GetUserAsync(User);
-            if (usuario is null) {
-                return Unauthorized();
-            }
+    public async Task EnviarMensagem([FromBody] PerguntaChatDTO pergunta, CancellationToken cancellationToken) {
+        var usuario = await _userManager.GetUserAsync(User);
+        if (usuario is null) {
+            Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return;
+        }
 
-            var usuarioChat = new UsuarioChat(usuario.Id, usuario.Email, User.IsInRole(Roles.Admin));
-            var resposta = await _responderPergunta.ExecuteAsync(usuarioChat, pergunta, cancellationToken);
-            if (!_responderPergunta.IsValid) {
-                return BadRequest(ApiResultDTO<RespostaChatDTO>.CreateFailureResult(_responderPergunta.AggregateErrors()));
-            }
+        var usuarioChat = new UsuarioChat(usuario.Id, usuario.Email, User.IsInRole(Roles.Admin));
+        var saida = new SaidaSse(Response);
 
-            return Ok(ApiResultDTO<RespostaChatDTO>.CreateSuccessResult(resposta));
-        });
+        RespostaChatDTO? resposta;
+        try {
+            resposta = await _responderPergunta.ExecuteAsync(usuarioChat, pergunta, saida, cancellationToken);
+        } catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+            // O usuario fechou a tela ou a conexao caiu: nao ha para quem responder.
+            return;
+        } catch (Exception ex) {
+            _logger.LogError(ex, "Erro no chat de regras");
+            if (saida.Iniciado) {
+                await saida.EventoAsync("erro", new { mensagem = MensagemErro }, CancellationToken.None);
+            } else {
+                Response.StatusCode = StatusCodes.Status500InternalServerError;
+                await Response.WriteAsJsonAsync(ApiResultDTO<string>.CreateFailureResult(MensagemErro), CancellationToken.None);
+            }
+            return;
+        }
+
+        if (!_responderPergunta.IsValid) {
+            Response.StatusCode = StatusCodes.Status400BadRequest;
+            await Response.WriteAsJsonAsync(
+                ApiResultDTO<RespostaChatDTO>.CreateFailureResult(_responderPergunta.AggregateErrors()), cancellationToken);
+            return;
+        }
+
+        await saida.EventoAsync(saida.Iniciado ? "fim" : "resposta", resposta!, cancellationToken);
     }
+
+    private const string MensagemErro = "Não consegui falar com o assistente agora. Tente de novo em instantes.";
 
     /// <summary>Crédito do chat de um cliente. Só admin: o cliente não vê o próprio saldo.</summary>
     [HttpGet("creditos/cliente/{idCliente:int}")]

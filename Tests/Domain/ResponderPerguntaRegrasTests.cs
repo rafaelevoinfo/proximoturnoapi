@@ -66,7 +66,8 @@ public class ResponderPerguntaRegrasTests {
 
         var instrucoes = _redator.Opcoes.Single()!.Instructions!;
         Assert.Contains("SOMENTE dúvidas sobre as regras do jogo Catan", instrucoes);
-        Assert.Contains("[[OUTRO_JOGO:nome do jogo]]", instrucoes);
+        Assert.Contains("Trocar jogo", instrucoes);
+        Assert.DoesNotContain("[[", instrucoes);
         Assert.Contains("recuse", instrucoes);
         Assert.Contains("Troca 4:1 com o banco.", instrucoes);
     }
@@ -90,25 +91,55 @@ public class ResponderPerguntaRegrasTests {
         Assert.Empty(_redator.Recebidos);
     }
 
+    // Com streaming a resposta vai para a tela aos pedacos: cabecalho uma vez, depois o texto
+    // na ordem em que o modelo gera. O retorno ainda traz a resposta inteira.
     [Fact]
-    public async Task ModeloApontaOutroJogo_PedeConfirmacao() {
-        _redator = new FakeChatClient("[[OUTRO_JOGO: Ticket to Ride]]");
+    public async Task RespostaDoModelo_SaiEmPedacosNaOrdem() {
+        var saida = new FakeSaidaChat();
 
-        var resposta = await Caso().ExecuteAsync(Cliente, Pergunta("E no Ticket to Ride, como compro cartas?", pagina: 1));
+        var resposta = await Caso().ExecuteAsync(Cliente, Pergunta("Posso trocar com o banco?", pagina: 1), saida);
 
-        Assert.Equal(TipoRespostaChat.ConfirmarJogo, resposta!.Tipo);
-        Assert.Equal([3], resposta.OpcoesJogo.Select(j => j.Id));
-        Assert.Equal(new JogoChatDTO(1, "Catan"), resposta.Jogo);
+        var cabecalho = Assert.Single(saida.Cabecalhos);
+        Assert.Equal(new JogoChatDTO(1, "Catan"), cabecalho.Jogo);
+        Assert.Equal(resposta!.IdConversa, cabecalho.IdConversa);
+        Assert.True(saida.Trechos.Count > 1);
+        Assert.Equal("Na sua vez, você pode trocar 4 recursos iguais com o banco.", string.Concat(saida.Trechos));
+        Assert.Equal(string.Concat(saida.Trechos), resposta.Texto);
     }
 
     [Fact]
-    public async Task ModeloApontaJogoForaDoCatalogo_AvisaEMantemOJogo() {
-        _redator = new FakeChatClient("[[OUTRO_JOGO:Monopoly]]");
+    public async Task RespostaSemModelo_NaoPassaPelaSaida() {
+        var saida = new FakeSaidaChat();
 
-        var resposta = await Caso().ExecuteAsync(Cliente, Pergunta("E no Monopoly?", pagina: 1));
+        var resposta = await Caso().ExecuteAsync(Cliente, Pergunta("Como faz para pontuar?"), saida);
 
-        Assert.Equal(TipoRespostaChat.SemManual, resposta!.Tipo);
-        Assert.Equal(new JogoChatDTO(1, "Catan"), resposta.Jogo);
+        Assert.Equal(TipoRespostaChat.PerguntarJogo, resposta!.Tipo);
+        Assert.Empty(saida.Cabecalhos);
+        Assert.Empty(saida.Trechos);
+    }
+
+    [Fact]
+    public async Task ModeloSemTexto_MandaMensagemPadrao() {
+        _redator = new FakeChatClient("");
+        var saida = new FakeSaidaChat();
+
+        var resposta = await Caso().ExecuteAsync(Cliente, Pergunta("Posso trocar com o banco?", pagina: 1), saida);
+
+        Assert.Equal(ResponderPerguntaRegras.MensagemSemResposta, resposta!.Texto);
+        Assert.Equal([ResponderPerguntaRegras.MensagemSemResposta], saida.Trechos);
+    }
+
+    // Usuario saiu no meio: nada vai para a memoria nem para o registro do turno.
+    [Fact]
+    public async Task CanceladoNoMeio_NaoGravaATurno() {
+        using var cancelamento = new CancellationTokenSource();
+        var saida = new FakeSaidaChat { AoEscrever = cancelamento.Cancel };
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            Caso().ExecuteAsync(Cliente, Pergunta("Posso trocar com o banco?", pagina: 1), saida, cancelamento.Token));
+
+        Assert.Empty(_conversas.Conversas);
+        Assert.Empty(_conversas.Mensagens);
     }
 
     [Fact]
@@ -279,20 +310,6 @@ public class ResponderPerguntaRegrasTests {
     }
 
     [Fact]
-    public async Task PerguntaDeOutroJogo_NaoEntraNaMemoria() {
-        _redator = new FakeChatClient("Troque 4 iguais com o banco.", "[[OUTRO_JOGO:Ticket to Ride]]", "Com porto é 3:1.");
-
-        var primeira = await Caso().ExecuteAsync(Cliente, Pergunta("Posso trocar com o banco?", pagina: 1));
-        await Caso().ExecuteAsync(Cliente, Pergunta("E no Ticket to Ride?", pagina: 1, conversa: primeira!.IdConversa));
-        await Caso().ExecuteAsync(Cliente, Pergunta("E com porto?", pagina: 1, conversa: primeira.IdConversa));
-
-        Assert.DoesNotContain(_redator.Recebidos[2], m => m.Text.Contains("Ticket"));
-        // O turno desviado fica registrado, so nao vira memoria do modelo.
-        Assert.Equal(3, _conversas.Mensagens.Count);
-        Assert.Equal(TipoRespostaChat.ConfirmarJogo, _conversas.Mensagens[1].Tipo);
-    }
-
-    [Fact]
     public async Task Redutor_EncolheAMemoriaGravada() {
 #pragma warning disable MEAI001 // redutor experimental do Microsoft.Extensions.AI, como no Program.cs
         _redutor = new MessageCountingChatReducer(2);
@@ -348,16 +365,6 @@ public class ResponderPerguntaRegrasTests {
     [Fact]
     public void TextoParaBusca_SemHistorico_EhSoAPergunta() {
         Assert.Equal("Oi", ContextoManualProvider.TextoParaBusca("Oi", []));
-    }
-
-    [Theory]
-    [InlineData("[[OUTRO_JOGO:Catan]]", "Catan")]
-    [InlineData("  [[ outro_jogo : Ticket to Ride ]] ", "Ticket to Ride")]
-    [InlineData("[[OUTRO_JOGO:]]", null)]
-    [InlineData("Resposta normal sobre o jogo.", null)]
-    [InlineData(null, null)]
-    public void ExtrairOutroJogo(string? resposta, string? esperado) {
-        Assert.Equal(esperado, ResponderPerguntaRegras.ExtrairOutroJogo(resposta));
     }
 }
 
