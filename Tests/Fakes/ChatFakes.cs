@@ -25,7 +25,7 @@ public sealed class FakeChatRegrasRepository : IChatRegrasRepository {
 
     public Task<decimal> SomarGastoAsync(string idUsuario) => Task.FromResult(Gasto);
 
-    public Task<List<JogoChat>> ListarJogosComManualAsync() => Task.FromResult(Jogos.Where(j => j.TemManual).ToList());
+    public Task<List<JogoChat>> ListarJogosAsync() => Task.FromResult(Jogos.ToList());
 
     public Task<JogoChat?> ObterJogoAsync(int idJogo) => Task.FromResult(Jogos.FirstOrDefault(j => j.Id == idJogo));
 }

@@ -87,4 +87,21 @@ public class ResolvedorJogoChatTests {
     public void CitadosNaMensagem_PalavraDentroDeOutra_NaoConta() {
         Assert.Empty(ResolvedorJogoChat.CitadosNaMensagem("software de guerra", Catalogo));
     }
+
+    [Theory]
+    [InlineData("Reload", true)]
+    [InlineData("ticket to ride", true)]
+    [InlineData("Oi", false)]
+    [InlineData("bom dia", false)]
+    [InlineData("Qual o objetivo?", false)]
+    [InlineData("como faço para pontuar no fim da partida", false)]
+    [InlineData("", false)]
+    public void PareceSoONome(string mensagem, bool esperado) {
+        Assert.Equal(esperado, ResolvedorJogoChat.PareceSoONome(mensagem));
+    }
+
+    [Fact]
+    public void Identificar_PerguntaLongaSemNome_NaoTentaAproximar() {
+        Assert.Empty(ResolvedorJogoChat.Identificar("como faço para ganhar no final da partida", Catalogo));
+    }
 }

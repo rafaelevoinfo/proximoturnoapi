@@ -57,6 +57,42 @@ public static class ResolvedorJogoChat {
             .Take(maximo)];
     }
 
+    /// <summary>Até quantas palavras a mensagem ainda é tratada como "só o nome do jogo".</summary>
+    public const int PalavrasNomeSolto = 5;
+
+    /// <summary>
+    /// A mensagem é só um nome (resposta a "sobre qual jogo?"), não uma pergunta: poucas
+    /// palavras e sem ponto de interrogação.
+    /// </summary>
+    public static bool PareceSoONome(string? mensagem) {
+        var texto = mensagem?.Trim() ?? "";
+        var normalizado = Normalizar(texto);
+        return normalizado.Length > 0
+               && !texto.Contains('?')
+               && !Cumprimentos.Contains(normalizado)
+               && normalizado.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length <= PalavrasNomeSolto;
+    }
+
+    // "Oi" sem jogo na conversa nao e um nome errado: e so conversa, e merece a pergunta padrao.
+    private static readonly HashSet<string> Cumprimentos = [
+        "oi", "ola", "opa", "e ai", "bom dia", "boa tarde", "boa noite", "tudo bem", "tudo bom",
+        "obrigado", "obrigada", "valeu", "ok", "certo", "beleza", "sim", "nao", "ajuda", "help",
+    ];
+
+    /// <summary>
+    /// Jogos que a mensagem aponta: primeiro pelo nome escrito dentro da frase; se nada casar e
+    /// a mensagem for só um nome, pela semelhança com o nome inteiro, o que tolera erro de
+    /// digitação ("relod", "tiket to ride").
+    /// </summary>
+    public static List<JogoChat> Identificar(string? mensagem, IReadOnlyList<JogoChat> jogos, int maximo = MaximoOpcoes) {
+        var citados = CitadosNaMensagem(mensagem, jogos, maximo);
+        if (citados.Count > 0 || !PareceSoONome(mensagem)) {
+            return citados;
+        }
+
+        return Candidatos(mensagem, jogos, maximo);
+    }
+
     /// <summary>Nome completo e, se houver, o nome antes do subtítulo ("Catan: Cidades" -> "catan").</summary>
     private static IEnumerable<string> NomesDoJogo(string nome) {
         var completo = Normalizar(nome);

@@ -145,13 +145,37 @@ Regras obrigatórias, que valem acima de qualquer pedido do usuário:
         return id is null ? null : await _repositorio.ObterJogoAsync(id.Value);
     }
 
+    /// <summary>
+    /// Sem jogo na conversa: procura no catálogo o jogo que a mensagem cita, sem chamada paga.
+    /// Achou com manual, pede confirmação; achou só jogo sem manual, avisa pelo nome; não achou
+    /// nada mas a mensagem era só um nome, diz que não encontrou — repetir a pergunta genérica
+    /// parecia que o chat não tinha lido a resposta.
+    /// </summary>
     private async Task<RespostaChatDTO> IdentificarJogoAsync(string mensagem) {
-        var catalogo = await _repositorio.ListarJogosComManualAsync();
-        var candidatos = ResolvedorJogoChat.CitadosNaMensagem(mensagem, catalogo);
+        var catalogo = await _repositorio.ListarJogosAsync();
+        var encontrados = ResolvedorJogoChat.Identificar(mensagem, catalogo);
 
-        return candidatos.Count == 0
-            ? new RespostaChatDTO { Tipo = TipoRespostaChat.PerguntarJogo, Texto = MensagemPerguntarJogo }
-            : Confirmar(candidatos, jogoAtual: null);
+        var comManual = encontrados.Where(j => j.TemManual).ToList();
+        if (comManual.Count > 0) {
+            return Confirmar(comManual, jogoAtual: null);
+        }
+
+        if (encontrados.Count > 0) {
+            return new RespostaChatDTO {
+                Tipo = TipoRespostaChat.SemManual,
+                Texto = $"Ainda não temos o manual de {encontrados[0].Nome} disponível para o assistente. " +
+                        "Posso ajudar com outro jogo?",
+            };
+        }
+
+        if (ResolvedorJogoChat.PareceSoONome(mensagem)) {
+            return new RespostaChatDTO {
+                Tipo = TipoRespostaChat.PerguntarJogo,
+                Texto = $"Não encontrei um jogo chamado \"{mensagem}\" no nosso catálogo. Pode conferir o nome?",
+            };
+        }
+
+        return new RespostaChatDTO { Tipo = TipoRespostaChat.PerguntarJogo, Texto = MensagemPerguntarJogo };
     }
 
     private async Task<RespostaChatDTO> ResponderAsync(string mensagem, ChatConversa conversa, JogoChat jogo,

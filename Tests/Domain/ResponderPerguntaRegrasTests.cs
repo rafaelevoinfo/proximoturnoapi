@@ -27,6 +27,8 @@ public class ResponderPerguntaRegrasTests {
             new JogoChat(2, "Catan: Cidades e Cavaleiros", true),
             new JogoChat(3, "Ticket to Ride", true),
             new JogoChat(9, "Jogo Sem Manual", false),
+            new JogoChat(10, "Reload", true),
+            new JogoChat(11, "Azul", false),
         ]);
         _vetores.Trechos.AddRange([
             new TrechoManual(1, 10, "Catan > Comércio", "Troca 4:1 com o banco.", 0.9f),
@@ -140,6 +142,51 @@ public class ResponderPerguntaRegrasTests {
 
         Assert.Empty(_conversas.Conversas);
         Assert.Empty(_conversas.Mensagens);
+    }
+
+    // A conversa relatada: depois de "Trocar jogo", a pessoa responde so com o nome.
+    [Fact]
+    public async Task RespostaSoComONome_PedeConfirmacao() {
+        var resposta = await Caso().ExecuteAsync(Cliente, Pergunta("Reload"));
+
+        Assert.Equal(TipoRespostaChat.ConfirmarJogo, resposta!.Tipo);
+        Assert.Equal([10], resposta.OpcoesJogo.Select(j => j.Id));
+        Assert.Empty(_redator.Recebidos);
+    }
+
+    [Fact]
+    public async Task NomeComErroDeDigitacao_PedeConfirmacao() {
+        var resposta = await Caso().ExecuteAsync(Cliente, Pergunta("relod"));
+
+        Assert.Equal(TipoRespostaChat.ConfirmarJogo, resposta!.Tipo);
+        Assert.Equal([10], resposta.OpcoesJogo.Select(j => j.Id));
+    }
+
+    [Fact]
+    public async Task JogoDoCatalogoSemManual_AvisaPeloNome() {
+        var resposta = await Caso().ExecuteAsync(Cliente, Pergunta("Azul"));
+
+        Assert.Equal(TipoRespostaChat.SemManual, resposta!.Tipo);
+        Assert.Contains("Azul", resposta.Texto);
+        Assert.Null(resposta.Jogo);
+    }
+
+    [Fact]
+    public async Task NomeQueNaoExiste_DizQueNaoEncontrou() {
+        var resposta = await Caso().ExecuteAsync(Cliente, Pergunta("Banco Imobiliário"));
+
+        Assert.Equal(TipoRespostaChat.PerguntarJogo, resposta!.Tipo);
+        Assert.Contains("Não encontrei um jogo chamado \"Banco Imobiliário\"", resposta.Texto);
+    }
+
+    [Theory]
+    [InlineData("Oi")]
+    [InlineData("Qual o objetivo do jogo?")]
+    public async Task CumprimentoOuPerguntaSemJogo_PerguntaQualJogo(string mensagem) {
+        var resposta = await Caso().ExecuteAsync(Cliente, Pergunta(mensagem));
+
+        Assert.Equal(TipoRespostaChat.PerguntarJogo, resposta!.Tipo);
+        Assert.Equal(ResponderPerguntaRegras.MensagemPerguntarJogo, resposta.Texto);
     }
 
     [Fact]
