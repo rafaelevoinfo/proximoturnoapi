@@ -431,6 +431,18 @@ public class PoliticaUsoLlmTests {
         Assert.Contains("\"include_usage\":true", corpo);
     }
 
+    // Pedido de ferramenta nao e erro: e o modelo usando listar_jogos ou buscar_regras.
+    [Fact]
+    public async Task Streaming_FinishToolCalls_GravaOk() {
+        var chat = Chat(_ => RespostaSse(SseOk.Replace("\"finish_reason\":\"stop\"", "\"finish_reason\":\"tool_calls\"")));
+
+        await foreach (var _ in chat.GetStreamingResponseAsync(new ChatMessage(ChatRole.User, "oi"))) { }
+
+        var linha = Assert.Single(_registrador.Registros);
+        Assert.Equal(DesfechoLlm.Ok, linha.Desfecho);
+        Assert.Null(linha.Detalhe);
+    }
+
     [Fact]
     public void UsoSse_LinhaQuebradaEComentario_NaoLancam() {
         var uso = new UsoSse();

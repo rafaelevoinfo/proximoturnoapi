@@ -337,3 +337,20 @@ A pedido do produto, a etapa de classificação saiu. Cada pergunta faz **uma** 
   pergunta for de outro jogo, as instruções mandam o modelo indicar esse botão.
 - O front passa a chamar a API .NET direto (sem a rota proxy do Next), então o domínio do site
   precisa estar liberado no CORS da API, como já está em produção.
+
+## Revisão de 29/09/2026: ferramentas no lugar de regras de código
+
+- O agente ganha duas ferramentas (`FerramentasChat`): `listar_jogos` (catálogo com id, nome e
+  `temManual`) e `buscar_regras(idJogo, consulta)` (trechos do manual de um jogo). O modelo decide
+  de qual jogo o usuário fala, quando confirmar (só por instrução) e quando buscar.
+- O código continua garantindo: saldo antes de qualquer gasto; busca sempre de um jogo só, só de
+  jogo com manual e só com trechos acima do score mínimo (na ferramenta); no máximo 4 idas e
+  voltas de ferramenta por pergunta.
+- Cumprimento e assunto fora de regra não fazem busca nenhuma. Perguntas sem jogo passam a
+  chamar o modelo (antes eram resolvidas por código, sem custo).
+- Saem `ResolvedorJogoChat`, `ContextoManualProvider`, a confirmação de jogo por botões e o jogo
+  fixo por conversa. `CHAT_CONVERSA.ID_JOGO` vira opcional (jogo da página onde começou). O jogo
+  da página vai para o modelo como contexto nas instruções.
+- A memória guarda só o texto de usuário e assistente; chamadas e resultados de ferramenta vão
+  para `CHAT_MENSAGEM.TRECHOS` (ferramenta, jogo, consulta, erro e trechos com score).
+- Ledger: `finish_reason: tool_calls` conta como desfecho `Ok`.
