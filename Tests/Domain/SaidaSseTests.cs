@@ -19,7 +19,7 @@ public class SaidaSseTests {
     public async Task EscreveEventosSseComJsonEmUmaLinha() {
         var (saida, contexto, corpo) = Montar();
 
-        await saida.IniciarAsync(new RespostaChatDTO { Tipo = TipoRespostaChat.Resposta, Jogo = new JogoChatDTO(1, "Catan") }, default);
+        await saida.IniciarAsync(new RespostaChatDTO { Tipo = TipoRespostaChat.Resposta }, default);
         await saida.EscreverAsync("linha 1\nlinha 2", default);
 
         Assert.True(saida.Iniciado);
@@ -28,7 +28,7 @@ public class SaidaSseTests {
 
         var texto = Encoding.UTF8.GetString(corpo.ToArray());
         Assert.Equal(
-            "event: inicio\ndata: {\"tipo\":\"Resposta\",\"texto\":\"\",\"idConversa\":null,\"jogo\":{\"id\":1,\"nome\":\"Catan\"},\"opcoesJogo\":[]}\n\n" +
+            "event: inicio\ndata: {\"tipo\":\"Resposta\",\"texto\":\"\",\"idConversa\":null}\n\n" +
             "event: texto\ndata: {\"t\":\"linha 1\\nlinha 2\"}\n\n",
             texto);
     }

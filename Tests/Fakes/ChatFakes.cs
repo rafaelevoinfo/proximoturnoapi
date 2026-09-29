@@ -25,44 +25,70 @@ public sealed class FakeChatRegrasRepository : IChatRegrasRepository {
 
     public Task<decimal> SomarGastoAsync(string idUsuario) => Task.FromResult(Gasto);
 
-    public Task<List<JogoChat>> ListarJogosComManualAsync() => Task.FromResult(Jogos.Where(j => j.TemManual).ToList());
+    public Task<List<JogoChat>> ListarJogosAsync() => Task.FromResult(Jogos.ToList());
 
     public Task<JogoChat?> ObterJogoAsync(int idJogo) => Task.FromResult(Jogos.FirstOrDefault(j => j.Id == idJogo));
 }
 
+/// <summary>O modelo falso pede para chamar uma ferramenta, em vez de responder texto.</summary>
+public sealed record Chamar(string Ferramenta, object Argumentos);
+
 /// <summary>
-/// Devolve uma resposta pronta por chamada, na ordem configurada, e guarda o que recebeu e o
-/// alvo do ledger visto no momento da chamada.
+/// Modelo falso com roteiro: cada chamada consome o próximo passo, que é um texto (resposta)
+/// ou um <see cref="Chamar"/> (pedido de ferramenta, que o FunctionInvokingChatClient real
+/// executa e devolve na chamada seguinte). Guarda o que recebeu e o alvo do ledger de cada
+/// chamada.
 /// </summary>
-public sealed class FakeChatClient(params string[] respostas) : IChatClient {
+public sealed class FakeChatClient(params object[] passos) : IChatClient {
 
     public const string Falha = "<<falha>>";
 
-    private readonly Queue<string> _respostas = new(respostas);
+    private readonly Queue<object> _passos = new(passos);
+    private int _chamadas;
 
     public List<List<ChatMessage>> Recebidos { get; } = [];
     public List<ChatOptions?> Opcoes { get; } = [];
     public List<AlvoUsoLlm?> Alvos { get; } = [];
 
-    public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default) {
+    private object Proximo(IEnumerable<ChatMessage> messages, ChatOptions? options) {
         Recebidos.Add([.. messages]);
         Opcoes.Add(options);
         Alvos.Add(EscopoUsoLlm.Atual);
 
-        var resposta = _respostas.Count > 0 ? _respostas.Dequeue() : "";
-        if (resposta == Falha) {
+        var passo = _passos.Count > 0 ? _passos.Dequeue() : "";
+        if (passo is Falha) {
             throw new HttpRequestException("provedor fora do ar");
         }
 
-        return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, resposta)));
+        return passo;
     }
 
-    /// <summary>A mesma resposta pronta, entregue em pedaços de até 12 caracteres.</summary>
+    private FunctionCallContent Chamada(Chamar chamar) {
+        var json = System.Text.Json.JsonSerializer.Serialize(chamar.Argumentos);
+        var argumentos = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object?>>(json);
+        return new FunctionCallContent($"chamada-{++_chamadas}", chamar.Ferramenta, argumentos);
+    }
+
+    public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default) {
+        var passo = Proximo(messages, options);
+        var mensagem = passo is Chamar chamar
+            ? new ChatMessage(ChatRole.Assistant, [Chamada(chamar)])
+            : new ChatMessage(ChatRole.Assistant, (string)passo);
+        return Task.FromResult(new ChatResponse(mensagem));
+    }
+
+    /// <summary>Texto em pedaços de até 12 caracteres; pedido de ferramenta num pedaço só.</summary>
     public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default) {
-        var resposta = await GetResponseAsync(messages, options, cancellationToken);
-        var texto = resposta.Text;
+        await Task.Yield();
+        var passo = Proximo(messages, options);
 
+        if (passo is Chamar chamar) {
+            yield return new ChatResponseUpdate(ChatRole.Assistant, [Chamada(chamar)]);
+            yield break;
+        }
+
+        var texto = (string)passo;
         for (var inicio = 0; inicio < texto.Length; inicio += 12) {
             cancellationToken.ThrowIfCancellationRequested();
             yield return new ChatResponseUpdate(ChatRole.Assistant, texto.Substring(inicio, Math.Min(12, texto.Length - inicio)));

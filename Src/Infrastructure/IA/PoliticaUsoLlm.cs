@@ -135,7 +135,7 @@ public sealed class PoliticaUsoLlm(ILogger<PoliticaUsoLlm> _logger,
             uso.CustoUsd,
             duracao,
             interrompido ? DesfechoLlm.Excecao : Desfecho(true, uso.FinishReason),
-            interrompido ? "Streaming interrompido antes do fim." : uso.FinishReason is null or "stop" ? null : uso.FinishReason,
+            interrompido ? "Streaming interrompido antes do fim." : uso.FinishReason is null or "stop" or "tool_calls" ? null : uso.FinishReason,
             uso.IdGeracao);
     }
 
@@ -243,9 +243,10 @@ public sealed class PoliticaUsoLlm(ILogger<PoliticaUsoLlm> _logger,
             return DesfechoLlm.ErroHttp;
         }
 
-        // Embedding nao tem choices, logo nao tem finish_reason: resposta completa.
+        // Embedding nao tem choices, logo nao tem finish_reason: resposta completa. tool_calls e
+        // o modelo pedindo uma ferramenta: a chamada rendeu o que devia.
         return finishReason switch {
-            null or "stop" => DesfechoLlm.Ok,
+            null or "stop" or "tool_calls" => DesfechoLlm.Ok,
             "length" => DesfechoLlm.Truncado,
             _ => DesfechoLlm.ErroDoModelo
         };
@@ -256,7 +257,7 @@ public sealed class PoliticaUsoLlm(ILogger<PoliticaUsoLlm> _logger,
             return $"HTTP {status}: {Trecho(corpo)}";
         }
 
-        return finishReason is null or "stop" ? null : finishReason;
+        return finishReason is null or "stop" or "tool_calls" ? null : finishReason;
     }
 
     private static string Trecho(ReadOnlyMemory<byte> corpo) {

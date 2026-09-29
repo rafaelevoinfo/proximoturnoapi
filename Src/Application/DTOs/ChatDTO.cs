@@ -10,10 +10,7 @@ public record PerguntaChatDTO {
     /// </summary>
     public Guid? IdConversa { get; set; }
 
-    /// <summary>Jogo que o usuário já confirmou nesta conversa.</summary>
-    public int? IdJogoConfirmado { get; set; }
-
-    /// <summary>Jogo da página de onde o chat foi aberto, se houver.</summary>
+    /// <summary>Jogo da página de onde o chat foi aberto, se houver. Vai para o modelo como contexto.</summary>
     public int? IdJogoPagina { get; set; }
 
     public string Mensagem { get; set; } = "";
@@ -24,14 +21,15 @@ public record PerguntaChatDTO {
 [JsonConverter(typeof(JsonStringEnumConverter<TipoRespostaChat>))]
 public enum TipoRespostaChat {
     Resposta,
+    // ConfirmarJogo, PerguntarJogo, ForaDeEscopo e SemManual eram respostas montadas pelo codigo
+    // antes das ferramentas; hoje o modelo trata esses casos em texto. Ficam para os valores ja
+    // gravados em CHAT_MENSAGEM.TIPO continuarem legiveis.
     ConfirmarJogo,
     PerguntarJogo,
     ForaDeEscopo,
     SaldoEsgotado,
     SemManual
 }
-
-public record JogoChatDTO(int Id, string Nome);
 
 /// <summary>
 /// Resposta do chat. Não carrega saldo de propósito: o crédito do usuário só é visível
@@ -43,12 +41,6 @@ public record RespostaChatDTO {
 
     /// <summary>Conversa a que a resposta pertence. O front manda de volta na próxima pergunta.</summary>
     public Guid? IdConversa { get; init; }
-
-    /// <summary>Jogo a que a resposta se refere. O front guarda como jogo confirmado.</summary>
-    public JogoChatDTO? Jogo { get; init; }
-
-    /// <summary>Só em <see cref="TipoRespostaChat.ConfirmarJogo"/>.</summary>
-    public List<JogoChatDTO> OpcoesJogo { get; init; } = [];
 }
 
 /// <summary>Crédito do chat de um usuário. Exposto só para admin.</summary>

@@ -19,8 +19,11 @@ public interface IChatRegrasRepository {
     /// <summary>Soma do que o usuário já gastou no chat, em reais.</summary>
     Task<decimal> SomarGastoAsync(string idUsuario);
 
-    /// <summary>Jogos com pelo menos um manual indexado: os únicos que o chat sabe responder.</summary>
-    Task<List<JogoChat>> ListarJogosComManualAsync();
+    /// <summary>
+    /// Jogos do catálogo (com pelo menos uma cópia não desativada), marcando os que têm manual
+    /// indexado. É o que a ferramenta <c>listar_jogos</c> entrega ao modelo.
+    /// </summary>
+    Task<List<JogoChat>> ListarJogosAsync();
 
     Task<JogoChat?> ObterJogoAsync(int idJogo);
 }
@@ -42,18 +45,19 @@ public class ChatRegrasRepository(DatabaseContext _dbContext) : IChatRegrasRepos
             .Where(u => u.IdUsuario == idUsuario)
             .SumAsync(u => u.CustoBrl) ?? 0m;
 
-    public async Task<List<JogoChat>> ListarJogosComManualAsync() {
-        var idsComManual = IdsJogosComManual();
+    public Task<List<JogoChat>> ListarJogosAsync() => ConsultaJogos(_dbContext).ToListAsync();
 
-        return await _dbContext.Jogos
-            .Where(j => idsComManual.Contains(j.Id))
+    public static IQueryable<JogoChat> ConsultaJogos(DatabaseContext dbContext) {
+        var idsComManual = IdsJogosComManual(dbContext);
+
+        return dbContext.Jogos
+            .Where(j => dbContext.JogoCopias.Any(c => c.IdJogo == j.Id && c.Status != StatusJogo.Desativado))
             .OrderBy(j => j.Nome)
-            .Select(j => new JogoChat(j.Id, j.Nome, true))
-            .ToListAsync();
+            .Select(j => new JogoChat(j.Id, j.Nome, idsComManual.Contains(j.Id)));
     }
 
     public async Task<JogoChat?> ObterJogoAsync(int idJogo) {
-        var idsComManual = IdsJogosComManual();
+        var idsComManual = IdsJogosComManual(_dbContext);
 
         return await _dbContext.Jogos
             .Where(j => j.Id == idJogo)
@@ -63,9 +67,9 @@ public class ChatRegrasRepository(DatabaseContext _dbContext) : IChatRegrasRepos
 
     // Indexado e o unico status com vetores: Removido cobre o jogo desativado e o link que
     // virou video, e Duplicado aponta para outro link que ja tem os mesmos vetores.
-    private IQueryable<int> IdsJogosComManual() =>
-        from indexacao in _dbContext.JogoLinkIndexacoes
-        join link in _dbContext.JogoLinks on indexacao.IdJogoLink equals link.Id
+    private static IQueryable<int> IdsJogosComManual(DatabaseContext dbContext) =>
+        from indexacao in dbContext.JogoLinkIndexacoes
+        join link in dbContext.JogoLinks on indexacao.IdJogoLink equals link.Id
         where indexacao.Status == StatusIndexacao.Indexado
         select link.IdJogo;
 }

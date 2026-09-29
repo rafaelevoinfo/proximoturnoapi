@@ -5,8 +5,9 @@ using ProximoTurnoApi.Application.DTOs;
 namespace ProximoTurnoApi.Infrastructure.Models;
 
 /// <summary>
-/// Uma conversa do chat de regras: um usuário, um jogo e a sessão do agente (MAF) serializada,
-/// que é a memória do modelo entre uma pergunta e outra. Trocar de jogo começa outra conversa.
+/// Uma conversa do chat de regras: um usuário e a sessão do agente (MAF) serializada, que é a
+/// memória do modelo entre uma pergunta e outra. A conversa pode passar por vários jogos: quem
+/// escolhe o jogo de cada busca é o modelo, pelas ferramentas.
 /// </summary>
 [Table("CHAT_CONVERSA")]
 public class ChatConversa : BaseModel {
@@ -18,8 +19,9 @@ public class ChatConversa : BaseModel {
     [Column("ID_USUARIO"), MaxLength(255)]
     public required string IdUsuario { get; set; }
 
+    /// <summary>Jogo da página em que a conversa começou, se houver. Só informativo.</summary>
     [Column("ID_JOGO")]
-    public int IdJogo { get; set; }
+    public int? IdJogo { get; set; }
 
     /// <summary>JSON do <c>AgentSession</c>: o histórico já reduzido que vai ao modelo.</summary>
     [Column("SESSAO")]
