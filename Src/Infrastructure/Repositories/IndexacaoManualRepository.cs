@@ -12,6 +12,7 @@ public interface IIndexacaoManualRepository : IBaseRepository {
     Task<JogoLinkIndexacao?> GetMetadadosPorHashAsync(string hash);
     Task<HashSet<int>> GetIdsComVetoresEsperadosAsync();
     Task<List<int>> GetIdsLinksAsync(int idJogo);
+    Task<List<int>> GetIdsLinksRegraAsync(int idJogo);
     Task SalvarAsync(JogoLinkIndexacao indexacao);
 }
 
@@ -103,6 +104,14 @@ public class IndexacaoManualRepository(DatabaseContext context) : BaseRepository
     public async Task<List<int>> GetIdsLinksAsync(int idJogo) {
         return await _dbContext.JogoLinks
             .Where(jl => jl.IdJogo == idJogo)
+            .Select(jl => jl.Id)
+            .ToListAsync();
+    }
+
+    /// <summary>Links de manual de regras do jogo, os únicos que têm o que indexar.</summary>
+    public async Task<List<int>> GetIdsLinksRegraAsync(int idJogo) {
+        return await _dbContext.JogoLinks
+            .Where(jl => jl.IdJogo == idJogo && jl.Tipo == TipoLink.Regra && jl.Url != "")
             .Select(jl => jl.Id)
             .ToListAsync();
     }

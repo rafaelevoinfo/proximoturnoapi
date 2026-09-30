@@ -26,8 +26,8 @@ public class SincronizarManualTests : IDisposable {
         new(_env, NullLogger<SincronizarManual>.Instance, _repo, _vetores, _extrator, _revisor,
             new ChunkingExtractor(NullLogger<ChunkingExtractor>.Instance), _embedding, _fila);
 
-    private Task Executar(int idJogoLink = 1, int idJogo = 99) =>
-        Montar().ExecuteAsync(new ManualJob(idJogoLink, idJogo), CancellationToken.None);
+    private Task Executar(int idJogoLink = 1, int idJogo = 99, bool forcar = false) =>
+        Montar().ExecuteAsync(new ManualJob(idJogoLink, idJogo, forcar), CancellationToken.None);
 
     [Fact]
     public async Task LinkApagado_RemoveOsVetores() {
@@ -298,6 +298,58 @@ public class SincronizarManualTests : IDisposable {
 
         Assert.Equal(1, _extrator.Chamadas);
         Assert.Equal(1, _revisor.Chamadas);
+    }
+
+    // ---- Reindexação forçada pelo admin ---------------------------------------------------
+
+    [Fact]
+    public async Task Forcado_JaIndexado_ExtraiERevisaDeNovo() {
+        _env.CriarPdf(NomeArquivo);
+        // A linha ja existe para o fake devolver a mesma nos dois passes, como o banco faria.
+        _repo.Adicionar(1, indexacao: new JogoLinkIndexacao { Url = Url, Status = StatusIndexacao.Falhou });
+        await Executar();
+        Assert.Equal(StatusIndexacao.Indexado, _repo.Linha(1)!.Status);
+
+        _extrator.Texto = "# Manual\n\n## Apêndice\n\n" + string.Join(" ", Enumerable.Repeat("Regra do apêndice.", 40));
+        await Executar(forcar: true);
+
+        Assert.Equal(2, _extrator.Chamadas);
+        Assert.Equal(2, _revisor.Chamadas);
+        Assert.Equal(StatusIndexacao.Indexado, _repo.Linha(1)!.Status);
+        Assert.Contains(_vetores.Gravados[1], c => c.Chunk.Texto.Contains("Regra do apêndice."));
+    }
+
+    [Fact]
+    public async Task Forcado_TentativasEsgotadas_TentaDeNovoDoZero() {
+        _env.CriarPdf(NomeArquivo);
+        _repo.Adicionar(1, indexacao: new JogoLinkIndexacao {
+            Url = Url,
+            Status = StatusIndexacao.Falhou,
+            Tentativas = SincronizarManual.MaxTentativas
+        });
+
+        await Executar(forcar: true);
+
+        Assert.Equal(1, _extrator.Chamadas);
+        Assert.Equal(StatusIndexacao.Indexado, _repo.Linha(1)!.Status);
+        Assert.Equal(0, _repo.Linha(1)!.Tentativas);
+    }
+
+    // Se a extração nova falhar, a próxima tentativa não pode indexar o texto antigo do cache.
+    [Fact]
+    public async Task Forcado_FalhaNaExtracao_NaoSobraCacheAntigo() {
+        _env.CriarPdf(NomeArquivo);
+        // A linha ja existe para o fake devolver a mesma nos dois passes, como o banco faria.
+        _repo.Adicionar(1, indexacao: new JogoLinkIndexacao { Url = Url, Status = StatusIndexacao.Falhou });
+        await Executar();
+        Assert.Equal(StatusIndexacao.Indexado, _repo.Linha(1)!.Status);
+        Assert.Equal(2, _env.Markdowns().Length);
+
+        _extrator.Erro = new InvalidOperationException("modelo fora do ar");
+        await Executar(forcar: true);
+
+        Assert.Empty(_env.Markdowns());
+        Assert.Equal(StatusIndexacao.Falhou, _repo.Linha(1)!.Status);
     }
 
     [Fact]

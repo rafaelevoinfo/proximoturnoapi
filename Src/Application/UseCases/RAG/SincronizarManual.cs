@@ -42,7 +42,7 @@ public class SincronizarManual(IWebHostEnvironment _env,
         }
 
         var indexacao = estado.Indexacao;
-        if (indexacao is not null && indexacao.Url == estado.Url) {
+        if (indexacao is not null && indexacao.Url == estado.Url && !job.Forcar) {
             if (indexacao.Status == StatusIndexacao.Indexado) {
                 _logger.LogDebug("Link {IdJogoLink} já indexado nesta URL. Nada a fazer.", estado.IdJogoLink);
                 return;
@@ -58,10 +58,10 @@ public class SincronizarManual(IWebHostEnvironment _env,
             }
         }
 
-        await ProcessarAsync(estado, cancellationToken);
+        await ProcessarAsync(estado, job.Forcar, cancellationToken);
     }
 
-    private async Task ProcessarAsync(EstadoLinkManual estado, CancellationToken cancellationToken) {
+    private async Task ProcessarAsync(EstadoLinkManual estado, bool forcar, CancellationToken cancellationToken) {
         var indexacao = estado.Indexacao ?? new JogoLinkIndexacao { IdJogoLink = estado.IdJogoLink, Url = estado.Url };
         var estavaIndexado = indexacao.Status == StatusIndexacao.Indexado && indexacao.Id != 0;
 
@@ -70,7 +70,7 @@ public class SincronizarManual(IWebHostEnvironment _env,
         // um manual que trava sempre no mesmo passo pago repete para sempre, sem contador.
         var retomandoProcessamentoInterrompido = indexacao.Status == StatusIndexacao.Processando && indexacao.Id != 0;
 
-        if (indexacao.Url != estado.Url) {
+        if (indexacao.Url != estado.Url || forcar) {
             indexacao.Url = estado.Url;
             indexacao.Tentativas = 0;
         } else if (retomandoProcessamentoInterrompido) {
@@ -85,7 +85,7 @@ public class SincronizarManual(IWebHostEnvironment _env,
         await _vectorStore.RemoverAsync(estado.IdJogoLink, cancellationToken);
 
         try {
-            await IndexarAsync(estado, indexacao, cancellationToken);
+            await IndexarAsync(estado, indexacao, forcar, cancellationToken);
         } catch (OperationCanceledException) {
             throw;
         } catch (Exception ex) {
@@ -103,7 +103,7 @@ public class SincronizarManual(IWebHostEnvironment _env,
         }
     }
 
-    private async Task IndexarAsync(EstadoLinkManual estado, JogoLinkIndexacao indexacao, CancellationToken cancellationToken) {
+    private async Task IndexarAsync(EstadoLinkManual estado, JogoLinkIndexacao indexacao, bool forcar, CancellationToken cancellationToken) {
         var caminhoPdf = Path.Combine(UploadManual.GetUploadFolder(_env), Path.GetFileName(estado.Url));
         if (!File.Exists(caminhoPdf)) {
             throw new FileNotFoundException($"Arquivo {Path.GetFileName(estado.Url)} não encontrado na pasta de uploads.");
@@ -128,6 +128,10 @@ public class SincronizarManual(IWebHostEnvironment _env,
         // Diz ao ledger a que manual pertence tudo que for gasto daqui para baixo: extracao,
         // revisao e embedding.
         using var escopoUso = EscopoUsoLlm.Abrir(estado.IdJogo, estado.IdJogoLink, contexto.Prefixo);
+
+        if (forcar) {
+            DescartarCache(indexacao.HashPdf);
+        }
 
         var caminhoRaw = await ExtrairAsync(caminhoPdf, indexacao, cancellationToken);
         var caminhoFinal = await RevisarAsync(caminhoRaw, contexto, indexacao, cancellationToken);
@@ -207,6 +211,26 @@ public class SincronizarManual(IWebHostEnvironment _env,
 
         await File.WriteAllTextAsync(caminhoRevisado, revisao.Texto, cancellationToken);
         return caminhoRevisado;
+    }
+
+    /// <summary>
+    /// Apaga o markdown extraído e o revisado deste PDF, para que a extração e a revisão sejam
+    /// refeitas. Apagar antes, e não só sobrescrever depois: se a nova extração falhar, a
+    /// próxima tentativa não pode voltar a indexar o texto antigo a partir do cache.
+    /// </summary>
+    private void DescartarCache(string? hash) {
+        if (string.IsNullOrEmpty(hash)) {
+            return;
+        }
+
+        var pasta = UploadManual.GetUploadFolder(_env);
+        foreach (var arquivo in new[] { $"{hash}.raw.md", $"{hash}.md" }) {
+            var caminho = Path.Combine(pasta, arquivo);
+            if (File.Exists(caminho)) {
+                File.Delete(caminho);
+                _logger.LogInformation("Reindexação forçada: {Arquivo} descartado.", arquivo);
+            }
+        }
     }
 
     private async Task RemoverAsync(EstadoLinkManual estado, CancellationToken cancellationToken) {
