@@ -16,6 +16,12 @@ public class LlmMarkdownRevisor(ILogger<LlmMarkdownRevisor> _logger,
 
     public const string ChaveChat = "revisor";
 
+    // Teto da resposta, raciocinio incluido. Um bloco de ~4000 caracteres rende poucas
+    // correcoes; sem teto, um raciocinio que entra em loop (tabelas e listas de cartas
+    // repetitivas) gera tokens ate estourar o timeout de 5 minutos, duas vezes seguidas.
+    // Estourar o teto so deixa o bloco sem revisao, como qualquer outra falha.
+    public const int MaximoTokensResposta = 8000;
+
     private const string Instrucoes = @"Você revisa trechos de manuais de jogos de tabuleiro transcritos de PDF por OCR.
 Aponte apenas erros de leitura ou digitação: letras trocadas, faltando ou sobrando que formam uma palavra errada ou fora de contexto (ex.: ""mudos de jogo"" -> ""modos de jogo"").
 Não altere números, nomes próprios, nomes de cartas, peças, modos ou termos inventados pelo jogo, regionalismos, gírias, pontuação nem formatação markdown.
@@ -80,12 +86,18 @@ Se não houver erros, responda {{""correcoes"":[]}}.";
                 // Revisao nao se beneficia de diversidade: cada desvio e uma correcao inventada.
                 Temperature = 0f,
                 ResponseFormat = ChatResponseFormat.Json,
+                MaxOutputTokens = MaximoTokensResposta,
             };
 
             var resposta = await _chatClient.GetResponseAsync(new ChatMessage(ChatRole.User, bloco), opcoes, cancellationToken);
             return Interpretar(resposta.Text);
         } catch (OperationCanceledException) {
             throw;
+        } catch (Exception) when (cancellationToken.IsCancellationRequested) {
+            // O retry do SDK embrulha o cancelamento num AggregateException. Engolido, ele
+            // deixaria o bloco sem revisao e o manual seguiria como se a aplicacao nao
+            // estivesse desligando, gravando em cache uma revisao parcial.
+            throw new OperationCanceledException(cancellationToken);
         } catch (Exception ex) {
             _logger.LogWarning(ex, "Falha ao revisar um bloco do manual: {Mensagem}", ex.Message);
             return null;
