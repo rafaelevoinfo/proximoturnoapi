@@ -155,18 +155,48 @@ Contexto: {0}";
         // So o texto vai para a tela: chamadas e resultados de ferramenta tambem passam pelo
         // fluxo, mas nao tem texto. A sessao so muda no fim: se o usuario sair no meio, o
         // cancelamento interrompe tudo e esta pergunta nao entra na memoria.
+        // O modelo pode escrever algo na mesma rodada em que pede uma ferramenta ("vou
+        // consultar o manual", ou so uma quebra de linha). Sem o aviso de consultando, a tela
+        // trocaria o indicador por esse texto e ficaria parada enquanto as buscas rodam.
+        var relogio = System.Diagnostics.Stopwatch.StartNew();
+        long? msPrimeiroTexto = null;
         var gerado = new StringBuilder();
+        var consultandoDesdeUltimoTexto = false;
         await foreach (var pedaco in agente.RunStreamingAsync(mensagem, sessao, cancellationToken: cancellationToken)) {
+            if (!consultandoDesdeUltimoTexto && pedaco.Contents.Any(c => c is FunctionCallContent)) {
+                consultandoDesdeUltimoTexto = true;
+                if (saida is not null && gerado.Length > 0) {
+                    await saida.ConsultandoAsync(cancellationToken);
+                }
+            }
+
             var trecho = pedaco.Text;
             if (string.IsNullOrEmpty(trecho)) {
                 continue;
             }
 
+            // Espaco e quebra de linha no comeco nao sao resposta: na tela, tirariam o
+            // indicador de consultando sem mostrar nada no lugar.
+            if (gerado.Length == 0) {
+                trecho = trecho.TrimStart();
+                if (trecho.Length == 0) {
+                    continue;
+                }
+            } else if (consultandoDesdeUltimoTexto) {
+                // Texto de rodadas diferentes nao pode sair colado ("manual.O objetivo").
+                trecho = "\n\n" + trecho.TrimStart();
+            }
+
+            consultandoDesdeUltimoTexto = false;
+            msPrimeiroTexto ??= relogio.ElapsedMilliseconds;
             gerado.Append(trecho);
             if (saida is not null) {
                 await saida.EscreverAsync(trecho, cancellationToken);
             }
         }
+
+        _logger.LogInformation("Chat de regras: primeiro texto em {PrimeiroTexto} ms, resposta completa em {Total} ms. Ferramentas: {Ferramentas}.",
+                               msPrimeiroTexto, relogio.ElapsedMilliseconds, string.Join(", ", ferramentas.Chamadas.Select(c => c.Ferramenta)));
 
         var texto = gerado.ToString().Trim();
         if (texto.Length == 0) {

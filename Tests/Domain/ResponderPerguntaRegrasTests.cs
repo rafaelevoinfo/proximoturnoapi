@@ -200,6 +200,34 @@ public class ResponderPerguntaRegrasTests {
         Assert.Equal("O objetivo é ser o último sobrevivente.", string.Concat(saida.Trechos));
     }
 
+    // Texto na mesma rodada do pedido de ferramenta: a tela mostra o texto e depois volta a
+    // mostrar que esta consultando, e o texto da rodada seguinte nao sai colado.
+    [Fact]
+    public async Task Streaming_TextoAntesDaFerramenta_AvisaConsultandoESeparaAsRodadas() {
+        _redator = new FakeChatClient(new TextoEChamar("Vou ver no manual.", Buscar(10, "objetivo")), "O objetivo é sobreviver.");
+        var saida = new FakeSaidaChat();
+
+        var resposta = await Caso().ExecuteAsync(Cliente, Pergunta("Qual o objetivo do Reload?"), saida);
+
+        var consultando = saida.Eventos.IndexOf(FakeSaidaChat.Consultando);
+        Assert.True(consultando > 0, "O aviso de consultando tem que vir depois do primeiro texto.");
+        Assert.Equal("Vou ver no manual.", string.Concat(saida.Eventos.Take(consultando)));
+        Assert.Equal("Vou ver no manual.\n\nO objetivo é sobreviver.", resposta!.Texto);
+    }
+
+    // So quebra de linha antes da ferramenta: nada vai para a tela, que segue em consultando.
+    [Fact]
+    public async Task Streaming_EspacoAntesDaFerramenta_NaoVaiParaATela() {
+        _redator = new FakeChatClient(new TextoEChamar("\n\n", Buscar(10, "objetivo")), "O objetivo é sobreviver.");
+        var saida = new FakeSaidaChat();
+
+        var resposta = await Caso().ExecuteAsync(Cliente, Pergunta("Qual o objetivo do Reload?"), saida);
+
+        Assert.DoesNotContain(FakeSaidaChat.Consultando, saida.Eventos);
+        Assert.Equal("O objetivo é sobreviver.", string.Concat(saida.Trechos));
+        Assert.Equal("O objetivo é sobreviver.", resposta!.Texto);
+    }
+
     [Fact]
     public async Task ModeloSemTexto_MandaMensagemPadrao() {
         _redator = new FakeChatClient("");

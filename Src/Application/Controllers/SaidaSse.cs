@@ -8,7 +8,7 @@ namespace ProximoTurnoApi.Application.Controllers;
 /// <summary>
 /// Escreve a resposta do chat como Server-Sent Events. Os cabeçalhos só vão quando o primeiro
 /// evento sai: até lá, o controller ainda pode responder um erro comum em JSON.
-/// <para>Eventos: <c>resposta</c> (pronta, sem modelo), <c>inicio</c>, <c>texto</c>, <c>fim</c> e <c>erro</c>.</para>
+/// <para>Eventos: <c>resposta</c> (pronta, sem modelo), <c>inicio</c>, <c>texto</c>, <c>consultando</c>, <c>fim</c> e <c>erro</c>.</para>
 /// </summary>
 public sealed class SaidaSse(HttpResponse _resposta) : ISaidaChat {
 
@@ -23,6 +23,9 @@ public sealed class SaidaSse(HttpResponse _resposta) : ISaidaChat {
 
     public Task EscreverAsync(string trecho, CancellationToken cancellationToken) =>
         EventoAsync("texto", new { t = trecho }, cancellationToken);
+
+    public Task ConsultandoAsync(CancellationToken cancellationToken) =>
+        EventoAsync("consultando", new { }, cancellationToken);
 
     public async Task EventoAsync(string nome, object dados, CancellationToken cancellationToken) {
         if (!Iniciado) {
