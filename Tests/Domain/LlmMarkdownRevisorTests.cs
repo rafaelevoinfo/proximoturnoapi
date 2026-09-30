@@ -177,4 +177,14 @@ public class LlmMarkdownRevisorTests {
             };
         }
     }
+
+    [Fact]
+    public void Trechos_TextoCurtoVaiInteiro_LongoVaiComecoEFim() {
+        Assert.Equal(("abc", ""), LlmMarkdownRevisor.Trechos("abc", 2));
+
+        var (inicio, fim) = LlmMarkdownRevisor.Trechos("0123456789", 3);
+
+        Assert.Equal("012", inicio);
+        Assert.Equal("789", fim);
+    }
 }

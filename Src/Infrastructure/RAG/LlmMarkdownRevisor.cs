@@ -95,7 +95,11 @@ Se não houver erros, responda {{""correcoes"":[]}}.";
             };
 
             var resposta = await _chatClient.GetResponseAsync(new ChatMessage(ChatRole.User, bloco), opcoes, cancellationToken);
-            return Interpretar(resposta.Text);
+            var correcoes = Interpretar(resposta.Text);
+            if (correcoes is null || resposta.FinishReason == ChatFinishReason.Length) {
+                RegistrarRespostaInaproveitavel(resposta, bloco);
+            }
+            return correcoes;
         } catch (OperationCanceledException) {
             throw;
         } catch (Exception) when (cancellationToken.IsCancellationRequested) {
@@ -108,6 +112,33 @@ Se não houver erros, responda {{""correcoes"":[]}}.";
             return null;
         }
     }
+
+    // Quanto da resposta vai para o log: o comeco mostra o que o modelo entendeu da tarefa,
+    // o fim mostra se ele entrou em repeticao.
+    private const int TamanhoTrechoLog = 600;
+
+    /// <summary>
+    /// Resposta cortada no teto ou que não é o JSON pedido. O log separa raciocínio de texto
+    /// e mostra o começo e o fim do texto, para saber se o modelo pensou demais ou se a
+    /// própria resposta degenerou.
+    /// </summary>
+    private void RegistrarRespostaInaproveitavel(ChatResponse resposta, string bloco) {
+        var texto = resposta.Text ?? "";
+        var (inicio, fim) = Trechos(texto, TamanhoTrechoLog);
+        _logger.LogWarning(
+            "Resposta do revisor inaproveitável (finish_reason {FinishReason}). Tokens: {Entrada} de entrada, {Saida} de saída, " +
+            "{Raciocinio} de raciocínio. Bloco de {TamanhoBloco} caracteres, resposta de {TamanhoResposta}. " +
+            "Início da resposta: {Inicio} | Fim da resposta: {Fim} | Início do bloco: {InicioBloco}",
+            resposta.FinishReason?.Value, resposta.Usage?.InputTokenCount, resposta.Usage?.OutputTokenCount,
+            resposta.Usage?.ReasoningTokenCount, bloco.Length, texto.Length, inicio, fim,
+            bloco[..Math.Min(bloco.Length, 200)]);
+    }
+
+    /// <summary>Começo e fim do texto; o fim vem vazio quando o texto cabe inteiro no começo.</summary>
+    public static (string Inicio, string Fim) Trechos(string texto, int tamanho) =>
+        texto.Length <= tamanho * 2
+            ? (texto, "")
+            : (texto[..tamanho], texto[^tamanho..]);
 
 #pragma warning disable SCME0001 // Patch e a forma do SDK de mandar campo que nao e da OpenAI.
     public static OpenAI.Chat.ChatCompletionOptions OpcoesOpenRouter() {
