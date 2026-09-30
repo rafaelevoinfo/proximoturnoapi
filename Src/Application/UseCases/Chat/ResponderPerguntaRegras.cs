@@ -170,6 +170,9 @@ Contexto: {0}";
 
         var texto = gerado.ToString().Trim();
         if (texto.Length == 0) {
+            // O desfecho de cada chamada (truncado, erro do modelo) fica em USO_LLM, pelo trace.
+            _logger.LogWarning("Modelo terminou sem texto na conversa {Chave}. Ferramentas chamadas: {Ferramentas}.",
+                               conversa.Chave, string.Join(", ", ferramentas.Chamadas.Select(c => c.Ferramenta)));
             texto = MensagemSemResposta;
             if (saida is not null) {
                 await saida.EscreverAsync(texto, cancellationToken);
@@ -204,7 +207,6 @@ Contexto: {0}";
                 Instructions = string.Format(Instrucoes, Contexto(jogoPagina)),
                 Tools = ferramentas.Todas(),
                 Temperature = 0.2f,
-                MaxOutputTokens = 700,
             },
             UseProvidedChatClientAsIs = true,
         });
