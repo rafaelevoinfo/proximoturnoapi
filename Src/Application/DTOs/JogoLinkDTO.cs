@@ -12,6 +12,9 @@ public record JogoLinkDTO {
     public string Titulo { get; set; } = string.Empty;
     public TipoLink Tipo { get; set; }
 
+    /// <summary>Só no GET do admin e só em link de regra: a situação do manual no assistente. Ignorado ao salvar.</summary>
+    public IndexacaoLinkDTO? Indexacao { get; set; }
+
     public static JogoLinkDTO FromModel(JogoLink link) {
         return new JogoLinkDTO {
             Id = link.Id,

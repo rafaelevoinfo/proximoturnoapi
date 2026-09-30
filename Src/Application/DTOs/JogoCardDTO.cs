@@ -17,6 +17,8 @@ public record JogoCardDTO {
     public TimeOnly? TempoEstimadoDeJogo { get; set; }
     public int TotalCopias { get; set; }
     public int CopiasDisponiveis { get; set; }
+    /// <summary>Só na listagem do admin: se o assistente de regras tem o manual do jogo.</summary>
+    public SituacaoManual? Manual { get; set; }
 
     public static JogoCardDTO FromModel(Jogo jogo) {
         var result = new JogoCardDTO {

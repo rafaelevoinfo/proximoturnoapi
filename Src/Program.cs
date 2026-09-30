@@ -179,6 +179,7 @@ builder.Services.AddRateLimiter(opcoes => {
 });
 builder.Services.AddScoped<SincronizarManual>();
 builder.Services.AddScoped<ReindexarManuais>();
+builder.Services.AddScoped<SituacaoManuais>();
 
 builder.Services.AddHostedService<IndexacaoManuaisWorker>();
 

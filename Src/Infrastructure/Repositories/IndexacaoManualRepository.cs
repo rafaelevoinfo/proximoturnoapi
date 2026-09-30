@@ -13,6 +13,7 @@ public interface IIndexacaoManualRepository : IBaseRepository {
     Task<HashSet<int>> GetIdsComVetoresEsperadosAsync();
     Task<List<int>> GetIdsLinksAsync(int idJogo);
     Task<List<int>> GetIdsLinksRegraAsync(int idJogo);
+    Task<List<IndexacaoDoLink>> GetIndexacoesAsync(int? idJogo = null);
     Task SalvarAsync(JogoLinkIndexacao indexacao);
 }
 
@@ -108,6 +109,27 @@ public class IndexacaoManualRepository(DatabaseContext context) : BaseRepository
             .ToListAsync();
     }
 
+    /// <summary>
+    /// Links de regra com a linha de indexação de cada um, de um jogo ou de todos. Todos cabe
+    /// numa consulta: é um link de regra por jogo, e evita o Contains de lista, que o provider
+    /// MySQL não traduz.
+    /// </summary>
+    public async Task<List<IndexacaoDoLink>> GetIndexacoesAsync(int? idJogo = null) {
+        return await ConsultaIndexacoes(_dbContext, idJogo).ToListAsync();
+    }
+
+    public static IQueryable<IndexacaoDoLink> ConsultaIndexacoes(DatabaseContext db, int? idJogo) {
+        var links = db.JogoLinks.Where(jl => jl.Tipo == TipoLink.Regra && jl.Url != "");
+        if (idJogo is int id) {
+            links = links.Where(jl => jl.IdJogo == id);
+        }
+
+        return from jl in links
+               join i in db.JogoLinkIndexacoes on jl.Id equals i.IdJogoLink into linhas
+               from i in linhas.DefaultIfEmpty()
+               select new IndexacaoDoLink(jl.IdJogo, jl.Id, jl.Url, i);
+    }
+
     /// <summary>Links de manual de regras do jogo, os únicos que têm o que indexar.</summary>
     public async Task<List<int>> GetIdsLinksRegraAsync(int idJogo) {
         return await _dbContext.JogoLinks
@@ -121,3 +143,5 @@ public class IndexacaoManualRepository(DatabaseContext context) : BaseRepository
         await SaveChangesAsync(_dbContext.JogoLinkIndexacoes, indexacao);
     }
 }
+
+public sealed record IndexacaoDoLink(int IdJogo, int IdJogoLink, string Url, JogoLinkIndexacao? Indexacao);
