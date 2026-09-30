@@ -18,9 +18,10 @@ public class PdfTextExtractor(ILogger<PdfTextExtractor> _logger, IFabricaOpenRou
     private const string Instrucoes = @"Você é um assistente de IA especializado em extrair texto de PDFs de manuais de jogos de tabuleiro.
 Sua tarefa é ler o conteúdo do arquivo PDF fornecido e retornar o texto extraído em formato markdown.
 Certifique-se de manter a formatação básica, como titulo, sub-titulos, parágrafos e listas, sempre que possível.
-Ignore textos de capa, indices, creditos ou qualquer informação irrelevante para as regras do jogos.
+Transcreva o manual inteiro, do começo ao fim, incluindo apêndices, anexos, glossários, perguntas frequentes, variantes, modos de jogo, exemplos de jogada, resumos de regras, referências e descrições de cartas, peças, ações ou habilidades, e tabelas. Essas partes também são regras e não podem ficar de fora.
+Deixe de fora apenas a capa, o sumário (lista de páginas), os créditos e propaganda de outros produtos.
 Se houver imagens ou gráficos, descreva-os brevemente no texto extraído.
-Apos realizar a extração, valide se alguma parte do texto ficou sem sentido ou incompleta, caso sim, remova-a.
+Não resuma nem corte trechos. Se uma parte estiver ilegível, escreva [trecho ilegível] no lugar dela e continue.
 Responda APENAS com o markdown do manual, sem cercas de código envolvendo a resposta inteira e sem comentários seus.
 Na última linha da resposta, e somente nela, informe uma nota de confiabilidade no formato exato:
 <!--CONFIABILIDADE: NN-->

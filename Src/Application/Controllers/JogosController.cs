@@ -16,7 +16,8 @@ public class JogosController(ILogger<JogosController> logger,
                              AtualizarJogo _atualizarJogoUseCase,
                              ObterJogo _obterJogoUseCase,
                              IIndexacaoManualRepository _indexacaoRepository,
-                             IManualQueue _manualQueue) : ControllerBasico(logger) {
+                             IManualQueue _manualQueue,
+                             ReindexarManuais _reindexarManuais) : ControllerBasico(logger) {
 
     /// <summary>
     /// Avisa a fila que os manuais deste jogo podem ter mudado de situação: desativar tira
@@ -177,6 +178,22 @@ public class JogosController(ILogger<JogosController> logger,
             await _repository.SaveAsync(copia);
             await SincronizarManuaisAsync(idJogo);
             return Ok(ApiResultDTO<object>.CreateSuccessResult(null, "Copia excluída com sucesso."));
+        });
+    }
+
+    /// <summary>
+    /// Refaz a indexação dos manuais do jogo do zero, inclusive a extração do PDF. Responde
+    /// assim que os manuais entram na fila; o processamento leva alguns minutos.
+    /// </summary>
+    [HttpPost("{id:int}/reindexar-manuais")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<IActionResult> ReindexarManuais([FromRoute] int id) {
+        return await EncapsulateRequestAsync(async () => {
+            var quantidade = await _reindexarManuais.ExecuteAsync(id);
+            if (quantidade == 0) {
+                return BadRequest(ApiResultDTO<object>.CreateFailureResult(_reindexarManuais.AggregateErrors()));
+            }
+            return Ok(ApiResultDTO<int>.CreateSuccessResult(quantidade, "Reindexação dos manuais iniciada."));
         });
     }
 

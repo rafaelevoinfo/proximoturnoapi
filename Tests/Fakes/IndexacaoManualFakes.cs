@@ -106,6 +106,10 @@ public sealed class FakeIndexacaoManualRepository : IIndexacaoManualRepository {
     public Task<List<int>> GetIdsLinksAsync(int idJogo) =>
         Task.FromResult(Estados.Where(e => e.IdJogo == idJogo).Select(e => e.IdJogoLink).ToList());
 
+    public Task<List<int>> GetIdsLinksRegraAsync(int idJogo) =>
+        Task.FromResult(Estados.Where(e => e.IdJogo == idJogo && e.Tipo == TipoLink.Regra && e.Url != "")
+                               .Select(e => e.IdJogoLink).ToList());
+
     public Task SalvarAsync(JogoLinkIndexacao indexacao) {
         if (indexacao.Id == 0) {
             indexacao.Id = _proximoId++;
