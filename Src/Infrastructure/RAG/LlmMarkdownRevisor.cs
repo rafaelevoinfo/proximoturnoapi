@@ -16,11 +16,15 @@ public class LlmMarkdownRevisor(ILogger<LlmMarkdownRevisor> _logger,
 
     public const string ChaveChat = "revisor";
 
-    // Teto da resposta, raciocinio incluido. Um bloco de ~4000 caracteres rende poucas
-    // correcoes; sem teto, um raciocinio que entra em loop (tabelas e listas de cartas
-    // repetitivas) gera tokens ate estourar o timeout de 5 minutos, duas vezes seguidas.
-    // Estourar o teto so deixa o bloco sem revisao, como qualquer outra falha.
+    // Teto da resposta. Um bloco de ~4000 caracteres rende poucas correcoes; o teto so
+    // protege de uma resposta que degenera. Estourar deixa o bloco sem revisao, como
+    // qualquer outra falha.
     public const int MaximoTokensResposta = 8000;
+
+    // Raciocinio desligado, no formato da OpenRouter. Achar letra trocada nao pede
+    // raciocinio, e com ele ligado o deepseek-v4-flash chegou a gastar os 8000 tokens de
+    // teto pensando sobre um bloco de 1700 tokens, sem responder nada.
+    private static readonly BinaryData SemRaciocinio = BinaryData.FromString(@"{""enabled"":false}");
 
     private const string Instrucoes = @"Você revisa trechos de manuais de jogos de tabuleiro transcritos de PDF por OCR.
 Aponte apenas erros de leitura ou digitação: letras trocadas, faltando ou sobrando que formam uma palavra errada ou fora de contexto (ex.: ""mudos de jogo"" -> ""modos de jogo"").
@@ -87,6 +91,7 @@ Se não houver erros, responda {{""correcoes"":[]}}.";
                 Temperature = 0f,
                 ResponseFormat = ChatResponseFormat.Json,
                 MaxOutputTokens = MaximoTokensResposta,
+                RawRepresentationFactory = _ => OpcoesOpenRouter(),
             };
 
             var resposta = await _chatClient.GetResponseAsync(new ChatMessage(ChatRole.User, bloco), opcoes, cancellationToken);
@@ -103,6 +108,14 @@ Se não houver erros, responda {{""correcoes"":[]}}.";
             return null;
         }
     }
+
+#pragma warning disable SCME0001 // Patch e a forma do SDK de mandar campo que nao e da OpenAI.
+    public static OpenAI.Chat.ChatCompletionOptions OpcoesOpenRouter() {
+        var opcoes = new OpenAI.Chat.ChatCompletionOptions();
+        opcoes.Patch.Set("$.reasoning"u8, SemRaciocinio);
+        return opcoes;
+    }
+#pragma warning restore SCME0001
 
     /// <summary>
     /// Lê a lista de correções da resposta. Alguns provedores devolvem o JSON com texto em

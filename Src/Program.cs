@@ -119,11 +119,11 @@ builder.Services.AddSingleton<IEmbeddingGenerator<string, Embedding<float>>>(sp 
     sp.GetRequiredService<IFabricaOpenRouter>().CriarEmbedding(IAModel.EMBEDDING_MODEL));
 
 // Chave propria porque o embedding ja registra um cliente, e cada um fala com um modelo
-// diferente. Cinco minutos porque cada bloco leva dezenas de segundos: o revisor raciocina
-// antes de responder.
+// diferente. Sem raciocinio um bloco responde em segundos: dois minutos ja e folga, e uma
+// chamada que para no provedor custa no maximo quatro minutos ao manual, nao quinze.
 builder.Services.AddKeyedSingleton<IChatClient>(LlmMarkdownRevisor.ChaveChat, (sp, _) =>
     sp.GetRequiredService<IFabricaOpenRouter>()
-      .CriarChat(IAModel.REVISOR_MODEL, OperacaoLlm.RevisaoMarkdown, TimeSpan.FromMinutes(5), tentativas: 2));
+      .CriarChat(IAModel.REVISOR_MODEL, OperacaoLlm.RevisaoMarkdown, TimeSpan.FromMinutes(2), tentativas: 1));
 
 builder.Services.AddScoped<IRevisorMarkdown, LlmMarkdownRevisor>();
 
