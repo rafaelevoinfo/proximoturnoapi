@@ -16,9 +16,13 @@ public class LlmMarkdownRevisorTests {
         private readonly Queue<string> _respostas = new(respostas);
 
         public List<string> Recebidos { get; } = [];
+        public List<ChatOptions?> Opcoes { get; } = [];
+        public Action? AntesDeResponder { get; set; }
 
         public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default) {
             Recebidos.Add(string.Join("\n", messages.Select(m => m.Text)));
+            Opcoes.Add(options);
+            AntesDeResponder?.Invoke();
 
             var resposta = _respostas.Count > 0 ? _respostas.Dequeue() : "{\"correcoes\":[]}";
             if (resposta == Falha) {
@@ -120,5 +124,24 @@ public class LlmMarkdownRevisorTests {
         Assert.Equal("Texto correto.", resultado.Texto);
         Assert.True(resultado.Completa);
         Assert.NotNull(resultado.Modelo);
+    }
+
+    [Fact]
+    public async Task RevisarAsync_LimitaOTamanhoDaResposta() {
+        var chat = new ChatFalso("{\"correcoes\":[]}");
+
+        await Revisor(chat).RevisarAsync("Texto correto.", Contexto, CancellationToken.None);
+
+        Assert.Equal(LlmMarkdownRevisor.MaximoTokensResposta, chat.Opcoes.Single()!.MaxOutputTokens);
+    }
+
+    // O SDK embrulha o cancelamento do desligamento num AggregateException: tem que sair como
+    // cancelamento, e nao como bloco que falhou.
+    [Fact]
+    public async Task RevisarAsync_DesligandoNoMeio_PropagaOCancelamento() {
+        using var cts = new CancellationTokenSource();
+        var chat = new ChatFalso(Falha) { AntesDeResponder = cts.Cancel };
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Revisor(chat).RevisarAsync("Texto.", Contexto, cts.Token));
     }
 }
