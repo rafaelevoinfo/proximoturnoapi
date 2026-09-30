@@ -144,4 +144,47 @@ public class LlmMarkdownRevisorTests {
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Revisor(chat).RevisarAsync("Texto.", Contexto, cts.Token));
     }
+
+    // O que importa e o JSON que chega na OpenRouter: o SDK so manda o campo por Patch.
+    [Fact]
+    public async Task RevisarAsync_PedeSemRaciocinioNoFormatoDaOpenRouter() {
+        var captura = new CapturaHttp();
+        var cliente = new OpenAI.OpenAIClient(
+            new System.ClientModel.ApiKeyCredential("chave"),
+            new OpenAI.OpenAIClientOptions {
+                Endpoint = new Uri("https://openrouter.test/api/v1"),
+                Transport = new System.ClientModel.Primitives.HttpClientPipelineTransport(new HttpClient(captura)),
+            });
+        var revisor = new LlmMarkdownRevisor(NullLogger<LlmMarkdownRevisor>.Instance,
+                                             cliente.GetChatClient("deepseek/deepseek-v4-flash").AsIChatClient());
+
+        await revisor.RevisarAsync("Texto correto.", Contexto, CancellationToken.None);
+
+        using var corpo = System.Text.Json.JsonDocument.Parse(captura.Corpo!);
+        Assert.False(corpo.RootElement.GetProperty("reasoning").GetProperty("enabled").GetBoolean());
+        Assert.Equal(LlmMarkdownRevisor.MaximoTokensResposta, corpo.RootElement.GetProperty("max_completion_tokens").GetInt32());
+    }
+
+    private sealed class CapturaHttp : HttpMessageHandler {
+        public string? Corpo { get; private set; }
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) {
+            Corpo = await request.Content!.ReadAsStringAsync(cancellationToken);
+            const string resposta = "{\"id\":\"x\",\"object\":\"chat.completion\",\"created\":1,\"model\":\"m\"," +
+                                    "\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"{\\\"correcoes\\\":[]}\"},\"finish_reason\":\"stop\"}]}";
+            return new HttpResponseMessage(System.Net.HttpStatusCode.OK) {
+                Content = new StringContent(resposta, System.Text.Encoding.UTF8, "application/json"),
+            };
+        }
+    }
+
+    [Fact]
+    public void Trechos_TextoCurtoVaiInteiro_LongoVaiComecoEFim() {
+        Assert.Equal(("abc", ""), LlmMarkdownRevisor.Trechos("abc", 2));
+
+        var (inicio, fim) = LlmMarkdownRevisor.Trechos("0123456789", 3);
+
+        Assert.Equal("012", inicio);
+        Assert.Equal("789", fim);
+    }
 }
