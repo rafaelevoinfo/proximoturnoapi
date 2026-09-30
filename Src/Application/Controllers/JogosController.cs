@@ -17,7 +17,8 @@ public class JogosController(ILogger<JogosController> logger,
                              ObterJogo _obterJogoUseCase,
                              IIndexacaoManualRepository _indexacaoRepository,
                              IManualQueue _manualQueue,
-                             ReindexarManuais _reindexarManuais) : ControllerBasico(logger) {
+                             ReindexarManuais _reindexarManuais,
+                             SituacaoManuais _situacaoManuais) : ControllerBasico(logger) {
 
     /// <summary>
     /// Avisa a fila que os manuais deste jogo podem ter mudado de situação: desativar tira
@@ -54,7 +55,9 @@ public class JogosController(ILogger<JogosController> logger,
         _logger.LogInformation("Recuperando jogos (admin).");
         return await EncapsulateRequestAsync(async () => {
             var jogos = await _repository.GetAllAsync(filtro);
-            return Ok(ApiResultDTO<List<JogoCardDTO>>.CreateSuccessResult(jogos.Select(JogoCardDTO.FromModel).ToList(), "Jogos recuperados com sucesso."));
+            var cards = jogos.Select(JogoCardDTO.FromModel).ToList();
+            await _situacaoManuais.PreencherAsync(cards);
+            return Ok(ApiResultDTO<List<JogoCardDTO>>.CreateSuccessResult(cards, "Jogos recuperados com sucesso."));
         });
     }
 
@@ -96,7 +99,9 @@ public class JogosController(ILogger<JogosController> logger,
             if (jogo == null) {
                 return NotFound(ApiResultDTO<JogoDTO>.CreateFailureResult($"Jogo de id {id} não encontrado."));
             }
-            return Ok(ApiResultDTO<JogoDTO>.CreateSuccessResult(JogoDTO.FromModel(jogo), "Jogo recuperado com sucesso."));
+            var dto = JogoDTO.FromModel(jogo);
+            await _situacaoManuais.PreencherAsync(dto);
+            return Ok(ApiResultDTO<JogoDTO>.CreateSuccessResult(dto, "Jogo recuperado com sucesso."));
         });
     }
 
