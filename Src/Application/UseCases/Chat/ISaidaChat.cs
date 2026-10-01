@@ -16,4 +16,10 @@ public interface ISaidaChat {
     Task IniciarAsync(RespostaChatDTO cabecalho, CancellationToken cancellationToken);
 
     Task EscreverAsync(string trecho, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// O modelo pediu uma ferramenta (buscar no manual, listar jogos). A tela volta a mostrar
+    /// que está consultando, mesmo que algum texto já tenha saído antes.
+    /// </summary>
+    Task ConsultandoAsync(CancellationToken cancellationToken);
 }

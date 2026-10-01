@@ -33,6 +33,9 @@ public sealed class FakeChatRegrasRepository : IChatRegrasRepository {
 /// <summary>O modelo falso pede para chamar uma ferramenta, em vez de responder texto.</summary>
 public sealed record Chamar(string Ferramenta, object Argumentos);
 
+/// <summary>Rodada em que o modelo escreve algo e, na mesma resposta, pede uma ferramenta.</summary>
+public sealed record TextoEChamar(string Texto, Chamar Chamar);
+
 /// <summary>
 /// Modelo falso com roteiro: cada chamada consome o próximo passo, que é um texto (resposta)
 /// ou um <see cref="Chamar"/> (pedido de ferramenta, que o FunctionInvokingChatClient real
@@ -71,9 +74,11 @@ public sealed class FakeChatClient(params object[] passos) : IChatClient {
 
     public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default) {
         var passo = Proximo(messages, options);
-        var mensagem = passo is Chamar chamar
-            ? new ChatMessage(ChatRole.Assistant, [Chamada(chamar)])
-            : new ChatMessage(ChatRole.Assistant, (string)passo);
+        var mensagem = passo switch {
+            Chamar chamar => new ChatMessage(ChatRole.Assistant, [Chamada(chamar)]),
+            TextoEChamar tc => new ChatMessage(ChatRole.Assistant, [new TextContent(tc.Texto), Chamada(tc.Chamar)]),
+            _ => new ChatMessage(ChatRole.Assistant, (string)passo),
+        };
         return Task.FromResult(new ChatResponse(mensagem));
     }
 
@@ -85,6 +90,12 @@ public sealed class FakeChatClient(params object[] passos) : IChatClient {
 
         if (passo is Chamar chamar) {
             yield return new ChatResponseUpdate(ChatRole.Assistant, [Chamada(chamar)]);
+            yield break;
+        }
+
+        if (passo is TextoEChamar textoEChamar) {
+            yield return new ChatResponseUpdate(ChatRole.Assistant, textoEChamar.Texto);
+            yield return new ChatResponseUpdate(ChatRole.Assistant, [Chamada(textoEChamar.Chamar)]);
             yield break;
         }
 
@@ -114,9 +125,20 @@ public sealed class FakeSaidaChat : ProximoTurnoApi.Application.UseCases.Chat.IS
         return Task.CompletedTask;
     }
 
+    /// <summary>Trechos e avisos de consultando, na ordem em que saíram.</summary>
+    public List<string> Eventos { get; } = [];
+
+    public const string Consultando = "<<consultando>>";
+
     public Task EscreverAsync(string trecho, CancellationToken cancellationToken) {
         Trechos.Add(trecho);
+        Eventos.Add(trecho);
         AoEscrever?.Invoke();
+        return Task.CompletedTask;
+    }
+
+    public Task ConsultandoAsync(CancellationToken cancellationToken) {
+        Eventos.Add(Consultando);
         return Task.CompletedTask;
     }
 }
