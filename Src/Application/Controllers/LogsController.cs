@@ -23,13 +23,25 @@ public class LogsController(ILogger<LogsController> logger, ConsultarLogs consul
         });
     }
 
+    /// <param name="niveis">Níveis separados por vírgula (ex.: Warning,Error).</param>
+    /// <param name="inicio">Início do período em ISO 8601 com fuso (ex.: 2026-10-03T14:00:00-03:00).</param>
     [HttpGet]
-    public async Task<IActionResult> Consultar([FromQuery] string? arquivo, [FromQuery] string? nivel_minimo,
-        [FromQuery] string? busca, [FromQuery] string? trace_id, [FromQuery] int? limite, CancellationToken ct)
+    public async Task<IActionResult> Consultar([FromQuery] string? arquivo, [FromQuery] DateTimeOffset? inicio,
+        [FromQuery] DateTimeOffset? fim, [FromQuery] string? niveis, [FromQuery] string? busca,
+        [FromQuery] string? trace_id, [FromQuery] int? limite, CancellationToken ct)
     {
         return await EncapsulateRequestAsync(async () =>
         {
-            var consulta = await _consultarLogs.ExecuteAsync(arquivo, nivel_minimo, busca, trace_id, limite, ct);
+            var filtro = new FiltroLogs {
+                Arquivo = arquivo,
+                Inicio = inicio,
+                Fim = fim,
+                Niveis = niveis?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
+                Busca = busca,
+                TraceId = trace_id,
+                Limite = limite,
+            };
+            var consulta = await _consultarLogs.ExecuteAsync(filtro, ct);
             return Ok(ApiResultDTO<ConsultaLogsDTO>.CreateSuccessResult(consulta));
         });
     }
