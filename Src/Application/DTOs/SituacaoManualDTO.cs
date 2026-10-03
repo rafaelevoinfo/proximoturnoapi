@@ -68,3 +68,34 @@ public record IndexacaoLinkDTO {
         return SituacaoManual.SemManual;
     }
 }
+
+/// <summary>Qual dos markdowns gerados na indexação do manual.</summary>
+public enum VersaoMarkdownManual {
+    /// <summary>`{hash}.md`: o texto do OCR depois da revisão. É o que vai para a busca quando existe.</summary>
+    Revisado,
+    /// <summary>`{hash}.raw.md`: o texto como o OCR devolveu.</summary>
+    Bruto,
+}
+
+/// <summary>O markdown de um manual indexado, para o admin conferir contra o PDF.</summary>
+public record MarkdownManualDTO {
+    public int IdJogoLink { get; init; }
+    public int IdJogo { get; init; }
+    public string NomeJogo { get; init; } = "";
+    public string TituloManual { get; init; } = "";
+    /// <summary>O PDF de onde este texto saiu, que pode não ser o atual do link se ele foi trocado.</summary>
+    public string UrlPdf { get; init; } = "";
+    public bool PdfAtualDoLink { get; init; }
+    public SituacaoManual Situacao { get; init; }
+    public VersaoMarkdownManual Versao { get; init; }
+    public IReadOnlyList<VersaoMarkdownManual> VersoesDisponiveis { get; init; } = [];
+    /// <summary>A versão que foi para a busca: a revisada, ou a bruta quando a revisão falhou inteira.</summary>
+    public VersaoMarkdownManual? VersaoIndexada { get; init; }
+    public string Conteudo { get; init; } = "";
+    public string? ModeloExtracao { get; init; }
+    public short? ConfiabilidadeExtracao { get; init; }
+    public string? ModeloRevisao { get; init; }
+    public int? CorrecoesAplicadas { get; init; }
+    public int? QuantidadeTrechos { get; init; }
+    public DateTime? DataIndexacao { get; init; }
+}

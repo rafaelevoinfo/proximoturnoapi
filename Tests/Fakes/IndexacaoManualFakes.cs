@@ -112,7 +112,7 @@ public sealed class FakeIndexacaoManualRepository : IIndexacaoManualRepository {
 
     public Task<List<IndexacaoDoLink>> GetIndexacoesAsync(int? idJogo = null) =>
         Task.FromResult(Estados.Where(e => e.Tipo == TipoLink.Regra && e.Url != "" && (idJogo is null || e.IdJogo == idJogo))
-                               .Select(e => new IndexacaoDoLink(e.IdJogo, e.IdJogoLink, e.Url, Linha(e.IdJogoLink)))
+                               .Select(e => new IndexacaoDoLink(e.IdJogo, e.IdJogoLink, e.Url, Linha(e.IdJogoLink), e.TituloLink))
                                .ToList());
 
     public Task SalvarAsync(JogoLinkIndexacao indexacao) {
