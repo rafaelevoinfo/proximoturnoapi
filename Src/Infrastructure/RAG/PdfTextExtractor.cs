@@ -22,6 +22,7 @@ Transcreva o manual inteiro, do começo ao fim, incluindo apêndices, anexos, gl
 Deixe de fora apenas a capa, o sumário (lista de páginas), os créditos e propaganda de outros produtos.
 Se houver imagens ou gráficos, descreva-os brevemente no texto extraído.
 Não resuma nem corte trechos. Se uma parte estiver ilegível, escreva [trecho ilegível] no lugar dela e continue.
+Você pode receber só algumas páginas do manual. Nesse caso transcreva somente essas páginas, por inteiro, sem repetir nem inventar o que vem antes ou depois; se elas começarem no meio de uma seção, continue o texto sem criar um título novo.
 Responda APENAS com o markdown do manual, sem cercas de código envolvendo a resposta inteira e sem comentários seus.
 Na última linha da resposta, e somente nela, informe uma nota de confiabilidade no formato exato:
 <!--CONFIABILIDADE: NN-->
@@ -42,75 +43,182 @@ Seja rigoroso: se páginas ficaram de fora ou trechos ficaram ilegíveis, a nota
     private static readonly Regex ConfiabilidadeRegex =
         new(@"<!--\s*CONFIABILIDADE:\s*(\d{1,3})\s*-->", RegexOptions.Compiled | RegexOptions.RightToLeft);
 
+    /// <summary>
+    /// Páginas por chamada. Pedir o manual inteiro numa resposta só fazia o modelo resumir
+    /// sem avisar: pulava exemplos, tabelas e apêndices e ainda se dava nota alta. Com poucas
+    /// páginas por vez a resposta é curta e não há o que encurtar.
+    /// </summary>
+    public const int PaginasPorBloco = 4;
+
+    // Blocos extraídos ao mesmo tempo: o bastante para um manual de 40 páginas não levar
+    // dez chamadas em fila, pouco o bastante para não esbarrar no limite de taxa.
+    private const int BlocosEmParalelo = 3;
+
+    // Quatro páginas densas dão uns 6 mil tokens de markdown; o teto só corta resposta que degenerou.
+    private const int MaximoTokensBloco = 16000;
+
+    private static readonly TimeSpan TimeoutBloco = TimeSpan.FromMinutes(4);
+
+    /// <summary>Páginas de um bloco, base 1 e inclusivas.</summary>
+    public sealed record Bloco(int Primeira, int Ultima) {
+        public int Paginas => Ultima - Primeira + 1;
+    }
+
+    /// <summary>O que um bloco rendeu: texto, quem extraiu e a nota usada para aceitar.</summary>
+    public sealed record ResultadoBloco(string Texto, string Modelo, int Nota, double? Cobertura);
+
     public async Task<ResultadoExtracao> ExtractTextAsync(string pdfFilePath, CancellationToken cancellationToken) {
         var modelos = IAModel.OCR_MODELS;
         if (modelos.Length == 0) {
             throw new InvalidOperationException("Nenhum modelo de OCR configurado em IAModel.OCR_MODELS.");
         }
 
-        // Os clientes antes do PDF, e fora do try: falta de chave tem que estourar como falta de
-        // chave. Dentro do catch por modelo ela viraria "nenhum modelo conseguiu extrair" no
-        // UltimoErro do manual, depois de carregar 47MB de base64 em memoria a troco de nada.
-        // Uma tentativa por modelo: a cascata ja e a nossa retentativa, o timeout longo existe
-        // porque transcrever um manual leva minutos, e o padrao do SDK sao 4 tentativas - o que
-        // daria 12 chamadas pagas por PDF.
-        var clientes = modelos
-            .Select(modelo => _fabrica.CriarChat(modelo, OperacaoLlm.Ocr, TimeoutRede, tentativas: 1))
-            .ToArray();
+        var bytes = await File.ReadAllBytesAsync(pdfFilePath, cancellationToken);
+        using var pdf = DocumentoPdf.Abrir(bytes);
 
+        // Sem conseguir abrir ou dividir o PDF não há como ir por partes nem medir: vai inteiro,
+        // como antes da divisão, e vale a nota do próprio modelo.
+        async Task<ResultadoExtracao> DocumentoInteiroAsync(string motivo) {
+            _logger.LogWarning("{Motivo} {PdfFilePath}; extraindo o documento inteiro de uma vez.", motivo, pdfFilePath);
+            var inteiro = await ExtrairBlocoAsync(modelos, bytes, [], "Extraia o texto deste PDF em formato markdown",
+                                                  TimeoutRede, maximoTokens: null, pdfFilePath, cancellationToken);
+            return new ResultadoExtracao(inteiro.Texto, inteiro.Modelo, inteiro.Nota);
+        }
+
+        if (pdf is null) {
+            return await DocumentoInteiroAsync("Não foi possível ler as páginas de");
+        }
+
+        var blocos = DividirEmBlocos(pdf.TotalPaginas, PaginasPorBloco);
+        var resultados = new ResultadoBloco[blocos.Count];
+
+        // Trechos e texto de referência saem antes, em sequência: o PdfDocument do PdfPig lê o
+        // arquivo sob demanda e não é seguro entre threads. Só as chamadas ao modelo vão em paralelo.
+        List<(byte[] Pdf, IReadOnlyList<string> Referencia)> preparados;
+        try {
+            preparados = blocos
+                .Select(b => (pdf.Trecho(b.Primeira, b.Ultima), pdf.Palavras(b.Primeira, b.Ultima)))
+                .ToList();
+        } catch (Exception ex) {
+            _logger.LogWarning(ex, "Falha ao dividir {PdfFilePath} em blocos de páginas.", pdfFilePath);
+            return await DocumentoInteiroAsync("Não foi possível dividir");
+        }
+
+        // Um bloco que falha derruba os outros: manual com páginas faltando é exatamente o
+        // defeito que a divisão existe para evitar, então não vale gravá-lo.
+        using var cancelamento = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        using var vagas = new SemaphoreSlim(BlocosEmParalelo);
+
+        await Task.WhenAll(blocos.Select(async (bloco, i) => {
+            await vagas.WaitAsync(cancelamento.Token);
+            try {
+                var descricao = $"{pdfFilePath} (páginas {bloco.Primeira}-{bloco.Ultima} de {pdf.TotalPaginas})";
+                var mensagem = blocos.Count == 1
+                    ? "Extraia o texto deste PDF em formato markdown"
+                    : $"Estas são as páginas {bloco.Primeira} a {bloco.Ultima} de um manual de {pdf.TotalPaginas} páginas. Transcreva-as integralmente em markdown.";
+                resultados[i] = await ExtrairBlocoAsync(modelos, preparados[i].Pdf, preparados[i].Referencia, mensagem,
+                                                        TimeoutBloco, MaximoTokensBloco, descricao, cancelamento.Token);
+            } catch {
+                await cancelamento.CancelAsync();
+                throw;
+            } finally {
+                vagas.Release();
+            }
+        }));
+
+        var resultado = Combinar(blocos, resultados);
+        _logger.LogInformation(
+            "Extração de {PdfFilePath}: {Paginas} páginas em {Blocos} bloco(s), confiabilidade {Confiabilidade}, modelo(s) {Modelos}.",
+            pdfFilePath, pdf.TotalPaginas, blocos.Count, resultado.Confiabilidade, resultado.Modelo);
+        return resultado;
+    }
+
+    public static IReadOnlyList<Bloco> DividirEmBlocos(int totalPaginas, int paginasPorBloco) {
+        var blocos = new List<Bloco>();
+        for (var primeira = 1; primeira <= totalPaginas; primeira += paginasPorBloco) {
+            blocos.Add(new Bloco(primeira, Math.Min(primeira + paginasPorBloco - 1, totalPaginas)));
+        }
+        return blocos;
+    }
+
+    /// <summary>
+    /// Junta os blocos na ordem das páginas. A confiabilidade é a média das notas pesada pelo
+    /// número de páginas; o modelo lista todos os que contribuíram, na ordem da cascata.
+    /// </summary>
+    public static ResultadoExtracao Combinar(IReadOnlyList<Bloco> blocos, IReadOnlyList<ResultadoBloco> resultados) {
+        var texto = string.Join("\n\n", resultados.Select(r => r.Texto.Trim()));
+        var paginas = blocos.Sum(b => b.Paginas);
+        var confiabilidade = (int)Math.Round(blocos.Zip(resultados, (b, r) => (double)r.Nota * b.Paginas).Sum() / paginas);
+        var modelos = string.Join(" + ", resultados.Select(r => r.Modelo).Distinct()
+            .OrderBy(m => Array.IndexOf(IAModel.OCR_MODELS, m) is var i and >= 0 ? i : int.MaxValue));
+        // A coluna MODELO_EXTRACAO tem 100 caracteres.
+        return new ResultadoExtracao(texto, modelos.Length <= 100 ? modelos : modelos[..100], confiabilidade);
+    }
+
+    /// <summary>
+    /// A cascata de modelos para um bloco. A nota de cada tentativa é a cobertura do texto
+    /// embutido nas páginas quando dá para medir, e a do próprio modelo só quando não dá.
+    /// </summary>
+    private async Task<ResultadoBloco> ExtrairBlocoAsync(string[] modelos, byte[] pdf, IReadOnlyList<string> referencia,
+        string mensagem, TimeSpan timeout, int? maximoTokens, string descricao, CancellationToken cancellationToken) {
+
+        // Uma tentativa por modelo: a cascata ja e a nossa retentativa, e o padrao do SDK sao
+        // 4 tentativas - o que multiplicaria as chamadas pagas por bloco.
+        var clientes = modelos.Select(modelo => _fabrica.CriarChat(modelo, OperacaoLlm.Ocr, timeout, tentativas: 1)).ToArray();
         var chatOptions = new ChatOptions() {
             Instructions = Instrucoes,
             // Extracao e transcricao: nao ha ganho em diversidade, e cada desvio do token mais
             // provavel e uma palavra inventada. Zero tambem estabiliza a nota de confiabilidade.
             Temperature = 0f,
+            MaxOutputTokens = maximoTokens,
         };
+        var conteudoPdf = new DataContent(pdf, "application/pdf");
 
-        // O PDF é lido uma única vez e reaproveitado em todas as tentativas.
-        var conteudoPdf = await DataContent.LoadFromAsync(pdfFilePath, "application/pdf", cancellationToken);
-
-        ExtracaoManual? melhorExtracao = null;
-        string? melhorModelo = null;
+        ResultadoBloco? melhor = null;
         var indice = 0;
 
         while (indice < modelos.Length) {
             var modelo = modelos[indice];
-            var extracao = await TentarExtrairAsync(clientes[indice], modelo, conteudoPdf, chatOptions, pdfFilePath, cancellationToken);
+            var extracao = await TentarExtrairAsync(clientes[indice], modelo, conteudoPdf, chatOptions, mensagem, descricao, cancellationToken);
+            var resultado = extracao is null ? null : Avaliar(extracao, referencia, modelo);
 
-            if (extracao is not null && (melhorExtracao is null || extracao.Confiabilidade > melhorExtracao.Confiabilidade)) {
-                melhorExtracao = extracao;
-                melhorModelo = modelo;
+            if (resultado is not null && (melhor is null || resultado.Nota > melhor.Nota)) {
+                melhor = resultado;
             }
 
-            if (extracao is not null && extracao.Confiabilidade > ConfiabilidadeAceitavel) {
-                _logger.LogInformation(
-                    "Extração de {PdfFilePath} aceita com o modelo {Modelo} (confiabilidade {Confiabilidade}).",
-                    pdfFilePath, modelo, extracao.Confiabilidade);
+            if (resultado is not null && resultado.Nota > ConfiabilidadeAceitavel) {
                 break;
             }
 
-            var proximoIndice = ProximoModelo(indice, extracao, modelos.Length);
+            var proximoIndice = ProximoModelo(indice, resultado is null ? null : new ExtracaoManual(resultado.Texto, resultado.Nota), modelos.Length);
             if (proximoIndice == indice) {
                 break;
             }
 
             _logger.LogWarning(
-                "Confiabilidade {Confiabilidade} insuficiente para {PdfFilePath} com o modelo {Modelo}. Escalando para {ProximoModelo}.",
-                extracao?.Confiabilidade ?? 0, pdfFilePath, modelo, modelos[proximoIndice]);
+                "Nota {Nota} insuficiente para {Descricao} com o modelo {Modelo} (cobertura do texto do PDF: {Cobertura}). Escalando para {ProximoModelo}.",
+                resultado?.Nota ?? 0, descricao, modelo, resultado?.Cobertura?.ToString("P0") ?? "não medida", modelos[proximoIndice]);
 
             indice = proximoIndice;
         }
 
-        if (melhorExtracao is null) {
-            throw new InvalidOperationException($"Nenhum modelo conseguiu extrair o texto de {pdfFilePath}.");
+        if (melhor is null) {
+            throw new InvalidOperationException($"Nenhum modelo conseguiu extrair o texto de {descricao}.");
         }
 
-        if (melhorExtracao.Confiabilidade <= ConfiabilidadeAceitavel) {
-            _logger.LogWarning(
-                "Todos os modelos ficaram abaixo do aceitável para {PdfFilePath}. Melhor resultado: {Modelo} com confiabilidade {Confiabilidade}.",
-                pdfFilePath, melhorModelo, melhorExtracao.Confiabilidade);
+        if (melhor.Nota <= ConfiabilidadeAceitavel) {
+            _logger.LogWarning("Todos os modelos ficaram abaixo do aceitável para {Descricao}. Melhor resultado: {Modelo} com nota {Nota}.",
+                               descricao, melhor.Modelo, melhor.Nota);
         }
 
-        return new ResultadoExtracao(melhorExtracao.Texto, melhorModelo!, melhorExtracao.Confiabilidade);
+        return melhor;
+    }
+
+    /// <summary>Nota da tentativa: cobertura medida quando a página tem texto embutido, senão a do modelo.</summary>
+    public static ResultadoBloco Avaliar(ExtracaoManual extracao, IReadOnlyList<string> referencia, string modelo) {
+        var cobertura = CoberturaTexto.Calcular(referencia, extracao.Texto);
+        var nota = cobertura is { } c ? (int)Math.Round(c * 100) : extracao.Confiabilidade;
+        return new ResultadoBloco(extracao.Texto, modelo, nota, cobertura);
     }
 
     /// <summary>
@@ -161,13 +269,14 @@ Seja rigoroso: se páginas ficaram de fora ou trechos ficaram ilegíveis, a nota
         string modelo,
         DataContent conteudoPdf,
         ChatOptions chatOptions,
+        string mensagem,
         string pdfFilePath,
         CancellationToken cancellationToken) {
 
         try {
             _logger.LogDebug("Extraindo texto de {PdfFilePath} com o modelo {Modelo}.", pdfFilePath, modelo);
 
-            var message = new ChatMessage(ChatRole.User, "Extraia o texto deste PDF em formato markdown");
+            var message = new ChatMessage(ChatRole.User, mensagem);
             message.Contents.Add(conteudoPdf);
 
             var response = await chatClient.GetResponseAsync(message, chatOptions, cancellationToken);
