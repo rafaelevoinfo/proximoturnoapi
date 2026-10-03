@@ -19,6 +19,8 @@ public record JogoCardDTO {
     public int CopiasDisponiveis { get; set; }
     /// <summary>Só na listagem do admin: se o assistente de regras tem o manual do jogo.</summary>
     public SituacaoManual? Manual { get; set; }
+    /// <summary>Só na listagem do admin: os links de regra indexados (manual, FAQ...), para abrir o markdown gerado.</summary>
+    public List<ManualIndexadoDTO>? ManuaisIndexados { get; set; }
 
     public static JogoCardDTO FromModel(Jogo jogo) {
         var result = new JogoCardDTO {
@@ -50,3 +52,5 @@ public record JogoCardDTO {
         return result;
     }
 }
+
+public record ManualIndexadoDTO(int IdJogoLink, string Titulo);

@@ -111,8 +111,8 @@ public class IndexacaoManualRepository(DatabaseContext context) : BaseRepository
 
     /// <summary>
     /// Links de regra com a linha de indexação de cada um, de um jogo ou de todos. Todos cabe
-    /// numa consulta: é um link de regra por jogo, e evita o Contains de lista, que o provider
-    /// MySQL não traduz.
+    /// numa consulta: são poucos links de regra por jogo (manual, FAQ...), e evita o Contains
+    /// de lista, que o provider MySQL não traduz.
     /// </summary>
     public async Task<List<IndexacaoDoLink>> GetIndexacoesAsync(int? idJogo = null) {
         return await ConsultaIndexacoes(_dbContext, idJogo).ToListAsync();
@@ -127,7 +127,7 @@ public class IndexacaoManualRepository(DatabaseContext context) : BaseRepository
         return from jl in links
                join i in db.JogoLinkIndexacoes on jl.Id equals i.IdJogoLink into linhas
                from i in linhas.DefaultIfEmpty()
-               select new IndexacaoDoLink(jl.IdJogo, jl.Id, jl.Url, i);
+               select new IndexacaoDoLink(jl.IdJogo, jl.Id, jl.Url, i, jl.Titulo);
     }
 
     /// <summary>Links de manual de regras do jogo, os únicos que têm o que indexar.</summary>
@@ -144,4 +144,4 @@ public class IndexacaoManualRepository(DatabaseContext context) : BaseRepository
     }
 }
 
-public sealed record IndexacaoDoLink(int IdJogo, int IdJogoLink, string Url, JogoLinkIndexacao? Indexacao);
+public sealed record IndexacaoDoLink(int IdJogo, int IdJogoLink, string Url, JogoLinkIndexacao? Indexacao, string Titulo = "");

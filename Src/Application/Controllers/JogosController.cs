@@ -61,6 +61,20 @@ public class JogosController(ILogger<JogosController> logger,
         });
     }
 
+    /// <summary>O markdown gerado na indexação de um link de manual, para conferência.</summary>
+    /// <param name="versao">Revisado ou Bruto; sem ele, a versão que foi para a busca.</param>
+    [HttpGet("admin/manuais/{idJogoLink:int}/markdown")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<IActionResult> GetMarkdownManual([FromRoute] int idJogoLink, [FromQuery] VersaoMarkdownManual? versao,
+                                                       [FromServices] ObterMarkdownManual obterMarkdown, CancellationToken ct) {
+        return await EncapsulateRequestAsync(async () => {
+            var markdown = await obterMarkdown.ExecuteAsync(idJogoLink, versao, ct);
+            return markdown is null
+                ? NotFound(ApiResultDTO<MarkdownManualDTO>.CreateFailureResult("Este manual ainda não tem texto extraído."))
+                : Ok(ApiResultDTO<MarkdownManualDTO>.CreateSuccessResult(markdown));
+        });
+    }
+
     [HttpGet("mais-alugados")]
     public async Task<IActionResult> GetJogosMaisAlugados([FromQuery] FiltroJogoDTO filtro) {
         _logger.LogInformation("Recuperando jogos mais alugados.");

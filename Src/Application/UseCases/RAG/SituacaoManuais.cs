@@ -12,11 +12,23 @@ public class SituacaoManuais(IIndexacaoManualRepository _repository) : UseCaseBa
 
     public async Task PreencherAsync(IReadOnlyList<JogoCardDTO> jogos) {
         var porJogo = (await _repository.GetIndexacoesAsync())
-            .GroupBy(l => l.IdJogo)
-            .ToDictionary(g => g.Key, g => IndexacaoLinkDTO.Resumir(g.Select(l => IndexacaoLinkDTO.De(l.Url, l.Indexacao).Situacao)));
+            .Select(l => (Link: l, IndexacaoLinkDTO.De(l.Url, l.Indexacao).Situacao))
+            .GroupBy(l => l.Link.IdJogo)
+            .ToDictionary(g => g.Key, g => (
+                Situacao: IndexacaoLinkDTO.Resumir(g.Select(l => l.Situacao)),
+                Indexados: g.Where(l => l.Situacao == SituacaoManual.Indexado)
+                            .OrderBy(l => l.Link.IdJogoLink)
+                            .Select(l => new ManualIndexadoDTO(l.Link.IdJogoLink, l.Link.Titulo))
+                            .ToList()));
 
         foreach (var jogo in jogos) {
-            jogo.Manual = porJogo.GetValueOrDefault(jogo.Id, SituacaoManual.SemManual);
+            if (porJogo.TryGetValue(jogo.Id, out var resumo)) {
+                jogo.Manual = resumo.Situacao;
+                jogo.ManuaisIndexados = resumo.Indexados;
+            } else {
+                jogo.Manual = SituacaoManual.SemManual;
+                jogo.ManuaisIndexados = [];
+            }
         }
     }
 
