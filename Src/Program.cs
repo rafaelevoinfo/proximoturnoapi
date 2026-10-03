@@ -204,6 +204,10 @@ builder.Services.AddScoped<RenovarPedido>();
 builder.Services.AddScoped<DevolverItensPedido>();
 builder.Services.AddScoped<ObterRelatorioFaturamento>();
 builder.Services.AddScoped<ObterRelatorioCustosIa>();
+builder.Services.AddSingleton(ArquivosLogOptions.DaConfiguracao(builder.Configuration, Directory.GetCurrentDirectory()));
+builder.Services.AddScoped<ConsultarLogs>();
+builder.Services.AddScoped<ListarUsoLlm>();
+builder.Services.AddScoped<AuditoriaConversasChat>();
 
 // Comentarios
 builder.Services.AddScoped<SalvarComentario>();
