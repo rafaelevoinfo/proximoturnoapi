@@ -20,3 +20,5 @@ public record CopiaJogoDTO {
         };
     }
 }
+
+public record AlterarStatusCopiaDTO(StatusJogo Status);

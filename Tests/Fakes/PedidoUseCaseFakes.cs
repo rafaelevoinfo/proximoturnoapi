@@ -125,9 +125,13 @@ public class FakeJogoRepository : IJogoRepository {
     public Task<List<Jogo>> GetAllByIdsAsync(List<int> ids) => throw new NotImplementedException();
     public Task<List<JogoCopia>> GetAllCopiasByIdsAsync(List<int> ids) => throw new NotImplementedException();
     public Task<List<JogoCopia>> GetCopiasAsync(int id) => throw new NotImplementedException();
-    public Task<JogoCopia?> GetCopiaByIdAsync(int id) => throw new NotImplementedException();
+    public Task<JogoCopia?> GetCopiaByIdAsync(int id) => Task.FromResult(Copias.FirstOrDefault(c => c.Id == id));
     public Task SaveAsync(Jogo jogo, bool commit = true) => throw new NotImplementedException();
-    public Task SaveAsync(JogoCopia jogo, bool commit = true) => throw new NotImplementedException();
+    public List<JogoCopia> CopiasSalvas { get; } = [];
+    public Task SaveAsync(JogoCopia jogo, bool commit = true) {
+        CopiasSalvas.Add(jogo);
+        return Task.CompletedTask;
+    }
     public Task<bool> DeleteAsync(int id) => throw new NotImplementedException();
     public Task<bool> ExisteAsync(int id) => throw new NotImplementedException();
     public Task<bool> CopiaExisteAndDisponivel(int id) => throw new NotImplementedException();

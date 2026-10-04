@@ -32,7 +32,6 @@ public class JogoRepository : BaseRepository, IJogoRepository {
 
     public async Task<List<Jogo>> GetAllAsync(FiltroJogoDTO filtro) {
         var admin = filtro as FiltroJogoAdminDTO;
-        bool filtrarDesativados = admin?.Status == StatusJogo.Desativado;
 
         // Listamos as colunas explicitamente para evitar conflitos de nomes (ex: ID e id)
         var sql = @"SELECT j.*
@@ -65,20 +64,7 @@ public class JogoRepository : BaseRepository, IJogoRepository {
             parameters.Add(new MySqlParameter("@QTDE_JOGADORES", filtro.QtdeJogadores.Value));
         }
 
-        parameters.Add(new MySqlParameter("@STATUS_DESATIVADO", (short)StatusJogo.Desativado));
-
-        if (filtrarDesativados) {
-            // Jogo inativo = todas as cópias desativadas.
-            where.Add("EXISTS (SELECT 1 FROM JOGO_COPIA jc WHERE jc.ID_JOGO = j.ID AND jc.STATUS = @STATUS_DESATIVADO)");
-            where.Add("NOT EXISTS (SELECT 1 FROM JOGO_COPIA jc WHERE jc.ID_JOGO = j.ID AND jc.STATUS != @STATUS_DESATIVADO)");
-        } else {
-            if (admin?.Status is StatusJogo status) {
-                where.Add("EXISTS (SELECT 1 FROM JOGO_COPIA jc WHERE jc.ID_JOGO = j.ID AND jc.STATUS = @STATUS)");
-                parameters.Add(new MySqlParameter("@STATUS", (short)status));
-            }
-            // Filtro fixo para não trazer jogos desativados
-            where.Add("EXISTS (SELECT 1 FROM JOGO_COPIA jc WHERE jc.ID_JOGO = j.ID AND jc.STATUS != @STATUS_DESATIVADO)");
-        }
+        where.AddRange(CondicoesSituacao(admin?.Situacao));
 
         if (where.Count > 0) {
             sql += " WHERE " + string.Join(" AND ", where);
@@ -102,6 +88,34 @@ public class JogoRepository : BaseRepository, IJogoRepository {
         }
 
         return await query.ToListAsync();
+    }
+
+    /// <summary>
+    /// Condições SQL da situação do jogo pelas cópias. Sem situação, só esconde os desativados.
+    /// Os status entram como literais: são constantes do enum, não vêm do usuário.
+    /// </summary>
+    public static IEnumerable<string> CondicoesSituacao(SituacaoJogoFiltro? situacao) {
+        static string Copia(string condicao) => $"EXISTS (SELECT 1 FROM JOGO_COPIA jc WHERE jc.ID_JOGO = j.ID AND {condicao})";
+        static string Em(params StatusJogo[] status) => $"jc.STATUS IN ({string.Join(", ", status.Select(s => (short)s))})";
+
+        var disponivel = Em(StatusJogo.Disponivel);
+        var ativa = $"jc.STATUS != {(short)StatusJogo.Desativado}";
+
+        return situacao switch {
+            SituacaoJogoFiltro.Disponiveis => [Copia(disponivel)],
+            SituacaoJogoFiltro.Indisponiveis => [
+                "NOT " + Copia(disponivel),
+                Copia(Em(StatusJogo.Reservado, StatusJogo.Alugado, StatusJogo.Manutencao)),
+            ],
+            SituacaoJogoFiltro.ApenasEmEventos => [
+                Copia(Em(StatusJogo.ApenasEmEventos)),
+                "NOT " + Copia($"{ativa} AND jc.STATUS != {(short)StatusJogo.ApenasEmEventos}"),
+            ],
+            // Jogo inativo = todas as cópias desativadas.
+            SituacaoJogoFiltro.Desativados => [Copia(Em(StatusJogo.Desativado)), "NOT " + Copia(ativa)],
+            // Filtro fixo para não trazer jogos desativados.
+            _ => [Copia(ativa)],
+        };
     }
 
     public async Task<Jogo?> GetByIdAsync(int id) {
