@@ -181,6 +181,7 @@ builder.Services.AddScoped<SincronizarManual>();
 builder.Services.AddScoped<ReindexarManuais>();
 builder.Services.AddScoped<SituacaoManuais>();
 builder.Services.AddScoped<ObterMarkdownManual>();
+builder.Services.AddScoped<AlterarStatusCopia>();
 
 builder.Services.AddHostedService<IndexacaoManuaisWorker>();
 

@@ -1,3 +1,4 @@
+using ProximoTurnoApi.Domain;
 using ProximoTurnoApi.Infrastructure.Models;
 
 namespace ProximoTurnoApi.Application.DTOs;
@@ -34,20 +35,13 @@ public record JogoCardDTO {
             IdadeMinima = jogo.IdadeMinima,
             Complexidade = jogo.Complexidade,
             TempoEstimadoDeJogo = jogo.TempoEstimadoDeJogo,
-            Status = StatusJogo.Indisponivel,
+            // Sem cópia nenhuma não há o que alugar.
+            Status = StatusJogo.Desativado,
             TotalCopias = jogo.Copias?.Count(c => c.Status != StatusJogo.Desativado) ?? 0,
             CopiasDisponiveis = jogo.Copias?.Count(c => c.Status == StatusJogo.Disponivel) ?? 0
         };
 
-        if (jogo.Copias is not null && jogo.Copias.Any()) {
-            if (jogo.Copias.Any(c => c.Status == StatusJogo.Disponivel)) {
-                result.Status = StatusJogo.Disponivel;
-            } else if (jogo.Copias.All(c => c.Status == StatusJogo.Desativado)) {
-                result.Status = StatusJogo.Desativado;
-            } else {
-                result.Status = jogo.Copias.Where(c => c.Status != StatusJogo.Desativado).Min(c => (StatusJogo?)c.Status) ?? StatusJogo.Indisponivel;
-            }
-        }
+        result.Status = StatusDoJogo.Calcular(jogo.Copias) ?? result.Status;
 
         return result;
     }

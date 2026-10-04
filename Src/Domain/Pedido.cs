@@ -78,13 +78,14 @@ public class Pedido : BaseModel {
             if (_items.Any(i => i.JogoCopia.IdJogo == item.JogoCopia.IdJogo)) {
                 AddNotification("ERRO", $"O jogo {item.JogoCopia.Jogo?.Nome} já foi adicionado a este pedido");
             }
-
-            item.JogoCopia.Status = StatusJogo.Reservado;
         }
 
         if (!IsValid) {
             return false;
         }
+        // Só depois de validar: reservar uma cópia recusada (em manutenção, por exemplo) e
+        // depois salvar o contexto a devolveria ao aluguel no cancelamento do pedido.
+        item.JogoCopia!.Status = StatusJogo.Reservado;
         item.Status = StatusPedido.Pendente;
         _items.Add(item);
         CalcularTotal();

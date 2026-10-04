@@ -1,3 +1,4 @@
+using ProximoTurnoApi.Domain;
 ﻿using ProximoTurnoApi.Infrastructure.Models;
 
 namespace ProximoTurnoApi.Application.DTOs;
@@ -38,13 +39,7 @@ public record JogoPublicDTO {
             Copias = jogo.Copias?.Select(CopiaJogoDTO.FromModel).ToList()
         };
 
-        if (jogo.Copias is not null && jogo.Copias.Any()) {
-            if (jogo.Copias.Any(c => c.Status == StatusJogo.Disponivel)) {
-                result.Status = StatusJogo.Disponivel;
-            } else {
-                result.Status = jogo.Copias.Where(c => c.Status != StatusJogo.Desativado).Min(c => (StatusJogo?)c.Status) ?? StatusJogo.Indisponivel;
-            }
-        }
+        result.Status = StatusDoJogo.Calcular(jogo.Copias) ?? result.Status;
         return result;
     }
 }
