@@ -1,9 +1,7 @@
 using ProximoTurnoApi.Application.DTOs;
-using ProximoTurnoApi.Application.UseCases;
 using ProximoTurnoApi.Domain;
 using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Infrastructure.Repositories;
-using ProximoTurnoApi.Tests.Fakes;
 using Xunit;
 
 namespace ProximoTurnoApi.Tests.Domain;
@@ -62,59 +60,96 @@ public class StatusCopiaManualTests {
         Assert.Equal(status, copia.Status);
     }
 
-    // ---- troca manual ----
+    // ---- cópias editadas no formulário do jogo ----
 
-    private static (AlterarStatusCopia UseCase, FakeJogoRepository Repo) Montar(StatusJogo statusAtual) {
-        var repo = new FakeJogoRepository { Copias = Copias(statusAtual) };
-        return (new AlterarStatusCopia(repo), repo);
+    private static List<StatusJogo> StatusDe(IEnumerable<JogoCopia> copias) => copias.Select(c => c.Status).ToList();
+
+    private static StatusDoJogo.CopiaDesejada D(int id, StatusJogo status) => new(id, status);
+
+    [Fact]
+    public void Formulario_CriaNovasTrocaStatusEDesativaAsRemovidas() {
+        var copias = Copias(StatusJogo.Disponivel, StatusJogo.Disponivel, StatusJogo.Manutencao);
+
+        var erros = StatusDoJogo.SincronizarCopias(copias, [
+            D(1, StatusJogo.ApenasEmEventos),   // troca
+            D(3, StatusJogo.Manutencao),        // mantida igual
+            D(0, StatusJogo.Disponivel),        // nova
+            D(0, StatusJogo.Manutencao),        // nova já em manutenção
+        ]);                                     // a #2 saiu do formulário
+
+        Assert.Empty(erros);
+        Assert.Equal([StatusJogo.ApenasEmEventos, StatusJogo.Desativado, StatusJogo.Manutencao, StatusJogo.Disponivel, StatusJogo.Manutencao],
+                     StatusDe(copias));
+        Assert.Equal([0, 0], copias.Skip(3).Select(c => c.Id));
     }
 
-    [Theory]
-    [InlineData(StatusJogo.Disponivel, StatusJogo.ApenasEmEventos)]
-    [InlineData(StatusJogo.Disponivel, StatusJogo.Manutencao)]
-    [InlineData(StatusJogo.Manutencao, StatusJogo.Disponivel)]
-    [InlineData(StatusJogo.ApenasEmEventos, StatusJogo.Manutencao)]
-    public async Task TrocaEntreStatusManuais(StatusJogo atual, StatusJogo novo) {
-        var (useCase, repo) = Montar(atual);
+    [Fact]
+    public void Formulario_CopiaDesativadaQueNaoVemNaListaFicaComoEsta() {
+        var copias = Copias(StatusJogo.Disponivel, StatusJogo.Desativado);
 
-        Assert.True(await useCase.ExecuteAsync(10, 1, novo));
-        Assert.Equal(novo, repo.Copias[0].Status);
-        Assert.Single(repo.CopiasSalvas);
+        Assert.Empty(StatusDoJogo.SincronizarCopias(copias, [D(1, StatusJogo.Disponivel)]));
+        Assert.Equal([StatusJogo.Disponivel, StatusJogo.Desativado], StatusDe(copias));
     }
 
     [Theory]
     [InlineData(StatusJogo.Reservado, "reservada")]
     [InlineData(StatusJogo.Alugado, "alugada")]
-    [InlineData(StatusJogo.Desativado, "desativada")]
-    public async Task CopiaNoFluxoDePedidoOuDesativada_NaoMuda(StatusJogo atual, string motivo) {
-        var (useCase, repo) = Montar(atual);
+    public void Formulario_CopiaDoFluxoDePedido_NaoMudaNemSaiENadaEhAplicado(StatusJogo doPedido, string situacao) {
+        var copias = Copias(doPedido, StatusJogo.Disponivel);
 
-        Assert.False(await useCase.ExecuteAsync(10, 1, StatusJogo.Manutencao));
-        Assert.Equal(atual, repo.Copias[0].Status);
-        Assert.Empty(repo.CopiasSalvas);
-        Assert.Contains(motivo, useCase.AggregateErrors());
-        Assert.Equal(UseCaseNotificationType.BadRequest, useCase.Notifications.First().Type);
+        var trocar = StatusDoJogo.SincronizarCopias(copias, [D(1, StatusJogo.Manutencao), D(2, StatusJogo.ApenasEmEventos)]);
+        var excluir = StatusDoJogo.SincronizarCopias(copias, [D(2, StatusJogo.ApenasEmEventos), D(0, StatusJogo.Disponivel)]);
+
+        Assert.Contains(trocar, e => e.Contains("#1") && e.Contains(situacao));
+        Assert.Contains(excluir, e => e.Contains("#1") && e.Contains("não pode ser excluída"));
+        // Com erro nada muda, nem a cópia #2 que estava certa, nem a nova.
+        Assert.Equal([doPedido, StatusJogo.Disponivel], StatusDe(copias));
+    }
+
+    [Fact]
+    public void Formulario_CopiaDoFluxoDePedidoMantidaComOMesmoStatus_EhAceita() {
+        var copias = Copias(StatusJogo.Alugado, StatusJogo.Disponivel);
+
+        Assert.Empty(StatusDoJogo.SincronizarCopias(copias, [D(1, StatusJogo.Alugado), D(2, StatusJogo.Manutencao)]));
+        Assert.Equal([StatusJogo.Alugado, StatusJogo.Manutencao], StatusDe(copias));
     }
 
     [Theory]
     [InlineData(StatusJogo.Reservado)]
     [InlineData(StatusJogo.Alugado)]
     [InlineData(StatusJogo.Desativado)]
-    public async Task NaoAtribuiStatusDoFluxoDePedido(StatusJogo novo) {
-        var (useCase, repo) = Montar(StatusJogo.Disponivel);
+    public void Formulario_NaoAtribuiStatusDoFluxoDePedidoNemDesativado(StatusJogo status) {
+        var copias = Copias(StatusJogo.Disponivel);
 
-        Assert.False(await useCase.ExecuteAsync(10, 1, novo));
-        Assert.Equal(StatusJogo.Disponivel, repo.Copias[0].Status);
+        Assert.NotEmpty(StatusDoJogo.SincronizarCopias(copias, [D(1, status)]));
+        Assert.NotEmpty(StatusDoJogo.SincronizarCopias(copias, [D(1, StatusJogo.Disponivel), D(0, status)]));
+        Assert.Single(copias);
+        Assert.Equal(StatusJogo.Disponivel, copias[0].Status);
     }
 
-    [Theory]
-    [InlineData(10, 99)]
-    [InlineData(11, 1)]
-    public async Task CopiaInexistenteOuDeOutroJogo_NotFound(int idJogo, int idCopia) {
-        var (useCase, _) = Montar(StatusJogo.Disponivel);
+    [Fact]
+    public void Formulario_SemNenhumaCopia_Recusa() {
+        var copias = Copias(StatusJogo.Disponivel);
 
-        Assert.False(await useCase.ExecuteAsync(idJogo, idCopia, StatusJogo.Manutencao));
-        Assert.Equal(UseCaseNotificationType.NotFound, useCase.Notifications.First().Type);
+        var erros = StatusDoJogo.SincronizarCopias(copias, []);
+
+        Assert.Contains("pelo menos uma cópia", Assert.Single(erros));
+        Assert.Equal(StatusJogo.Disponivel, copias[0].Status);
+    }
+
+    [Fact]
+    public void Formulario_CopiaDeOutroJogo_Recusa() {
+        var copias = Copias(StatusJogo.Disponivel);
+
+        Assert.Contains("#99", Assert.Single(StatusDoJogo.SincronizarCopias(copias, [D(1, StatusJogo.Disponivel), D(99, StatusJogo.Disponivel)])));
+    }
+
+    [Fact]
+    public void Formulario_DesativadaReapareceNaLista_VoltaAoStatusEscolhido() {
+        var copias = Copias(StatusJogo.Desativado);
+
+        Assert.Empty(StatusDoJogo.SincronizarCopias(copias, [D(1, StatusJogo.Disponivel)]));
+        Assert.Equal(StatusJogo.Disponivel, copias[0].Status);
     }
 
     // ---- filtro da listagem do admin ----

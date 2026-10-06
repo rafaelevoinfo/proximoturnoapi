@@ -115,6 +115,39 @@ public class CadastroJogoTests {
         Assert.Equal(0, id);
     }
 
+    [Fact]
+    public async Task Cadastro_CriaAsCopiasDoFormularioComOStatusEscolhido() {
+        var jogoRepo = new FakeJogoRepository();
+        var jogoDto = NovoJogo("Azul");
+        jogoDto.Copias = [new CopiaJogoDTO { Status = StatusJogo.Disponivel }, new CopiaJogoDTO { Status = StatusJogo.ApenasEmEventos }];
+
+        Assert.Equal(99, await Montar(jogoRepo).ExecuteAsync(jogoDto));
+        Assert.Equal([StatusJogo.Disponivel, StatusJogo.ApenasEmEventos], jogoRepo.Salvo!.Copias!.Select(c => c.Status));
+    }
+
+    [Fact]
+    public async Task Cadastro_SemListaDeCopias_UsaAQuantidade() {
+        var jogoRepo = new FakeJogoRepository();
+        var jogoDto = NovoJogo("Azul");
+        jogoDto.QuantidadeCopias = 2;
+
+        await Montar(jogoRepo).ExecuteAsync(jogoDto);
+
+        Assert.Equal([StatusJogo.Disponivel, StatusJogo.Disponivel], jogoRepo.Salvo!.Copias!.Select(c => c.Status));
+    }
+
+    [Fact]
+    public async Task Cadastro_ComListaVaziaDeCopias_Recusa() {
+        var jogoRepo = new FakeJogoRepository();
+        var jogoDto = NovoJogo("Azul");
+        jogoDto.Copias = [];
+        var useCase = Montar(jogoRepo);
+
+        Assert.Equal(0, await useCase.ExecuteAsync(jogoDto));
+        Assert.Null(jogoRepo.Salvo);
+        Assert.Contains("pelo menos uma cópia", useCase.AggregateErrors());
+    }
+
     private class FakeJogoRepository : IJogoRepository {
         public List<Jogo> Existentes { get; set; } = [];
         public Jogo? Salvo { get; private set; }

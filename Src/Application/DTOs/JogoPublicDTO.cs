@@ -19,7 +19,8 @@ public record JogoPublicDTO {
     public List<TagDTO>? Tags { get; set; }
     public List<JogoLinkDTO>? Links { get; set; }
     public List<JogoFotoDTO>? Fotos { get; set; }
-    public List<CopiaJogoDTO>? Copias { get; set; } = [];
+    /// <summary>No corpo do cadastro/edição: as cópias como ficaram no formulário. Null = não mexer (cliente antigo).</summary>
+    public List<CopiaJogoDTO>? Copias { get; set; }
 
     public static JogoPublicDTO FromModel(Jogo jogo) {
         var result = new JogoPublicDTO {

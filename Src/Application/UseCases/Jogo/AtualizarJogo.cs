@@ -28,6 +28,7 @@ public class AtualizarJogo(IJogoRepository _jogoRepository, ITagRepository _tagR
         await ValidarTags(jogoDto.Tags, _logger);
         await ValidarLinks(jogoDto.Links, _logger);
         await ValidarFotos(jogoDto.Fotos, _logger);
+        SincronizarCopias(jogo, jogoDto.Copias);
 
         if (!IsValid)
             return false;

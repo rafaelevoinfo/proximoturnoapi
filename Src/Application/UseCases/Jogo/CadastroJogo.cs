@@ -23,14 +23,16 @@ public class CadastroJogo(IJogoRepository _jogoRepository,
         await ValidarLinks(jogoDto.Links, _logger);
         await ValidarFotos(jogoDto.Fotos, _logger);
 
+        var jogo = jogoDto.ToModel();
+        SincronizarCopias(jogo, jogoDto.Copias);
+
         if (!IsValid)
             return 0;
 
         try {
-            var jogo = jogoDto.ToModel();
             await AtualizarTags(jogo, jogoDto.Tags);
             await _jogoRepository.SaveAsync(jogo);
-            _logger.LogInformation("Jogo {JogoId} ({Nome}) cadastrado com sucesso com {Qtde} cópias.", jogo.Id, jogo.Nome, jogoDto.Copias?.Count ?? 1);
+            _logger.LogInformation("Jogo {JogoId} ({Nome}) cadastrado com sucesso com {Qtde} cópias.", jogo.Id, jogo.Nome, jogo.Copias?.Count ?? 0);
 
             _manualQueue.EnfileirarSincronizacao(jogo);
             return jogo.Id;
