@@ -1,3 +1,4 @@
+using ProximoTurnoApi.Domain;
 using ProximoTurnoApi.Infrastructure.Repositories;
 using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Application.DTOs.Filtros;
@@ -13,6 +14,23 @@ public class JogoUseCaseBasico : UseCaseBasico {
     public JogoUseCaseBasico(IJogoRepository jogoRepository, ITagRepository tagRepository) {
         _jogoRepository = jogoRepository;
         _tagRepository = tagRepository;
+    }
+
+    /// <summary>
+    /// Cópias do formulário aplicadas ao jogo; erros viram notificações. Sem lista no corpo
+    /// (cliente antigo), nada muda.
+    /// </summary>
+    protected bool SincronizarCopias(Jogo jogo, List<CopiaJogoDTO>? copias) {
+        if (copias is null) {
+            return true;
+        }
+
+        jogo.Copias ??= [];
+        var erros = StatusDoJogo.SincronizarCopias(jogo.Copias, copias.Select(c => new StatusDoJogo.CopiaDesejada(c.Id, c.Status)).ToList());
+        foreach (var erro in erros) {
+            AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest, erro));
+        }
+        return erros.Count == 0;
     }
 
     protected async Task ValidarTags(List<TagDTO>? tags, ILogger _logger) {

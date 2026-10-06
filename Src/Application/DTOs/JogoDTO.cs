@@ -104,10 +104,11 @@ public record JogoDTO : JogoPublicDTO {
             Links = Links?.Select(link => link.ToModel()).ToList(),
             Fotos = Fotos?.Select(foto => foto.ToModel()).ToList()
         };
-        var qtdeCopias = QuantidadeCopias > 0 ? QuantidadeCopias : 1;
-
-        if (qtdeCopias != Copias?.Count) {
-            jogo.Copias = [];
+        // Com a lista de cópias (formulário atual), quem cria é JogoUseCaseBasico.SincronizarCopias.
+        // Sem ela, cliente antigo que só manda a quantidade: todas disponíveis.
+        jogo.Copias = [];
+        if (Copias is null) {
+            var qtdeCopias = QuantidadeCopias > 0 ? QuantidadeCopias : 1;
             for (int i = 0; i < qtdeCopias; i++) {
                 jogo.Copias.Add(new JogoCopia() {
                     Status = StatusJogo.Disponivel

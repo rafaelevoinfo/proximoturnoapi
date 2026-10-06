@@ -233,20 +233,6 @@ public class JogosController(ILogger<JogosController> logger,
         });
     }
 
-    /// <summary>Status manual da cópia: Disponivel, ApenasEmEventos ou Manutencao.</summary>
-    [HttpPut("{idJogo:int}/copia/{id:int}/status")]
-    [Authorize(Roles = Roles.Admin)]
-    public async Task<IActionResult> AlterarStatusCopia([FromRoute] int idJogo, [FromRoute] int id, [FromBody] AlterarStatusCopiaDTO dto,
-                                                        [FromServices] AlterarStatusCopia alterarStatus) {
-        return await EncapsulateRequestAsync(async () => {
-            if (await alterarStatus.ExecuteAsync(idJogo, id, dto.Status)) {
-                return Ok(ApiResultDTO<object>.CreateSuccessResult(null, "Status da cópia alterado."));
-            }
-            var erro = ApiResultDTO<object>.CreateFailureResult(alterarStatus.AggregateErrors());
-            return alterarStatus.Notifications.FirstOrDefault()?.Type == UseCaseNotificationType.NotFound ? NotFound(erro) : BadRequest(erro);
-        });
-    }
-
     [HttpPut("{idJogo:int}/copia/{id:int}/reativar")]
     [Authorize(Roles = Roles.Admin)]
     public async Task<IActionResult> ReativarCopiaJogo([FromRoute] int idJogo, [FromRoute] int id) {

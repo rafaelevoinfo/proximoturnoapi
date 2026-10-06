@@ -42,6 +42,54 @@ public class AtualizarJogoTests {
         Assert.Contains(manualQueue.Enfileirados, j => j.IdJogoLink == 2 && j.IdJogo == 7);
     }
 
+    private static JogoDTO DtoDe(Jogo jogo, List<CopiaJogoDTO> copias) => new() {
+        Id = jogo.Id, Nome = jogo.Nome, Descricao = "Descrição", Copias = copias,
+    };
+
+    [Fact]
+    public async Task CopiasDoFormulario_SaoAplicadasAoJogo() {
+        var jogo = new Jogo {
+            Id = 7, Nome = "Azul", Descricao = "Descrição",
+            Copias = [new JogoCopia { Id = 1, IdJogo = 7, Status = StatusJogo.Disponivel },
+                      new JogoCopia { Id = 2, IdJogo = 7, Status = StatusJogo.Disponivel }],
+        };
+        var useCase = Montar(new FakeJogoRepository { Existentes = { jogo } }, new FakeManualQueue());
+
+        var ok = await useCase.ExecuteAsync(DtoDe(jogo, [
+            new CopiaJogoDTO { Id = 1, Status = StatusJogo.Manutencao },
+            new CopiaJogoDTO { Id = 0, Status = StatusJogo.ApenasEmEventos },
+        ]));
+
+        Assert.True(ok);
+        Assert.Equal([StatusJogo.Manutencao, StatusJogo.Desativado, StatusJogo.ApenasEmEventos], jogo.Copias.Select(c => c.Status));
+    }
+
+    [Fact]
+    public async Task CopiaAlugadaRemovidaDoFormulario_NaoSalva() {
+        var jogo = new Jogo {
+            Id = 7, Nome = "Azul", Descricao = "Descrição",
+            Copias = [new JogoCopia { Id = 1, IdJogo = 7, Status = StatusJogo.Alugado },
+                      new JogoCopia { Id = 2, IdJogo = 7, Status = StatusJogo.Disponivel }],
+        };
+        var useCase = Montar(new FakeJogoRepository { Existentes = { jogo } }, new FakeManualQueue());
+
+        var ok = await useCase.ExecuteAsync(DtoDe(jogo, [new CopiaJogoDTO { Id = 2, Status = StatusJogo.Disponivel }]));
+
+        Assert.False(ok);
+        Assert.Contains("alugada", useCase.AggregateErrors());
+        Assert.Equal(StatusJogo.Alugado, jogo.Copias[0].Status);
+    }
+
+    [Fact]
+    public async Task SemListaDeCopias_NaoMexeNasCopias() {
+        var jogo = new Jogo { Id = 7, Nome = "Azul", Descricao = "Descrição",
+                              Copias = [new JogoCopia { Id = 1, IdJogo = 7, Status = StatusJogo.Manutencao }] };
+        var useCase = Montar(new FakeJogoRepository { Existentes = { jogo } }, new FakeManualQueue());
+
+        Assert.True(await useCase.ExecuteAsync(new JogoDTO { Id = 7, Nome = "Azul", Descricao = "Descrição", QuantidadeCopias = 3 }));
+        Assert.Equal([StatusJogo.Manutencao], jogo.Copias.Select(c => c.Status));
+    }
+
     private class FakeJogoRepository : IJogoRepository {
         public List<Jogo> Existentes { get; set; } = [];
 
