@@ -44,7 +44,7 @@ public record PedidoDTO {
             CupomCodigo = pedido.Cupom?.Codigo,
             ValorDesconto = pedido.ValorDesconto,
             Status = pedido.Status,
-            Atrasado = pedido.Items.Any(i => i.Status == StatusPedido.Entregue && i.DataDevolucao.Date < DateTime.Today),
+            Atrasado = pedido.EstaAtrasado(DateTime.Now),
             MetodoPagamento = pedido.MetodoPagamento,
             MetodoEntrega = pedido.MetodoEntrega,
             DataHoraAlteracao = pedido.DataHoraAlteracao,
