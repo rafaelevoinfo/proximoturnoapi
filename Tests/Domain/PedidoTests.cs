@@ -253,4 +253,57 @@ public class PedidoTests
         Assert.Equal(dataEscolhida.AddHours(23).AddMinutes(59).AddSeconds(59), novoItem1.DataDevolucao);
         Assert.Equal(novo.CalcularDataDevolucao(7), novoItem2.DataDevolucao);
     }
+
+    private static Pedido PedidoEntregueComDoisItens()
+    {
+        var cache = new ProximoTurnoApi.Tests.Fakes.FakeCategoriaPeriodoCache().Adicionar(10, 7, 50m, 1);
+        var pedido = new Pedido(new Cliente { Id = 1, Nome = "Cliente", Email = "c@teste.com", Telefone = "1", Endereco = "Rua" }) { Id = 1 };
+        pedido.AdicionarItem(new ItemPedido { Id = 1, IdPeriodo = 10, Valor = 50m, JogoCopia = new JogoCopia { Id = 1, IdJogo = 5, Status = StatusJogo.Disponivel, Jogo = new Jogo { Id = 5, IdCategoria = 1 } } });
+        pedido.AdicionarItem(new ItemPedido { Id = 2, IdPeriodo = 10, Valor = 50m, JogoCopia = new JogoCopia { Id = 2, IdJogo = 6, Status = StatusJogo.Disponivel, Jogo = new Jogo { Id = 6, IdCategoria = 1 } } });
+        pedido.Entregar(cache);
+        return pedido;
+    }
+
+    [Fact]
+    public void EstaAtrasado_SemItensEntregues_RetornaFalso()
+    {
+        var pedido = new Pedido(CriarClienteTeste());
+        pedido.AdicionarItem(new ItemPedido { Id = 1, IdPeriodo = 10, Valor = 50m, JogoCopia = CriarJogoCopiaTeste(50m), DataDevolucao = DateTime.Now.AddDays(-10) });
+
+        Assert.False(pedido.EstaAtrasado(DateTime.Now));
+    }
+
+    [Fact]
+    public void EstaAtrasado_TodosEmDia_RetornaFalso()
+    {
+        Assert.False(PedidoEntregueComDoisItens().EstaAtrasado(DateTime.Now));
+    }
+
+    [Fact]
+    public void EstaAtrasado_DevolucaoVencendoHoje_RetornaFalso()
+    {
+        var pedido = PedidoEntregueComDoisItens();
+        pedido.Items.Single(i => i.Id == 1).DataDevolucao = DateTime.Now.Date.AddHours(23).AddMinutes(59).AddSeconds(59);
+
+        Assert.False(pedido.EstaAtrasado(DateTime.Now));
+    }
+
+    [Fact]
+    public void EstaAtrasado_UmItemVencido_RetornaVerdadeiro()
+    {
+        var pedido = PedidoEntregueComDoisItens();
+        pedido.Items.Single(i => i.Id == 2).DataDevolucao = DateTime.Now.Date.AddSeconds(-1);
+
+        Assert.True(pedido.EstaAtrasado(DateTime.Now));
+    }
+
+    [Fact]
+    public void EstaAtrasado_ItemVencidoJaDevolvido_Ignora()
+    {
+        var pedido = PedidoEntregueComDoisItens();
+        pedido.Items.Single(i => i.Id == 2).DataDevolucao = DateTime.Now.Date.AddDays(-5);
+        pedido.Devolver([2]);
+
+        Assert.False(pedido.EstaAtrasado(DateTime.Now));
+    }
 }

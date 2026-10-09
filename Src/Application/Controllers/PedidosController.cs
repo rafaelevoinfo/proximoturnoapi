@@ -97,12 +97,14 @@ public class PedidosController(ILogger<PedidosController> logger,
     }
 
     [HttpPut("{id:int}/renovar")]
-    public async Task<IActionResult> RenovarPedido([FromRoute] int id, [FromBody] List<ItemPedidoRenovarDTO> itensRenovacao) {
+    public async Task<IActionResult> RenovarPedido([FromRoute] int id, [FromBody] RenovarPedidoDTO renovacao) {
         return await EncapsulateRequestAsync(async () => {
-            await _renovarPedidoUseCase.ExecuteAsync(await ObterSolicitanteAsync(), id, itensRenovacao);
+            await _renovarPedidoUseCase.ExecuteAsync(await ObterSolicitanteAsync(), id, renovacao);
             if (!_renovarPedidoUseCase.IsValid) {
+                // 403 com a mensagem: o cliente precisa saber se foi o atraso ou a data manual.
                 if (Negado(_renovarPedidoUseCase)) {
-                    return Forbid();
+                    return StatusCode(StatusCodes.Status403Forbidden,
+                        ApiResultDTO<PedidoDTO>.CreateFailureResult(_renovarPedidoUseCase.AggregateErrors()));
                 }
                 return BadRequest(ApiResultDTO<PedidoDTO>.CreateFailureResult(_renovarPedidoUseCase.AggregateErrors()));
             }

@@ -17,7 +17,7 @@ public class ValidarCupom(
     ICategoriaRepository _categoriaRepository,
     ILogger<ValidarCupom> logger) : UseCaseBasico
 {
-    public async Task<ValidacaoCupomResultadoDTO> ExecuteAsync(ValidarCupomDTO dto)
+    public virtual async Task<ValidacaoCupomResultadoDTO> ExecuteAsync(ValidarCupomDTO dto)
     {
         logger.LogInformation("Iniciando validação do cupom '{Codigo}' para cliente ID {IdCliente}.", dto.Codigo, dto.IdCliente);
 
