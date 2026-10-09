@@ -233,7 +233,7 @@ public class JogoRepository : BaseRepository, IJogoRepository {
             .Include(j => j.Categoria)
             .Include(j => j.Fotos!.OrderBy(f => f.Ordem).Take(1))
             .Include(j => j.Copias)
-            .Where(j => _dbContext.JogoCopias.Any(jc => jc.IdJogo == j.Id && jc.Status != StatusJogo.Desativado))
+            .Where(j => _dbContext.JogoCopias.Any(jc => jc.IdJogo == j.Id && jc.Status != StatusJogo.Desativado && jc.Status != StatusJogo.ApenasEmEventos))
             .OrderByDescending(j => j.Id)
             .Take(quantidade)
             .AsSplitQuery()
