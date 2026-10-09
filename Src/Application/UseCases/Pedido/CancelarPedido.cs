@@ -4,12 +4,17 @@ namespace ProximoTurnoApi.Application.UseCases;
 
 public class CancelarPedido(IPedidoRepository pedidoRepository, ILogger<CancelarPedido> logger) : PedidoUseCaseBasico(pedidoRepository) {
 
-    public async Task ExecuteAsync(int idPedido) {
+    public async Task ExecuteAsync(SolicitantePedido solicitante, int idPedido) {
         logger.LogInformation("Solicitado cancelamento do pedido {PedidoId}.", idPedido);
         var pedidoExistente = await _pedidoRepository.GetByIdAsync(idPedido);
         if (pedidoExistente is null) {
             logger.LogWarning("Falha ao cancelar: Pedido {PedidoId} não encontrado.", idPedido);
             AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest, "Pedido não encontrado."));
+            return;
+        }
+
+        if (!PodeAlterar(solicitante, pedidoExistente)) {
+            logger.LogWarning("Cancelamento negado: o pedido {PedidoId} não pertence ao cliente {ClienteId}.", idPedido, solicitante.IdCliente);
             return;
         }
 

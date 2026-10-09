@@ -20,7 +20,9 @@ public class PedidosController(ILogger<PedidosController> logger,
     EntregarPedido _entregarPedidoUseCase,
     CancelarPedido _cancelarPedidoUseCase,
     RenovarPedido _renovarPedidoUseCase,
-    DevolverItensPedido _devolverPedidoUseCase) : ControllerBasico(logger) {
+    DevolverItensPedido _devolverPedidoUseCase,
+    IClienteRepository _clienteRepository,
+    UserManager<Usuario> _userManager) : ControllerBasico(logger) {
 
 
     [HttpGet()]
@@ -71,8 +73,11 @@ public class PedidosController(ILogger<PedidosController> logger,
             if (id != novoPedido.Id) {
                 return BadRequest(ApiResultDTO<PedidoDTO>.CreateFailureResult("O ID do pedido na URL deve corresponder ao ID no corpo da requisição."));
             }
-            await _atualizarPedidoUseCase.ExecuteAsync(novoPedido);
+            await _atualizarPedidoUseCase.ExecuteAsync(await ObterSolicitanteAsync(), novoPedido);
             if (!_atualizarPedidoUseCase.IsValid) {
+                if (Negado(_atualizarPedidoUseCase)) {
+                    return Forbid();
+                }
                 return BadRequest(ApiResultDTO<PedidoDTO>.CreateFailureResult(_atualizarPedidoUseCase.AggregateErrors()));
             }
             return Ok(ApiResultDTO<PedidoDTO>.CreateSuccessResult(new PedidoDTO() { Id = id }, "Pedido atualizado com sucesso"));
@@ -80,6 +85,7 @@ public class PedidosController(ILogger<PedidosController> logger,
     }
 
     [HttpPut("{id:int}/entregar")]
+    [Authorize(Roles = Roles.Admin)]
     public async Task<IActionResult> EntregarPedido([FromRoute] int id, [FromBody] EntregarPedidoDTO? dto) {
         return await EncapsulateRequestAsync(async () => {
             await _entregarPedidoUseCase.ExecuteAsync(id, dto?.DataDevolucao);
@@ -93,8 +99,11 @@ public class PedidosController(ILogger<PedidosController> logger,
     [HttpPut("{id:int}/renovar")]
     public async Task<IActionResult> RenovarPedido([FromRoute] int id, [FromBody] List<ItemPedidoRenovarDTO> itensRenovacao) {
         return await EncapsulateRequestAsync(async () => {
-            await _renovarPedidoUseCase.ExecuteAsync(id, itensRenovacao);
+            await _renovarPedidoUseCase.ExecuteAsync(await ObterSolicitanteAsync(), id, itensRenovacao);
             if (!_renovarPedidoUseCase.IsValid) {
+                if (Negado(_renovarPedidoUseCase)) {
+                    return Forbid();
+                }
                 return BadRequest(ApiResultDTO<PedidoDTO>.CreateFailureResult(_renovarPedidoUseCase.AggregateErrors()));
             }
             return Ok(ApiResultDTO<PedidoDTO>.CreateSuccessResult(null, "Pedido renovado com sucesso"));
@@ -102,6 +111,7 @@ public class PedidosController(ILogger<PedidosController> logger,
     }
 
     [HttpPut("{id:int}/devolver")]
+    [Authorize(Roles = Roles.Admin)]
     public async Task<IActionResult> DevolverItemsPedido([FromRoute] int id, [FromBody] List<int>? idsItensDevolvidos) {
         return await EncapsulateRequestAsync(async () => {
             await _devolverPedidoUseCase.ExecuteAsync(id, idsItensDevolvidos);
@@ -117,13 +127,30 @@ public class PedidosController(ILogger<PedidosController> logger,
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> CancelarPedido([FromRoute] int id) {
         return await EncapsulateRequestAsync(async () => {
-            await _cancelarPedidoUseCase.ExecuteAsync(id);
+            await _cancelarPedidoUseCase.ExecuteAsync(await ObterSolicitanteAsync(), id);
             if (!_cancelarPedidoUseCase.IsValid) {
+                if (Negado(_cancelarPedidoUseCase)) {
+                    return Forbid();
+                }
                 return BadRequest(ApiResultDTO<PedidoDTO>.CreateFailureResult(_cancelarPedidoUseCase.AggregateErrors()));
             }
             return Ok(ApiResultDTO<PedidoDTO>.CreateSuccessResult(null, "Pedido cancelado com sucesso"));
         });
     }
 
+    /// <summary>
+    /// Quem está pedindo a alteração. O cliente sai do e-mail do usuário logado, como em
+    /// BuscarPedidos: o id do pedido na rota não pode bastar para alterar pedido de outra pessoa.
+    /// </summary>
+    private async Task<SolicitantePedido> ObterSolicitanteAsync() {
+        if (User.IsInRole(Roles.Admin)) {
+            return SolicitantePedido.Administrador;
+        }
 
+        var usuario = await _userManager.GetUserAsync(User);
+        return SolicitantePedido.DoCliente(await _clienteRepository.GetIdByEmailAsync(usuario?.Email ?? ""));
+    }
+
+    private static bool Negado(UseCaseBasico useCase) =>
+        useCase.Notifications.Any(n => n.Type == UseCaseNotificationType.Forbid);
 }

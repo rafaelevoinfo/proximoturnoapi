@@ -10,12 +10,17 @@ public class RenovarPedido(IPedidoRepository pedidoRepository,
                            ICategoriaPeriodoCache _categoriaPeriodoCache,
                            IContratoQueue _contratoQueue,
                            ILogger<RenovarPedido> logger) : PedidoUseCaseBasico(pedidoRepository) {
-    public async Task ExecuteAsync(int idPedido, List<ItemPedidoRenovarDTO> itens) {
+    public async Task ExecuteAsync(SolicitantePedido solicitante, int idPedido, List<ItemPedidoRenovarDTO> itens) {
         logger.LogInformation("Iniciando renovação para o pedido {PedidoId} com {ItemCount} itens.", idPedido, itens.Count);
         var pedidoExistente = await _pedidoRepository.GetByIdAsync(idPedido);
         if (pedidoExistente is null) {
             logger.LogWarning("Falha na renovação: Pedido {PedidoId} não encontrado.", idPedido);
             AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest, "Pedido não encontrado."));
+            return;
+        }
+
+        if (!PodeAlterar(solicitante, pedidoExistente)) {
+            logger.LogWarning("Renovação negada: o pedido {PedidoId} não pertence ao cliente {ClienteId}.", idPedido, solicitante.IdCliente);
             return;
         }
 
