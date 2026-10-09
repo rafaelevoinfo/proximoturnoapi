@@ -29,8 +29,9 @@ Problemas do fluxo atual:
 2. **Cliente escolhe o período como num pedido novo.** Para cada jogo, ele escolhe um dos períodos da categoria. A data de devolução é **data atual + dias do período**, calculada pelo backend (`CalcularDataDevolucao`, com a entrega do pedido novo feita no momento da renovação). O cliente **não** informa data.
 3. **Admin pode, além disso, informar a data de devolução:** uma **por jogo** ou **uma para todos**. A data por jogo tem preferência sobre a global. Sem data, vale o cálculo do item 2. A data informada precisa ser posterior a hoje, mesma regra da entrega.
 4. **O registro continua sendo um pedido novo vinculado ao original.** Não muda o modelo atual: `Pedido.Renovar` cria o pedido novo `Entregue`, com `PedidoOriginal`, e fecha as pernas antigas dos itens renovados. Os itens removidos na tela continuam `Entregue` no pedido original, aguardando devolução.
-5. **Cupom e pagamento.** A renovação aceita **um cupom**, validado por `ValidarCupom` com o cliente do pedido original e os itens/períodos escolhidos. O cliente escolhe a **forma de pagamento**, obrigatória como num pedido novo. A **forma de entrega não se aplica**, porque os jogos já estão com o cliente, então a tela não pede entrega nem cobra taxa de entrega.
-6. **O antigo "Renovar Parcial" deixa de existir.** Remover itens na tela já cobre a renovação parcial, então o dropdown e os dois modais saem da lista de pedidos.
+5. **Cupom e pagamento.** A renovação aceita **um cupom**, validado por `ValidarCupom` com o cliente do pedido original e os itens/períodos escolhidos. O cupom segue **as regras normais**, sem exceção para renovação: vigência, condição e limites de uso valem igual. Um cupom de uso único usado num pedido não pode ser usado na renovação, e um usado na renovação não pode ser usado depois em outro pedido; o pedido de renovação conta como uso, como qualquer pedido. O cliente escolhe a **forma de pagamento**, obrigatória como num pedido novo. A **forma de entrega não se aplica**, porque os jogos já estão com o cliente, então a tela não pede entrega nem cobra taxa de entrega.
+6. **Cliente só renova pedido em dia.** Se o pedido estiver atrasado, só o admin pode renovar. Pedido atrasado é o que tem algum item `Entregue` com `DataDevolucao` já vencida (a data de devolução é gravada às 23:59:59 do último dia, então o atraso começa à meia-noite seguinte). Vale o pedido inteiro, e não só os itens escolhidos: o cliente com um jogo atrasado não renova nenhum outro do mesmo pedido.
+7. **O antigo "Renovar Parcial" deixa de existir.** Remover itens na tela já cobre a renovação parcial, então o dropdown e os dois modais saem da lista de pedidos.
 
 ## Backend
 
@@ -67,13 +68,14 @@ Validações, todas com notificação, na ordem:
 1. Pedido existe; senão `BadRequest`.
 2. `PodeAlterar(solicitante, pedido)`: admin ou dono; senão `Forbid` (já existe).
 3. Pedido `Entregue` (regra atual de `Pedido.Renovar`).
-4. Pelo menos um item informado.
-5. Todo `Id` informado pertence ao pedido e está `Entregue`. Diferente de hoje, um id inválido **rejeita a renovação** em vez de ser ignorado.
-6. Ids repetidos são rejeitados.
-7. Período: `IdPeriodo` (ou o atual, quando null) existe no cache **e pertence à categoria do jogo**. Mesma regra de `ValidarAdicionarItem`.
-8. Data de devolução, global ou por item, informada por quem **não é admin** gera `Forbid`. Informada por admin, precisa ser posterior a hoje.
-9. `MetodoPagamento` obrigatório.
-10. Cupom, quando informado: `ValidarCupom` com `IdCliente` do pedido original e os pares `(IdJogo, IdPeriodo)` dos itens renovados. Se inválido, `BadRequest` com a mensagem do cupom.
+4. Quem não é admin não renova pedido atrasado (decisão 6): `Forbid`, com a mensagem "Este pedido está em atraso. Entre em contato com a loja para renovar.". A verificação fica num método do domínio, `Pedido.EstaAtrasado(DateTime agora)`, para ser testável e reaproveitável.
+5. Pelo menos um item informado.
+6. Todo `Id` informado pertence ao pedido e está `Entregue`. Diferente de hoje, um id inválido **rejeita a renovação** em vez de ser ignorado.
+7. Ids repetidos são rejeitados.
+8. Período: `IdPeriodo` (ou o atual, quando null) existe no cache **e pertence à categoria do jogo**. Mesma regra de `ValidarAdicionarItem`.
+9. Data de devolução, global ou por item, informada por quem **não é admin** gera `Forbid`. Informada por admin, precisa ser posterior a hoje.
+10. `MetodoPagamento` obrigatório.
+11. Cupom, quando informado: `ValidarCupom` com `IdCliente` do pedido original, sem `IdPedido` (o pedido de renovação é novo) e com os pares `(IdJogo, IdPeriodo)` dos itens renovados. Se inválido, `BadRequest` com a mensagem do cupom. Nenhuma regra do cupom é relaxada por ser renovação.
 
 Montagem:
 
@@ -91,11 +93,12 @@ Montagem:
 ### Lista de pedidos (`app/pedidos/page.tsx`)
 
 - O botão **Renovar** (pedido `Entregue`, para admin e para o dono) passa a navegar para `/pedidos/novo?renovar={id}`.
+- Para o cliente, se o pedido estiver atrasado, o botão fica desabilitado com a dica "Pedido em atraso: fale com a loja para renovar". O admin continua vendo o botão habilitado.
 - Saem o dropdown "Renovar Parcial", os dois modais de renovação e os estados e handlers associados (`itensRenovacao`, `dataDevolucaoRenovacaoGlobal`, `handleConfirmarRenovarTodos` etc.).
 
 ### Tela de pedido (`app/pedidos/novo/page.tsx`) em modo renovação
 
-Ativado por `?renovar={id}`. Carrega o pedido com `getPedidoById` e usa só os itens `Entregue`. Se o pedido não estiver `Entregue`, ou o usuário não puder acessá-lo, a tela avisa e volta para `/pedidos`.
+Ativado por `?renovar={id}`. Carrega o pedido com `getPedidoById` e usa só os itens `Entregue`. Se o pedido não estiver `Entregue`, o usuário não puder acessá-lo, ou for um cliente com o pedido atrasado, a tela avisa e volta para `/pedidos`. A API faz a mesma checagem; a do front só evita abrir uma tela que não vai poder ser confirmada.
 
 | Elemento | Pedido novo / edição | Renovação |
 | --- | --- | --- |
@@ -129,12 +132,18 @@ Ativado por `?renovar={id}`. Carrega o pedido com `getPedidoById` e usa só os i
 - Admin com data de hoje ou passada: rejeita.
 - Sem forma de pagamento: rejeita.
 - Cupom válido: desconto aplicado no pedido novo. Cupom inválido: rejeita e não salva.
+- Cupom com `LimiteUsoCliente = 1` já usado pelo cliente em outro pedido: rejeita a renovação.
+- Cupom usado na renovação conta como uso: um pedido seguinte do mesmo cliente com o mesmo cupom de uso único é rejeitado.
+- Cliente com pedido atrasado (algum item `Entregue` com devolução vencida): `Forbid`, sem salvar. Admin com o mesmo pedido: renova.
+- Cliente com devolução vencendo hoje (ainda não passou das 23:59:59): renova.
+- `Pedido.EstaAtrasado`: falso sem itens entregues, falso com todos em dia, verdadeiro com um item vencido, ignora itens já devolvidos.
 - Contrato enfileirado só para o pedido novo.
 
 **Frontend** (manual, sem suíte automatizada no projeto):
 
 - Cliente: abre a renovação, troca o período, remove um item, aplica cupom e confirma. A data prevista acompanha o período, e não aparece campo de data nem catálogo.
 - Admin: o mesmo, e também data por jogo e "aplicar a todos".
+- Cliente com pedido atrasado: botão Renovar desabilitado com a dica; abrir a URL direto volta para `/pedidos` com aviso. Admin renova o mesmo pedido normalmente.
 - O item removido continua no pedido original como entregue.
 
 ## Fora de escopo
@@ -142,8 +151,3 @@ Ativado por `?renovar={id}`. Carrega o pedido com `getPedidoById` e usa só os i
 - Incluir jogos novos na renovação (decisão 1).
 - Renovação automática ou lembrete de vencimento.
 - Mudar a cobrança. A renovação continua cobrando o valor cheio do período escolhido, sem proporcional.
-
-## Pontos em aberto
-
-- **Cupom de uso único** (`LimiteUsoCliente = 1`): deve valer também em renovação, ou renovação deveria ser excluída de certos cupons, como os de primeiro aluguel? Hoje `ValidarCupom` não distingue renovação; a proposta é não distinguir nesta etapa.
-- **Prazo para o cliente renovar:** pode renovar a qualquer momento enquanto o pedido estiver `Entregue`, inclusive com a devolução vencida? A proposta é manter como hoje, sem restrição de prazo.
