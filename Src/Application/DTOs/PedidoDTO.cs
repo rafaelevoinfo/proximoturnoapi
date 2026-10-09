@@ -44,7 +44,7 @@ public record PedidoDTO {
             CupomCodigo = pedido.Cupom?.Codigo,
             ValorDesconto = pedido.ValorDesconto,
             Status = pedido.Status,
-            Atrasado = pedido.Items.Any(i => i.Status == StatusPedido.Entregue && i.DataDevolucao.Date < DateTime.Today),
+            Atrasado = pedido.EstaAtrasado(DateTime.Now),
             MetodoPagamento = pedido.MetodoPagamento,
             MetodoEntrega = pedido.MetodoEntrega,
             DataHoraAlteracao = pedido.DataHoraAlteracao,
@@ -89,10 +89,26 @@ public record NovoItemPedidoDTO {
 
 
 
+public record RenovarPedidoDTO {
+    [Required]
+    public List<ItemPedidoRenovarDTO> Itens { get; set; } = [];
+
+    /// <summary>Só admin. Vale para os itens sem data própria.</summary>
+    public DateTime? DataDevolucao { get; set; }
+
+    public string? CupomCodigo { get; set; }
+    public string? MetodoPagamento { get; set; }
+}
+
 public record ItemPedidoRenovarDTO {
+    /// <summary>Item do pedido original.</summary>
     [Required]
     public int Id { get; set; }
+
+    /// <summary>Null mantém o período atual do item.</summary>
     public int? IdPeriodo { get; set; }
+
+    /// <summary>Só admin. Tem preferência sobre a data do pedido.</summary>
     public DateTime? DataDevolucao { get; set; }
 }
 

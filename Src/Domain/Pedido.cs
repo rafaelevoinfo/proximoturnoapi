@@ -167,6 +167,13 @@ public class Pedido : BaseModel {
         return true;
     }
 
+    /// <summary>
+    /// Algum item ainda com o cliente passou da data de devolução. A data é gravada às 23:59:59
+    /// do último dia, então o atraso começa à meia-noite seguinte.
+    /// </summary>
+    public bool EstaAtrasado(DateTime agora) =>
+        _items.Any(item => item.Status == StatusPedido.Entregue && item.DataDevolucao < agora);
+
     public Pedido? Renovar(List<(int idItem, CategoriaPeriodoInfo periodo, DateTime? dataDevolucao)?> itensRenovar, ICategoriaPeriodoCache cache) {
         Clear();
         if (Status != StatusPedido.Entregue) {
