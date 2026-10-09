@@ -12,12 +12,17 @@ public class AtualizarPedido(IPedidoRepository pedidoRepository,
     IContratoQueue _contratoQueue,
     ILogger<AtualizarPedido> logger) : PedidoUseCaseBasico(pedidoRepository) {
 
-    public async Task ExecuteAsync(NovoPedidoDTO novoPedidoDto) {
+    public async Task ExecuteAsync(SolicitantePedido solicitante, NovoPedidoDTO novoPedidoDto) {
         logger.LogInformation("Iniciando atualização do pedido {PedidoId}.", novoPedidoDto.Id);
         var pedido = await _pedidoRepository.GetByIdAsync(novoPedidoDto.Id.GetValueOrDefault());
         if (pedido is null) {
             logger.LogWarning("Falha ao atualizar: Pedido {PedidoId} não encontrado.", novoPedidoDto.Id);
             AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest, "Pedido não encontrado."));
+            return;
+        }
+
+        if (!PodeAlterar(solicitante, pedido)) {
+            logger.LogWarning("Atualização negada: o pedido {PedidoId} não pertence ao cliente {ClienteId}.", pedido.Id, solicitante.IdCliente);
             return;
         }
 

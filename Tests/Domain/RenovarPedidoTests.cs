@@ -33,7 +33,7 @@ public class RenovarPedidoTests {
     public async Task ExecuteAsync_QuandoPedidoNaoExiste_AdicionaNotificacao() {
         var (useCase, _, _) = Criar(new FakeCategoriaPeriodoCache());
 
-        await useCase.ExecuteAsync(999, [new ItemPedidoRenovarDTO { Id = 1 }]);
+        await useCase.ExecuteAsync(SolicitantePedido.Administrador, 999, [new ItemPedidoRenovarDTO { Id = 1 }]);
 
         Assert.False(useCase.IsValid);
         Assert.Contains(useCase.Notifications, n => n.Message == "Pedido não encontrado.");
@@ -45,7 +45,7 @@ public class RenovarPedidoTests {
         var (useCase, repo, _) = Criar(cache);
         repo.Pedidos.Add(PedidoEntregue(cache, 1));
 
-        await useCase.ExecuteAsync(1, []);
+        await useCase.ExecuteAsync(SolicitantePedido.Administrador, 1, []);
 
         Assert.False(useCase.IsValid);
     }
@@ -57,7 +57,7 @@ public class RenovarPedidoTests {
         repo.Pedidos.Add(PedidoEntregue(cache, 1));
 
         // Solicita renovação com um período que não existe no cache
-        await useCase.ExecuteAsync(1, [new ItemPedidoRenovarDTO { Id = 1, IdPeriodo = 999 }]);
+        await useCase.ExecuteAsync(SolicitantePedido.Administrador, 1, [new ItemPedidoRenovarDTO { Id = 1, IdPeriodo = 999 }]);
 
         Assert.False(useCase.IsValid);
     }
@@ -68,7 +68,7 @@ public class RenovarPedidoTests {
         var (useCase, repo, queue) = Criar(cache);
         repo.Pedidos.Add(PedidoEntregue(cache, 1));
 
-        await useCase.ExecuteAsync(1, [new ItemPedidoRenovarDTO { Id = 1, IdPeriodo = null }]);
+        await useCase.ExecuteAsync(SolicitantePedido.Administrador, 1, [new ItemPedidoRenovarDTO { Id = 1, IdPeriodo = null }]);
 
         Assert.True(useCase.IsValid);
         // pedido original (devolvido) + novo pedido (renovado)
@@ -83,7 +83,7 @@ public class RenovarPedidoTests {
         var (useCase, repo, queue) = Criar(cache);
         repo.Pedidos.Add(PedidoEntregueComDoisItens(cache, 1));
 
-        await useCase.ExecuteAsync(1, [new ItemPedidoRenovarDTO { Id = 1, IdPeriodo = null }]);
+        await useCase.ExecuteAsync(SolicitantePedido.Administrador, 1, [new ItemPedidoRenovarDTO { Id = 1, IdPeriodo = null }]);
 
         Assert.True(useCase.IsValid);
         var original = repo.Pedidos.First(p => p.Id == 1);
@@ -99,7 +99,7 @@ public class RenovarPedidoTests {
         repo.Pedidos.Add(PedidoEntregue(cache, 1));
         var dataEscolhida = DateTime.Now.Date.AddDays(45);
 
-        await useCase.ExecuteAsync(1, [new ItemPedidoRenovarDTO { Id = 1, DataDevolucao = dataEscolhida }]);
+        await useCase.ExecuteAsync(SolicitantePedido.Administrador, 1, [new ItemPedidoRenovarDTO { Id = 1, DataDevolucao = dataEscolhida }]);
 
         Assert.True(useCase.IsValid);
         var novoPedido = repo.Pedidos.Single(p => p.PedidoOriginal != null);
@@ -112,9 +112,36 @@ public class RenovarPedidoTests {
         var (useCase, repo, _) = Criar(cache);
         repo.Pedidos.Add(PedidoEntregue(cache, 1));
 
-        await useCase.ExecuteAsync(1, [new ItemPedidoRenovarDTO { Id = 1, DataDevolucao = DateTime.Now.Date }]);
+        await useCase.ExecuteAsync(SolicitantePedido.Administrador, 1, [new ItemPedidoRenovarDTO { Id = 1, DataDevolucao = DateTime.Now.Date }]);
 
         Assert.False(useCase.IsValid);
         Assert.Contains(useCase.Notifications, n => n.Message == "A data de devolução informada deve ser superior à data atual.");
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_QuandoPedidoDeOutroCliente_NegaENaoRenova() {
+        var cache = new FakeCategoriaPeriodoCache().Adicionar(10, 7, 50m, 1);
+        var (useCase, repo, queue) = Criar(cache);
+        var pedido = PedidoEntregue(cache, 1);
+        repo.Pedidos.Add(pedido);
+
+        await useCase.ExecuteAsync(SolicitantePedido.DoCliente(2), 1, [new ItemPedidoRenovarDTO { Id = 1 }]);
+
+        Assert.Contains(useCase.Notifications, n => n.Type == UseCaseNotificationType.Forbid);
+        Assert.Equal(0, repo.SaveCount);
+        Assert.Empty(queue.Enfileirados);
+        Assert.Equal(StatusPedido.Entregue, pedido.Status);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_QuandoDonoDoPedido_Renova() {
+        var cache = new FakeCategoriaPeriodoCache().Adicionar(10, 7, 50m, 1);
+        var (useCase, repo, queue) = Criar(cache);
+        repo.Pedidos.Add(PedidoEntregue(cache, 1));
+
+        await useCase.ExecuteAsync(SolicitantePedido.DoCliente(1), 1, [new ItemPedidoRenovarDTO { Id = 1 }]);
+
+        Assert.True(useCase.IsValid);
+        Assert.Single(queue.Enfileirados);
     }
 }

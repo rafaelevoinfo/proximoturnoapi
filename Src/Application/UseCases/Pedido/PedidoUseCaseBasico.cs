@@ -1,4 +1,5 @@
 using ProximoTurnoApi.Application.DTOs;
+using ProximoTurnoApi.Domain;
 using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Infrastructure.Repositories;
 using ProximoTurnoApi.Infrastructure.Services;
@@ -7,6 +8,19 @@ namespace ProximoTurnoApi.Application.UseCases;
 
 public class PedidoUseCaseBasico(IPedidoRepository pedidoRepository) : UseCaseBasico {
     protected readonly IPedidoRepository _pedidoRepository = pedidoRepository;
+
+    /// <summary>
+    /// Admin altera qualquer pedido; cliente, só os próprios. Sem permissão, adiciona uma
+    /// notificação Forbid, que o controller devolve como 403.
+    /// </summary>
+    protected bool PodeAlterar(SolicitantePedido solicitante, Pedido pedido) {
+        if (solicitante.Admin || (solicitante.IdCliente is not null && solicitante.IdCliente == pedido.Cliente?.Id)) {
+            return true;
+        }
+
+        AddNotification(UseCaseNotification.Create(UseCaseNotificationType.Forbid, "Você não tem permissão para alterar este pedido."));
+        return false;
+    }
 
     protected async Task<(JogoCopia copia, CategoriaPeriodoInfo periodo)?> ValidarAdicionarItem(NovoItemPedidoDTO item, IJogoRepository jogoRepository, ICategoriaPeriodoCache cache) {
         var copias = await jogoRepository.GetAllCopiasByIdJogoAsync(item.IdJogo);
