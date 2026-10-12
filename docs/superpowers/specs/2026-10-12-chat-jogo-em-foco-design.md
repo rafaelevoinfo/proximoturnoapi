@@ -31,19 +31,25 @@ Uma chamada extra, antes do agente, que decide o jogo. Funciona, mas:
 
 Fica como fallback possível (item 4), não como caminho principal.
 
+> Atualização: o classificador avaliado é o Jev (TypeSafe), que custa uma fração de um LLM e
+> responde mais rápido, o que derruba as objeções de custo e latência. Mesmo assim ele precisa
+> do jogo em foco para decidir, então os itens 1 e 2 entram primeiro, nesta entrega. Os itens 3
+> e 4 (ou o Jev no lugar deles) ficam para depois de medir.
+
 ## Desenho
 
 ### 1. Jogo em foco é estado da conversa, não memória do modelo
 
-`CHAT_CONVERSA.ID_JOGO` já existe (hoje só recebe o jogo da página na criação). Passa a ser o
-**jogo em foco**:
+Coluna nova `CHAT_CONVERSA.ID_JOGO_FOCO`. O `ID_JOGO` continua sendo o jogo da página em que a
+conversa foi aberta, que o admin mostra como "Aberta na página de…". O foco:
 
-- conversa nova: o jogo da página, se houver;
+- conversa nova: o jogo da página, se houver; conversa ainda sem foco: a página da pergunta;
 - a cada `buscar_regras` bem-sucedida, o jogo buscado vira o foco (o modelo trocou de jogo);
 - gravado junto com a sessão, no fim do turno; pergunta cancelada não muda o foco.
 
-Sem migração: a coluna e o mapeamento já existem. Efeito colateral: a lista de conversas do
-admin (`AuditoriaConversasChat`) passa a mostrar o último jogo em foco, não o da abertura.
+Migração `ChatConversaJogoFoco`: adiciona a coluna e copia `ID_JOGO` para as conversas em
+andamento. Busca recusada (jogo sem manual ou inexistente) não muda o foco. O gasto do chat em
+`USO_LLM` passa a ir para o jogo em foco.
 
 ### 2. Contexto do turno com foco e página separados
 

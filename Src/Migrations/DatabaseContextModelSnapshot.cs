@@ -298,6 +298,10 @@ namespace ProximoTurnoApi.Migrations
                         .HasColumnType("int")
                         .HasColumnName("ID_JOGO");
 
+                    b.Property<int?>("IdJogoFoco")
+                        .HasColumnType("int")
+                        .HasColumnName("ID_JOGO_FOCO");
+
                     b.Property<string>("IdUsuario")
                         .IsRequired()
                         .HasMaxLength(255)

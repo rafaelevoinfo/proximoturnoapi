@@ -7,7 +7,8 @@ namespace ProximoTurnoApi.Infrastructure.Models;
 /// <summary>
 /// Uma conversa do chat de regras: um usuário e a sessão do agente (MAF) serializada, que é a
 /// memória do modelo entre uma pergunta e outra. A conversa pode passar por vários jogos: quem
-/// escolhe o jogo de cada busca é o modelo, pelas ferramentas.
+/// escolhe o jogo de cada busca é o modelo, pelas ferramentas, e o último buscado fica como
+/// jogo em foco.
 /// </summary>
 [Table("CHAT_CONVERSA")]
 public class ChatConversa : BaseModel {
@@ -22,6 +23,14 @@ public class ChatConversa : BaseModel {
     /// <summary>Jogo da página em que a conversa começou, se houver. Só informativo.</summary>
     [Column("ID_JOGO")]
     public int? IdJogo { get; set; }
+
+    /// <summary>
+    /// Jogo de que a conversa está tratando: começa no jogo da página e passa a ser o da última
+    /// busca no manual. Vai para as instruções de cada pergunta, porque a sessão guarda só o
+    /// texto da conversa e o modelo perderia o jogo que ele mesmo escolheu.
+    /// </summary>
+    [Column("ID_JOGO_FOCO")]
+    public int? IdJogoFoco { get; set; }
 
     /// <summary>JSON do <c>AgentSession</c>: o histórico já reduzido que vai ao modelo.</summary>
     [Column("SESSAO")]

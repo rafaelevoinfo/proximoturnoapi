@@ -41,6 +41,9 @@ public sealed class FerramentasChat(IChatRegrasRepository _repositorio,
 
     public IReadOnlyList<ChamadaFerramenta> Chamadas => _chamadas;
 
+    /// <summary>Jogo da última busca que chegou ao manual neste turno, achando trecho ou não.</summary>
+    public int? UltimoJogoBuscado => _chamadas.LastOrDefault(c => c.Ferramenta == NomeBuscarRegras && c.Erro is null)?.IdJogo;
+
     public IList<AITool> Todas() => [
         AIFunctionFactory.Create(ListarJogosAsync, NomeListarJogos,
             "Lista os jogos do catálogo da locadora, com id, nome e se o manual está disponível no assistente (temManual). " +
