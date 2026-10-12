@@ -181,7 +181,88 @@ public class ResponderPerguntaRegrasTests {
 
     [Fact]
     public void PaginaDeJogoSemManual_ContextoAvisa() {
-        Assert.Contains("ainda não tem manual", ResponderPerguntaRegras.Contexto(new JogoChat(11, "Azul", false)));
+        Assert.Contains("ainda não tem manual", ResponderPerguntaRegras.Contexto(null, new JogoChat(11, "Azul", false)));
+    }
+
+    // ---- Jogo em foco --------------------------------------------------------------------
+
+    private string InstrucoesDaChamada(Index chamada) => _redator.Opcoes[chamada]!.Instructions!;
+
+    [Fact]
+    public async Task ConversaAbertaNaPagina_JogoDaPaginaEhOFoco() {
+        await Caso().ExecuteAsync(Cliente, Pergunta("Oi", pagina: 1));
+
+        Assert.Contains("jogo em foco na conversa: Catan (id 1)", InstrucoesDaChamada(0));
+        Assert.Equal(1, _conversas.Conversas.Single().IdJogoFoco);
+    }
+
+    [Fact]
+    public async Task ConversaForaDePagina_SemFoco() {
+        await Caso().ExecuteAsync(Cliente, Pergunta("Oi"));
+
+        Assert.Contains("a conversa ainda não tem jogo em foco", InstrucoesDaChamada(0));
+        Assert.Null(_conversas.Conversas.Single().IdJogoFoco);
+    }
+
+    // O caso que errava: aberta na pagina de Catan, troca para Reload, e a pergunta seguinte
+    // sem nome de jogo tem que continuar no Reload.
+    [Fact]
+    public async Task BuscaEmOutroJogo_ViraOFocoDaPerguntaSeguinte() {
+        _redator = new FakeChatClient(Listar, Buscar(10, "objetivo"), "Seja o último.", "Pode perguntar.");
+
+        var primeira = await Caso().ExecuteAsync(Cliente, Pergunta("E o objetivo do Reload?", pagina: 1));
+        await Caso().ExecuteAsync(Cliente, Pergunta("E quantos jogam?", pagina: 1, conversa: primeira!.IdConversa));
+
+        Assert.Equal(10, _conversas.Conversas.Single().IdJogoFoco);
+        var instrucoes = InstrucoesDaChamada(^1);
+        Assert.Contains("jogo em foco na conversa: Reload (id 10)", instrucoes);
+        Assert.Contains("o usuário está agora na página do jogo Catan (id 1)", instrucoes);
+    }
+
+    // Navegar nao troca o assunto: so citar outro jogo (e o modelo buscar nele) troca.
+    [Fact]
+    public async Task UsuarioNavegaParaOutraPagina_FocoContinua() {
+        _redator = new FakeChatClient(Buscar(10, "objetivo"), "Seja o último.", "Pode perguntar.");
+
+        var primeira = await Caso().ExecuteAsync(Cliente, Pergunta("Objetivo?", pagina: 10));
+        await Caso().ExecuteAsync(Cliente, Pergunta("E quantos jogam?", pagina: 1, conversa: primeira!.IdConversa));
+
+        Assert.Equal(10, _conversas.Conversas.Single().IdJogoFoco);
+        Assert.Equal(10, _conversas.Conversas.Single().IdJogo);
+        Assert.Contains("jogo em foco na conversa: Reload (id 10)", InstrucoesDaChamada(^1));
+    }
+
+    [Fact]
+    public async Task ConversaSemFoco_PaginaDaPerguntaSeguinteViraOFoco() {
+        var primeira = await Caso().ExecuteAsync(Cliente, Pergunta("Oi"));
+        await Caso().ExecuteAsync(Cliente, Pergunta("Como troco com o banco?", pagina: 1, conversa: primeira!.IdConversa));
+
+        Assert.Contains("jogo em foco na conversa: Catan (id 1)", InstrucoesDaChamada(^1));
+        Assert.Equal(1, _conversas.Conversas.Single().IdJogoFoco);
+        Assert.Null(_conversas.Conversas.Single().IdJogo);
+    }
+
+    // Busca recusada (jogo sem manual) nao chegou ao manual: o foco fica onde estava.
+    [Fact]
+    public async Task BuscaComErro_NaoMudaOFoco() {
+        _redator = new FakeChatClient(Buscar(11, "pontuação"), "O manual do Azul ainda não está disponível.");
+
+        await Caso().ExecuteAsync(Cliente, Pergunta("Como pontua no Azul?", pagina: 1));
+
+        Assert.Equal(1, _conversas.Conversas.Single().IdJogoFoco);
+    }
+
+    [Fact]
+    public async Task CanceladoNoMeio_NaoMudaOFoco() {
+        var primeira = await Caso().ExecuteAsync(Cliente, Pergunta("Oi", pagina: 1));
+        _redator = new FakeChatClient(Buscar(10, "objetivo"), "Uma resposta comprida o bastante para vir em vários pedaços.");
+        using var cancelamento = new CancellationTokenSource();
+        var saida = new FakeSaidaChat { AoEscrever = cancelamento.Cancel };
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            Caso().ExecuteAsync(Cliente, Pergunta("E o Reload?", pagina: 1, conversa: primeira!.IdConversa), saida, cancelamento.Token));
+
+        Assert.Equal(1, _conversas.Conversas.Single().IdJogoFoco);
     }
 
     // ---- Streaming -----------------------------------------------------------------------

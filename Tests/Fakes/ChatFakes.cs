@@ -200,6 +200,7 @@ public sealed class FakeChatConversaRepository : IChatConversaRepository {
         // Copia, como o AsNoTracking: quem le nao pode mudar o que esta gravado.
         return Task.FromResult(conversa is null ? null : new ChatConversa {
             Id = conversa.Id, Chave = conversa.Chave, IdUsuario = conversa.IdUsuario, IdJogo = conversa.IdJogo,
+            IdJogoFoco = conversa.IdJogoFoco,
             Sessao = conversa.Sessao, DataCriacao = conversa.DataCriacao, DataAtualizacao = conversa.DataAtualizacao,
         });
     }
