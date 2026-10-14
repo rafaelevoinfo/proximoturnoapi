@@ -6,11 +6,13 @@ namespace ProximoTurnoApi.Application.DTOs;
 public record ClienteResumoDTO {
     public int Id { get; set; }
     public string Nome { get; set; } = string.Empty;
+    public string? Telefone { get; set; }
 
     public static ClienteResumoDTO FromModel(Cliente cliente) {
         return new ClienteResumoDTO {
             Id = cliente.Id,
             Nome = cliente.Nome,
+            Telefone = cliente.Telefone,
         };
     }
 }
