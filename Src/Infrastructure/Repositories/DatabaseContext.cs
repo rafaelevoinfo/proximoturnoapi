@@ -43,6 +43,16 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : Identi
             b.HasIndex(t => t.Nome).IsUnique();
         });
 
+        modelBuilder.Entity<InscricaoPush>(b => {
+            b.HasIndex(i => i.Endpoint).IsUnique();
+            b.HasIndex(i => i.IdUsuario);
+            // Excluir o usuário leva junto os aparelhos dele.
+            b.HasOne<Usuario>()
+             .WithMany()
+             .HasForeignKey(i => i.IdUsuario)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
         // Configuração de Conversores para .NET 10 / MySql.EntityFrameworkCore
         foreach (var entityType in modelBuilder.Model.GetEntityTypes()) {
             var properties = entityType.GetProperties();
@@ -298,4 +308,5 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : Identi
     public DbSet<UsoLlm> UsosLlm { get; set; }
     public DbSet<ChatConversa> ChatConversas { get; set; }
     public DbSet<ChatMensagem> ChatMensagens { get; set; }
+    public DbSet<InscricaoPush> InscricoesPush { get; set; }
 }

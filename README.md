@@ -23,6 +23,7 @@ O frontend é o [Próximo Turno Portal](https://github.com/rafaelevoinfo/proximo
 - **Pedidos:** criação, entrega, devolução por item, renovação, cancelamento e cupons de desconto.
 - **Contratos:** PDF gerado de forma assíncrona (PuppeteerSharp) e assinatura eletrônica via **Autentique**, com webhook de retorno.
 - **Comentários e avaliações**, lista de desejos e notificações por e-mail (MailKit).
+- **Notificação push de novos pedidos:** Web Push (VAPID) para os aparelhos dos admins que ligaram "Avisar novos pedidos" no menu do portal. No iPhone, o portal precisa estar instalado na tela inicial (iOS 16.4+).
 - **Assistente de regras (RAG):** indexação dos manuais em PDF e chat com IA, com créditos por cliente. Veja [a seção dedicada](#assistente-de-regras-rag).
 - **Auditoria de IA:** cada chamada a LLM ou embedding é registrada com tokens e custo. Há relatórios de custo e auditoria das conversas do chat.
 - **Operação:** relatório de faturamento, leitura dos logs pela API, health check e **backup automatizado** criptografado do MySQL para a Backblaze B2 (detalhes em [DOCKER.md](DOCKER.md#backup-automatizado)).
@@ -217,6 +218,7 @@ O modelo está em `Src/.env.example`.
 | `CLOUDINARY_URL` | Upload de imagens |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_USE_SSL`, `SMTP_FROM_NAME` | E-mail |
 | `AUTENTIQUE_API_TOKEN`, `AUTENTIQUE_SANDBOX`, `AUTENTIQUE_WEBHOOK_SECRET` | Assinatura de contratos |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Notificação push de novos pedidos. Gere o par uma vez com `npx web-push generate-vapid-keys`; trocar as chaves invalida os aparelhos já inscritos |
 | `OPENROUTER_API_KEY` | LLMs e embeddings do RAG |
 | `QDRANT_URL`, `QDRANT_API_KEY` | Vector store dos manuais |
 | `CHAT_PERCENTUAL_CREDITO` | Fração do valor dos aluguéis que vira crédito do chat (padrão `0.10`) |
