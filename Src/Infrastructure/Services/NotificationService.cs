@@ -12,7 +12,8 @@ namespace ProximoTurnoApi.Infrastructure.Services;
 public enum NotificationChannel
 {
     Email,
-    WhatsApp
+    WhatsApp,
+    Push
 }
 
 public interface INotificationService
@@ -23,21 +24,25 @@ public interface INotificationService
 public class NotificationService : INotificationService
 {
     private readonly IEmailService _emailService;
+    private readonly IPushService _pushService;
     private readonly ILogger<NotificationService> _logger;
     private readonly List<NotificationChannel> _activeChannels;
 
     public NotificationService(
         IEmailService emailService,
+        IPushService pushService,
         IConfiguration configuration,
         ILogger<NotificationService> logger)
     {
         _emailService = emailService;
+        _pushService = pushService;
         _logger = logger;
         _activeChannels = new List<NotificationChannel>();
 
-        // Configuração padrão: Envio por E-mail ativado por padrão, WhatsApp desativado por padrão
+        // Configuração padrão: E-mail e Push ativados por padrão, WhatsApp desativado por padrão
         var emailEnabled = configuration.GetValue<bool>("Notification:Email:Enabled", true);
         var whatsappEnabled = configuration.GetValue<bool>("Notification:WhatsApp:Enabled", false);
+        var pushEnabled = configuration.GetValue<bool>("Notification:Push:Enabled", true);
 
         if (emailEnabled)
         {
@@ -46,6 +51,10 @@ public class NotificationService : INotificationService
         if (whatsappEnabled)
         {
             _activeChannels.Add(NotificationChannel.WhatsApp);
+        }
+        if (pushEnabled)
+        {
+            _activeChannels.Add(NotificationChannel.Push);
         }
     }
 
@@ -95,6 +104,11 @@ public class NotificationService : INotificationService
                     case NotificationChannel.WhatsApp:
                         _logger.LogWarning("Envio de notificação por WhatsApp ainda não implementado.");
                         break;
+
+                    case NotificationChannel.Push:
+                        _logger.LogInformation("Enviando notificação push do novo pedido #{PedidoId}.", pedido.Id);
+                        await _pushService.EnviarParaAdminsAsync(MontarMensagemPush(pedido, valorFormatado));
+                        break;
                 }
             }
             catch (Exception ex)
@@ -102,5 +116,20 @@ public class NotificationService : INotificationService
                 _logger.LogError(ex, "Erro ao enviar notificação de novo pedido #{PedidoId} via canal {Channel}.", pedido.Id, channel);
             }
         }
+    }
+
+    private static MensagemPush MontarMensagemPush(Pedido pedido, string valorFormatado)
+    {
+        var quantidadeJogos = pedido.Items?.Count ?? 0;
+        var jogos = quantidadeJogos == 1 ? "1 jogo" : $"{quantidadeJogos} jogos";
+        var cliente = pedido.Cliente?.Nome is { Length: > 0 } nome
+            ? CultureInfo.GetCultureInfo("pt-BR").TextInfo.ToTitleCase(nome)
+            : "Cliente";
+
+        return new MensagemPush(
+            Titulo: $"Novo pedido #{pedido.Id}",
+            Corpo: $"{cliente} · {jogos} · {valorFormatado}",
+            Url: $"/pedidos?ver={pedido.Id}",
+            Tag: $"pedido-{pedido.Id}");
     }
 }

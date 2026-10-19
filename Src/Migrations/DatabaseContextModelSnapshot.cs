@@ -591,6 +591,56 @@ namespace ProximoTurnoApi.Migrations
                     b.ToTable("CUPOM", (string)null);
                 });
 
+            modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.InscricaoPush", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("ID");
+
+                    b.Property<string>("Auth")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
+                        .HasColumnName("AUTH");
+
+                    b.Property<DateTime>("DataCriacao")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("DATA_CRIACAO");
+
+                    b.Property<string>("Endpoint")
+                        .IsRequired()
+                        .HasMaxLength(600)
+                        .HasColumnType("varchar(600)")
+                        .HasColumnName("ENDPOINT");
+
+                    b.Property<string>("IdUsuario")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)")
+                        .HasColumnName("ID_USUARIO");
+
+                    b.Property<string>("P256dh")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)")
+                        .HasColumnName("P256DH");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(300)
+                        .HasColumnType("varchar(300)")
+                        .HasColumnName("USER_AGENT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Endpoint")
+                        .IsUnique();
+
+                    b.HasIndex("IdUsuario");
+
+                    b.ToTable("INSCRICAO_PUSH");
+                });
+
             modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.ItemListaDesejos", b =>
                 {
                     b.Property<int>("Id")
@@ -1223,6 +1273,15 @@ namespace ProximoTurnoApi.Migrations
                         .IsRequired();
 
                     b.Navigation("Pedido");
+                });
+
+            modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.InscricaoPush", b =>
+                {
+                    b.HasOne("ProximoTurnoApi.Infrastructure.Models.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("IdUsuario")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.ItemListaDesejos", b =>

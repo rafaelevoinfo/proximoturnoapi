@@ -189,6 +189,10 @@ builder.Services.AddHttpClient();
 builder.Services.AddScoped<IAutentiqueService, AutentiqueService>();
 builder.Services.AddScoped<IContratoPdfService, ContratoPdfService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddSingleton(ConfiguracaoPush.DaConfiguracao(builder.Configuration));
+builder.Services.AddScoped<IInscricaoPushRepository, InscricaoPushRepository>();
+builder.Services.AddHttpClient<IEnviadorWebPush, EnviadorWebPush>(cliente => cliente.Timeout = TimeSpan.FromSeconds(10));
+builder.Services.AddScoped<IPushService, PushService>();
 builder.Services.AddScoped<IResetSenhaLinkService, ResetSenhaLinkService>();
 
 // Use Cases
@@ -241,6 +245,9 @@ builder.Services.AddScoped<ObterJogo>();
 // Tag
 builder.Services.AddScoped<CadastroTag>();
 builder.Services.AddScoped<AtualizarTag>();
+
+// Push
+builder.Services.AddScoped<RegistrarInscricaoPush>();
 
 // Cupom
 builder.Services.AddScoped<ValidarCupom>();
