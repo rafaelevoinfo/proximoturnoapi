@@ -23,7 +23,7 @@ O frontend é o [Próximo Turno Portal](https://github.com/rafaelevoinfo/proximo
 - **Pedidos:** criação, entrega, devolução por item, renovação, cancelamento e cupons de desconto.
 - **Contratos:** PDF gerado de forma assíncrona (PuppeteerSharp) e assinatura eletrônica via **Autentique**, com webhook de retorno.
 - **Comentários e avaliações**, lista de desejos e notificações por e-mail (MailKit).
-- **Notificação push de novos pedidos:** Web Push (VAPID) para os aparelhos dos admins que ligaram "Avisar novos pedidos" no menu do portal. No iPhone, o portal precisa estar instalado na tela inicial (iOS 16.4+).
+- **Notificações push (Web Push/VAPID):** admins recebem novos pedidos e cancelamentos feitos pelo cliente; clientes recebem às 10:00 o lembrete das devoluções do dia e o aviso quando o admin cancela um pedido. O aparelho se inscreve ao abrir o portal instalado (no iPhone, só instalado na tela inicial, iOS 16.4+).
 - **Assistente de regras (RAG):** indexação dos manuais em PDF e chat com IA, com créditos por cliente. Veja [a seção dedicada](#assistente-de-regras-rag).
 - **Auditoria de IA:** cada chamada a LLM ou embedding é registrada com tokens e custo. Há relatórios de custo e auditoria das conversas do chat.
 - **Operação:** relatório de faturamento, leitura dos logs pela API, health check e **backup automatizado** criptografado do MySQL para a Backblaze B2 (detalhes em [DOCKER.md](DOCKER.md#backup-automatizado)).

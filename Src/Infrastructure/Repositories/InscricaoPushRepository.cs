@@ -12,6 +12,9 @@ public interface IInscricaoPushRepository {
 
     /// <summary>Inscrições de quem tem o papel Admin hoje: perder o papel corta as notificações.</summary>
     Task<List<InscricaoPush>> GetDosAdminsAsync();
+
+    /// <summary>Inscrições do login com este e-mail: é pelo e-mail que o cliente chega ao usuário.</summary>
+    Task<List<InscricaoPush>> GetDoUsuarioPorEmailAsync(string email);
 }
 
 public class InscricaoPushRepository(DatabaseContext dbContext) : BaseRepository(dbContext), IInscricaoPushRepository {
@@ -40,6 +43,18 @@ public class InscricaoPushRepository(DatabaseContext dbContext) : BaseRepository
 
         return await _dbContext.InscricoesPush
             .Where(i => idsAdmins.Contains(i.IdUsuario))
+            .ToListAsync();
+    }
+
+    public async Task<List<InscricaoPush>> GetDoUsuarioPorEmailAsync(string email) {
+        // O Identity normaliza com ToUpperInvariant, e NormalizedEmail é a coluna indexada.
+        var emailNormalizado = email.Trim().ToUpperInvariant();
+        var idsUsuario = _dbContext.Users
+            .Where(u => u.NormalizedEmail == emailNormalizado)
+            .Select(u => u.Id);
+
+        return await _dbContext.InscricoesPush
+            .Where(i => idsUsuario.Contains(i.IdUsuario))
             .ToListAsync();
     }
 }

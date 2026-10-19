@@ -34,6 +34,7 @@ public interface IEnviadorWebPush {
 
 public interface IPushService {
     Task EnviarParaAdminsAsync(MensagemPush mensagem);
+    Task EnviarParaClienteAsync(string email, MensagemPush mensagem);
 }
 
 public class PushService(
@@ -44,15 +45,21 @@ public class PushService(
 
     private static readonly JsonSerializerOptions OpcoesJson = new(JsonSerializerDefaults.Web);
 
-    public async Task EnviarParaAdminsAsync(MensagemPush mensagem) {
+    public Task EnviarParaAdminsAsync(MensagemPush mensagem) =>
+        EnviarAsync(_repository.GetDosAdminsAsync, mensagem, "admins");
+
+    public Task EnviarParaClienteAsync(string email, MensagemPush mensagem) =>
+        EnviarAsync(() => _repository.GetDoUsuarioPorEmailAsync(email), mensagem, "cliente");
+
+    private async Task EnviarAsync(Func<Task<List<InscricaoPush>>> buscarInscricoes, MensagemPush mensagem, string destino) {
         if (!_configuracao.Configurado) {
             logger.LogWarning("Chaves VAPID não configuradas. Notificação push não enviada.");
             return;
         }
 
-        var inscricoes = await _repository.GetDosAdminsAsync();
+        var inscricoes = await buscarInscricoes();
         if (inscricoes.Count == 0) {
-            logger.LogInformation("Nenhum aparelho inscrito para notificações push.");
+            logger.LogInformation("Nenhum aparelho inscrito para notificações push ({Destino}).", destino);
             return;
         }
 

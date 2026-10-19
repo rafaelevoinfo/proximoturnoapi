@@ -91,6 +91,24 @@ public class FakePedidoRepository : IPedidoRepository {
             .Where(p => p.Cliente.Id == idCliente
                      && (p.Status == StatusPedido.Pendente || p.Status == StatusPedido.Entregue))
             .ToList());
+
+    public Task<List<Pedido>> ObterComLembreteDevolucaoPendenteAsync(DateTime dia) =>
+        Task.FromResult(Pedidos
+            .Where(p => p.Items.Any(i => i.Status == StatusPedido.Entregue
+                                      && i.DataDevolucao.Date == dia.Date
+                                      && (i.DataLembreteDevolucao is null || i.DataLembreteDevolucao.Value.Date < dia.Date)))
+            .ToList());
+
+    /// <summary>Ids dos itens marcados, na ordem; também grava a data no item, como o UPDATE faria.</summary>
+    public List<int> LembretesMarcados { get; } = [];
+
+    public Task MarcarLembreteDevolucaoAsync(IReadOnlyCollection<int> idsItens, DateTime quando) {
+        LembretesMarcados.AddRange(idsItens);
+        foreach (var item in Pedidos.SelectMany(p => p.Items).Where(i => idsItens.Contains(i.Id))) {
+            item.DataLembreteDevolucao = quando;
+        }
+        return Task.CompletedTask;
+    }
 }
 
 public class FakeCategoriaPeriodoCache : ICategoriaPeriodoCache {
@@ -231,8 +249,27 @@ public class FakeContratoQueue : IContratoQueue {
 
 public class FakeNotificationService : INotificationService {
     public List<int> Notificados { get; } = [];
+    /// <summary>(id do pedido, cancelado pelo admin).</summary>
+    public List<(int IdPedido, bool PeloAdmin)> Cancelamentos { get; } = [];
+    public List<(Cliente Cliente, List<ItemPedido> Itens)> Lembretes { get; } = [];
+    /// <summary>Quando preenchido, EnviarLembreteDevolucaoAsync falha para este cliente.</summary>
+    public int? FalharLembreteDoCliente { get; set; }
+
     public Task EnviarNotificacaoNovoPedidoAsync(Pedido pedido) {
         Notificados.Add(pedido.Id);
+        return Task.CompletedTask;
+    }
+
+    public Task EnviarNotificacaoPedidoCanceladoAsync(Pedido pedido, bool canceladoPeloAdmin) {
+        Cancelamentos.Add((pedido.Id, canceladoPeloAdmin));
+        return Task.CompletedTask;
+    }
+
+    public Task EnviarLembreteDevolucaoAsync(Cliente cliente, IReadOnlyList<ItemPedido> itens) {
+        if (FalharLembreteDoCliente == cliente.Id) {
+            throw new InvalidOperationException("falha simulada");
+        }
+        Lembretes.Add((cliente, itens.ToList()));
         return Task.CompletedTask;
     }
 }

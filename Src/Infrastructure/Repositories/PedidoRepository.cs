@@ -13,6 +13,14 @@ public interface IPedidoRepository : IBaseRepository {
 
     /// <summary>Pedidos que impedem a exclusão da conta: ainda não devolvidos nem cancelados.</summary>
     Task<List<Pedido>> ObterPedidosEmAbertoAsync(int idCliente);
+
+    /// <summary>
+    /// Pedidos com algum item ainda com o cliente, a devolver no dia, e cujo lembrete ainda não
+    /// saiu nesse dia. Os itens vêm todos: quem chama filtra os que vencem no dia.
+    /// </summary>
+    Task<List<Pedido>> ObterComLembreteDevolucaoPendenteAsync(DateTime dia);
+
+    Task MarcarLembreteDevolucaoAsync(IReadOnlyCollection<int> idsItens, DateTime quando);
 }
 
 public class PedidoRepository(DatabaseContext dbContext) : BaseRepository(dbContext), IPedidoRepository {
@@ -100,5 +108,26 @@ public class PedidoRepository(DatabaseContext dbContext) : BaseRepository(dbCont
             .Where(p => p.Cliente.Id == idCliente
                      && (p.Status == StatusPedido.Pendente || p.Status == StatusPedido.Entregue))
             .ToListAsync();
+    }
+
+    public async Task<List<Pedido>> ObterComLembreteDevolucaoPendenteAsync(DateTime dia) {
+        var inicio = dia.Date;
+        var fim = inicio.AddDays(1);
+        return await _dbContext.Pedidos
+            .AsNoTracking()
+            .Include(p => p.Cliente)
+            .Include(p => p.Items)!
+                .ThenInclude(i => i.JogoCopia)
+                    .ThenInclude(jc => jc.Jogo)
+            .Where(p => p.Items.Any(i => i.Status == StatusPedido.Entregue
+                                      && i.DataDevolucao >= inicio && i.DataDevolucao < fim
+                                      && (i.DataLembreteDevolucao == null || i.DataLembreteDevolucao < inicio)))
+            .ToListAsync();
+    }
+
+    public async Task MarcarLembreteDevolucaoAsync(IReadOnlyCollection<int> idsItens, DateTime quando) {
+        await _dbContext.ItemPedidos
+            .Where(i => idsItens.Contains(i.Id))
+            .ExecuteUpdateAsync(s => s.SetProperty(i => i.DataLembreteDevolucao, quando));
     }
 }
