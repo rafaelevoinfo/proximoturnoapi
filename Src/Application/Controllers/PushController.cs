@@ -9,10 +9,13 @@ using ProximoTurnoApi.Infrastructure.Services;
 
 namespace ProximoTurnoApi.Application.Controllers;
 
-/// <summary>Inscrição dos aparelhos do admin nas notificações push de novos pedidos.</summary>
+/// <summary>
+/// Inscrição dos aparelhos nas notificações push. Qualquer usuário logado se inscreve; quem
+/// recebe o quê é decidido no envio (admins: pedidos; clientes: devolução e cancelamento).
+/// </summary>
 [Route("api/push")]
 [ApiController]
-[Authorize(Roles = Roles.Admin)]
+[Authorize]
 public class PushController(ILogger<PushController> logger,
                             ConfiguracaoPush _configuracao,
                             UserManager<Usuario> _userManager,

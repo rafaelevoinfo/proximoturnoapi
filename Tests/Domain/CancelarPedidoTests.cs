@@ -8,8 +8,14 @@ namespace ProximoTurnoApi.Tests.Domain;
 
 public class CancelarPedidoTests {
     private static (CancelarPedido useCase, FakePedidoRepository repo) Criar() {
+        var (useCase, repo, _) = CriarComNotificacao();
+        return (useCase, repo);
+    }
+
+    private static (CancelarPedido useCase, FakePedidoRepository repo, FakeNotificationService notificacao) CriarComNotificacao() {
         var repo = new FakePedidoRepository();
-        return (new CancelarPedido(repo, new FakeLogger<CancelarPedido>()), repo);
+        var notificacao = new FakeNotificationService();
+        return (new CancelarPedido(repo, notificacao, new FakeLogger<CancelarPedido>()), repo, notificacao);
     }
 
     [Fact]
@@ -90,5 +96,43 @@ public class CancelarPedidoTests {
 
         Assert.True(useCase.IsValid);
         Assert.Equal(StatusPedido.Cancelado, pedido.Status);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_CanceladoPeloAdmin_AvisaOCliente() {
+        var (useCase, repo, notificacao) = CriarComNotificacao();
+        var copia = PedidoTestFactory.Copia(idCopia: 1, idJogo: 5, idCategoria: 1);
+        repo.Pedidos.Add(PedidoTestFactory.PedidoPendenteComItem(PedidoTestFactory.Cliente(), copia, idPeriodo: 10, valor: 50m, qtdeDias: 7, idPedido: 1));
+
+        await useCase.ExecuteAsync(SolicitantePedido.Administrador, 1);
+
+        Assert.Equal([(1, true)], notificacao.Cancelamentos);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_CanceladoPeloCliente_AvisaOsAdmins() {
+        var (useCase, repo, notificacao) = CriarComNotificacao();
+        var cliente = PedidoTestFactory.Cliente(id: 7);
+        var copia = PedidoTestFactory.Copia(idCopia: 1, idJogo: 5, idCategoria: 1);
+        repo.Pedidos.Add(PedidoTestFactory.PedidoPendenteComItem(cliente, copia, idPeriodo: 10, valor: 50m, qtdeDias: 7, idPedido: 1));
+
+        await useCase.ExecuteAsync(SolicitantePedido.DoCliente(7), 1);
+
+        Assert.True(useCase.IsValid);
+        Assert.Equal([(1, false)], notificacao.Cancelamentos);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_CancelamentoNegado_NaoAvisaNinguem() {
+        var (useCase, repo, notificacao) = CriarComNotificacao();
+        var copia = PedidoTestFactory.Copia(idCopia: 1, idJogo: 5, idCategoria: 1);
+        var pedido = PedidoTestFactory.PedidoPendenteComItem(PedidoTestFactory.Cliente(), copia, idPeriodo: 10, valor: 50m, qtdeDias: 7, idPedido: 1);
+        pedido.Cancelar();
+        repo.Pedidos.Add(pedido);
+
+        await useCase.ExecuteAsync(SolicitantePedido.Administrador, 1);
+
+        Assert.False(useCase.IsValid);
+        Assert.Empty(notificacao.Cancelamentos);
     }
 }

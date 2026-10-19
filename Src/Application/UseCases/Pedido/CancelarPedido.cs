@@ -1,8 +1,11 @@
 using ProximoTurnoApi.Infrastructure.Repositories;
+using ProximoTurnoApi.Infrastructure.Services;
 
 namespace ProximoTurnoApi.Application.UseCases;
 
-public class CancelarPedido(IPedidoRepository pedidoRepository, ILogger<CancelarPedido> logger) : PedidoUseCaseBasico(pedidoRepository) {
+public class CancelarPedido(IPedidoRepository pedidoRepository,
+    INotificationService _notificationService,
+    ILogger<CancelarPedido> logger) : PedidoUseCaseBasico(pedidoRepository) {
 
     public async Task ExecuteAsync(SolicitantePedido solicitante, int idPedido) {
         logger.LogInformation("Solicitado cancelamento do pedido {PedidoId}.", idPedido);
@@ -30,6 +33,13 @@ public class CancelarPedido(IPedidoRepository pedidoRepository, ILogger<Cancelar
         } catch (Exception ex) {
             logger.LogError(ex, "Erro fatal ao salvar cancelamento do pedido {PedidoId}.", idPedido);
             throw;
+        }
+
+        // O cancelamento já está salvo: uma falha no aviso não pode desfazê-lo nem virar erro.
+        try {
+            await _notificationService.EnviarNotificacaoPedidoCanceladoAsync(pedidoExistente, solicitante.Admin);
+        } catch (Exception ex) {
+            logger.LogError(ex, "Erro ao notificar o cancelamento do pedido {PedidoId}.", idPedido);
         }
     }
 }

@@ -94,6 +94,8 @@ public class GerarContratoPedidoTests
         public Task CommitTransactionAsync() => Task.CompletedTask;
         public Task RollbackTransactionAsync() => Task.CompletedTask;
         public Task<List<Pedido>> ObterPedidosEmAbertoAsync(int idCliente) => throw new NotImplementedException();
+        public Task<List<Pedido>> ObterComLembreteDevolucaoPendenteAsync(DateTime dia) => throw new NotImplementedException();
+        public Task MarcarLembreteDevolucaoAsync(IReadOnlyCollection<int> idsItens, DateTime quando) => throw new NotImplementedException();
     }
 
     private class FakeContratoPdfService : IContratoPdfService

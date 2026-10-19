@@ -32,6 +32,14 @@ public class FakeInscricaoPushRepository : IInscricaoPushRepository {
 
     public Task<List<InscricaoPush>> GetDosAdminsAsync() =>
         Task.FromResult(Inscricoes.Where(i => Admins.Contains(i.IdUsuario)).ToList());
+
+    /// <summary>E-mail de cada usuário, para GetDoUsuarioPorEmailAsync.</summary>
+    public Dictionary<string, string> EmailsUsuarios { get; } = [];
+
+    public Task<List<InscricaoPush>> GetDoUsuarioPorEmailAsync(string email) =>
+        Task.FromResult(Inscricoes
+            .Where(i => EmailsUsuarios.TryGetValue(i.IdUsuario, out var e) && string.Equals(e, email, StringComparison.OrdinalIgnoreCase))
+            .ToList());
 }
 
 public class FakeEnviadorWebPush : IEnviadorWebPush {
@@ -46,9 +54,17 @@ public class FakeEnviadorWebPush : IEnviadorWebPush {
 }
 
 public class FakePushService : IPushService {
+    /// <summary>Mensagens para os admins.</summary>
     public List<MensagemPush> Mensagens { get; } = [];
+    public List<(string Email, MensagemPush Mensagem)> ParaClientes { get; } = [];
+
     public Task EnviarParaAdminsAsync(MensagemPush mensagem) {
         Mensagens.Add(mensagem);
+        return Task.CompletedTask;
+    }
+
+    public Task EnviarParaClienteAsync(string email, MensagemPush mensagem) {
+        ParaClientes.Add((email, mensagem));
         return Task.CompletedTask;
     }
 }

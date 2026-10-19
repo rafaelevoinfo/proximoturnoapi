@@ -207,6 +207,8 @@ builder.Services.AddScoped<EntregarPedido>();
 builder.Services.AddScoped<CancelarPedido>();
 builder.Services.AddScoped<RenovarPedido>();
 builder.Services.AddScoped<DevolverItensPedido>();
+builder.Services.AddScoped<EnviarLembretesDevolucao>();
+builder.Services.AddHostedService<LembreteDevolucaoBackgroundService>();
 builder.Services.AddScoped<ObterRelatorioFaturamento>();
 builder.Services.AddScoped<ObterRelatorioCustosIa>();
 builder.Services.AddSingleton(ArquivosLogOptions.DaConfiguracao(builder.Configuration, Directory.GetCurrentDirectory()));

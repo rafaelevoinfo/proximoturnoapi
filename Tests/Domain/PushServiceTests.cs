@@ -67,4 +67,17 @@ public class PushServiceTests {
         Assert.Equal(["https://push.exemplo/instavel", "https://push.exemplo/ok"],
                      repo.Inscricoes.Select(i => i.Endpoint));
     }
+
+    [Fact]
+    public async Task ParaCliente_EnviaSoAosAparelhosDoLoginComOEmail() {
+        var (service, repo, enviador) = Criar(ComChaves);
+        repo.EmailsUsuarios["u-ana"] = "ana@teste.com";
+        repo.EmailsUsuarios["u-bia"] = "bia@teste.com";
+        await repo.SalvarAsync(Inscricao("u-ana", "https://push.exemplo/ana"));
+        await repo.SalvarAsync(Inscricao("u-bia", "https://push.exemplo/bia"));
+
+        await service.EnviarParaClienteAsync("ANA@teste.com", Mensagem);
+
+        Assert.Equal(["https://push.exemplo/ana"], enviador.Enviados.Select(e => e.Inscricao.Endpoint));
+    }
 }

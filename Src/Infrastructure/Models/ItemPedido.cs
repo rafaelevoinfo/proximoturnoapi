@@ -22,4 +22,11 @@ public class ItemPedido : BaseModel {
 
     [Column("STATUS")]
     public StatusPedido Status { get; set; }
+
+    /// <summary>
+    /// Quando o cliente recebeu o lembrete de devolução deste item. Evita repetir o aviso no
+    /// mesmo dia se a API reiniciar; uma data de devolução alterada depois volta a ser avisada.
+    /// </summary>
+    [Column("DATA_LEMBRETE_DEVOLUCAO")]
+    public DateTime? DataLembreteDevolucao { get; set; }
 }
