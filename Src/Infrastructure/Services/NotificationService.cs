@@ -173,15 +173,15 @@ public class NotificationService : INotificationService
             .ToList();
         var jogos = nomes.Count switch
         {
-            0 => itens.Count == 1 ? "o jogo alugado" : "os jogos alugados",
-            1 => nomes[0],
-            _ => string.Join(", ", nomes.Take(nomes.Count - 1)) + " e " + nomes[^1]
+            0 => itens.Count == 1 ? "do jogo" : "dos jogos",
+            1 => $"de {nomes[0]}",
+            _ => $"de {string.Join(", ", nomes.Take(nomes.Count - 1))} e {nomes[^1]}"
         };
 
         _logger.LogInformation("Enviando lembrete de devolução ao cliente {ClienteId} ({Quantidade} itens).", cliente.Id, itens.Count);
         await _pushService.EnviarParaClienteAsync(cliente.Email, new MensagemPush(
             Titulo: "Hoje é dia de devolução",
-            Corpo: $"Lembrete: a devolução de {jogos} é hoje.",
+            Corpo: $"Olá, só passando pra lembrar da devolução {jogos} hoje, mas fica tranquilo: você tem até as 22:00, então ainda dá pra jogar mais umas partidas :)",
             Url: "/pedidos",
             Tag: $"devolucao-{DateTime.Today:yyyyMMdd}"));
     }
