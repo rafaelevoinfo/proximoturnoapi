@@ -83,7 +83,7 @@ public class NotificationServiceTests {
         var (email, mensagem) = Assert.Single(push.ParaClientes);
         Assert.Equal("fulano@teste.com", email);
         Assert.Equal("Hoje é dia de devolução", mensagem.Titulo);
-        Assert.Equal("Olá, só passando pra lembrar da devolução de Catan, Azul e Dixit hoje, mas fica tranquilo: você tem até as 22:00, então ainda dá pra jogar mais umas partidas :)", mensagem.Corpo);
+        Assert.Equal("Olá, só passando pra lembrar da devolução de Catan, Azul e Dixit hoje, mas fica tranquilo: você tem até as 22:00, então ainda dá pra jogar mais umas partidas 😊", mensagem.Corpo);
         Assert.Equal("/pedidos", mensagem.Url);
     }
 

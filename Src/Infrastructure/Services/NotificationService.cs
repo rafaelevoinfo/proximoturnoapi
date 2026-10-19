@@ -181,7 +181,7 @@ public class NotificationService : INotificationService
         _logger.LogInformation("Enviando lembrete de devolução ao cliente {ClienteId} ({Quantidade} itens).", cliente.Id, itens.Count);
         await _pushService.EnviarParaClienteAsync(cliente.Email, new MensagemPush(
             Titulo: "Hoje é dia de devolução",
-            Corpo: $"Olá, só passando pra lembrar da devolução {jogos} hoje, mas fica tranquilo: você tem até as 22:00, então ainda dá pra jogar mais umas partidas :)",
+            Corpo: $"Olá, só passando pra lembrar da devolução {jogos} hoje, mas fica tranquilo: você tem até as 22:00, então ainda dá pra jogar mais umas partidas 😊",
             Url: "/pedidos",
             Tag: $"devolucao-{DateTime.Today:yyyyMMdd}"));
     }
