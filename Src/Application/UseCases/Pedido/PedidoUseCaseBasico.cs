@@ -24,11 +24,11 @@ public class PedidoUseCaseBasico(IPedidoRepository pedidoRepository) : UseCaseBa
 
     /// <summary>
     /// Aplica um cupom já validado: desconto comum, ou, na extensão de prazo, troca o período dos
-    /// itens pelo menor da categoria e fixa a devolução na data do cupom.
+    /// itens pelo menor da categoria e fixa a devolução na data do cupom, exceto onde o admin informou a data.
     /// </summary>
-    protected static void AplicarCupomValidado(Pedido pedido, ValidacaoCupomResultadoDTO validacao, ICategoriaPeriodoCache cache) {
+    protected static void AplicarCupomValidado(Pedido pedido, ValidacaoCupomResultadoDTO validacao, ICategoriaPeriodoCache cache, Func<ItemPedido, bool>? dataInformadaPeloAdmin = null) {
         if (validacao.TipoDesconto == TipoDesconto.ExtensaoPrazo && validacao.DataDevolucao.HasValue) {
-            pedido.AplicarCupomExtensaoPrazo(validacao.IdCupom!.Value, validacao.DataDevolucao.Value, cache);
+            pedido.AplicarCupomExtensaoPrazo(validacao.IdCupom!.Value, validacao.DataDevolucao.Value, cache, dataInformadaPeloAdmin);
         } else {
             pedido.AplicarCupom(validacao.IdCupom!.Value, validacao.ValorDescontoCalculado);
         }

@@ -78,6 +78,17 @@ public class PedidoCupomExtensaoPrazoTests {
     }
 
     [Fact]
+    public void Entregar_ComCupomDeExtensaoPrazoEDataDoAdmin_UsaADataDoAdmin() {
+        var pedido = CriarPedido((10, 1, 1, 20m));
+        var dataAdmin = DateTime.Now.Date.AddDays(4);
+        DefinirCupom(pedido, new Cupom { Id = 9, Codigo = "PRAZO", TipoDesconto = TipoDesconto.ExtensaoPrazo, DataDevolucao = DateTime.Now.Date.AddDays(15) });
+
+        Assert.True(pedido.Entregar(CriarCache(), dataAdmin));
+
+        Assert.Equal(FimDoDia(dataAdmin), pedido.Items.Single().DataDevolucao);
+    }
+
+    [Fact]
     public void Entregar_ComCupomDeExtensaoPrazoVencido_UsaOPeriodo() {
         var pedido = CriarPedido((10, 1, 1, 20m));
         DefinirCupom(pedido, new Cupom { Id = 9, Codigo = "PRAZO", TipoDesconto = TipoDesconto.ExtensaoPrazo, DataDevolucao = DateTime.Now.Date });

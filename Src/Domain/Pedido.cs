@@ -301,9 +301,10 @@ public class Pedido : BaseModel {
 
     /// <summary>
     /// Cupom de extensão de prazo: não dá desconto, troca o período de cada item ativo pelo menor da
-    /// categoria (cobrando o valor dele) e fixa a devolução na data do cupom.
+    /// categoria (cobrando o valor dele) e fixa a devolução na data do cupom. Itens em que
+    /// <paramref name="dataInformadaPeloAdmin"/> é verdadeiro mantêm a data atual: a do admin tem prioridade.
     /// </summary>
-    public void AplicarCupomExtensaoPrazo(int idCupom, DateTime dataDevolucao, ICategoriaPeriodoCache cache) {
+    public void AplicarCupomExtensaoPrazo(int idCupom, DateTime dataDevolucao, ICategoriaPeriodoCache cache, Func<ItemPedido, bool>? dataInformadaPeloAdmin = null) {
         if (IdCupom != null) {
             AddNotification("PEDIDO", "Já existe um cupom aplicado a este pedido.");
             return;
@@ -327,7 +328,9 @@ public class Pedido : BaseModel {
         foreach (var (item, periodo) in menores) {
             item.IdPeriodo = periodo.IdPeriodo;
             item.Valor = periodo.Valor;
-            item.DataDevolucao = FimDoDia(dataDevolucao);
+            if (dataInformadaPeloAdmin?.Invoke(item) != true) {
+                item.DataDevolucao = FimDoDia(dataDevolucao);
+            }
         }
         AplicarCupom(idCupom, 0);
     }
