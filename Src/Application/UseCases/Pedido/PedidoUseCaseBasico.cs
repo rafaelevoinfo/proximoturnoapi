@@ -22,6 +22,18 @@ public class PedidoUseCaseBasico(IPedidoRepository pedidoRepository) : UseCaseBa
         return false;
     }
 
+    /// <summary>
+    /// Aplica um cupom já validado: desconto comum, ou, na extensão de prazo, troca o período dos
+    /// itens pelo menor da categoria e fixa a devolução na data do cupom.
+    /// </summary>
+    protected static void AplicarCupomValidado(Pedido pedido, ValidacaoCupomResultadoDTO validacao, ICategoriaPeriodoCache cache) {
+        if (validacao.TipoDesconto == TipoDesconto.ExtensaoPrazo && validacao.DataDevolucao.HasValue) {
+            pedido.AplicarCupomExtensaoPrazo(validacao.IdCupom!.Value, validacao.DataDevolucao.Value, cache);
+        } else {
+            pedido.AplicarCupom(validacao.IdCupom!.Value, validacao.ValorDescontoCalculado);
+        }
+    }
+
     protected async Task<(JogoCopia copia, CategoriaPeriodoInfo periodo)?> ValidarAdicionarItem(NovoItemPedidoDTO item, IJogoRepository jogoRepository, ICategoriaPeriodoCache cache) {
         var copias = await jogoRepository.GetAllCopiasByIdJogoAsync(item.IdJogo);
         var copia = copias?.FirstOrDefault(c => c.Status == StatusJogo.Disponivel);

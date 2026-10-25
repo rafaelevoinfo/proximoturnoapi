@@ -265,4 +265,60 @@ public class ValidarCupomTests
         // Assert
         Assert.True(result.Valido);
     }
+
+    private static ValidarCupom CriarValidarCupomExtensao(Cupom cupom)
+    {
+        var jogo = new Jogo { Id = 10, IdCategoria = 1, Nome = "Jogo Teste" };
+        var categoria = new Categoria
+        {
+            Id = 1,
+            Descricao = "Categoria Teste",
+            Ativo = true,
+            Periodos = new List<CategoriaPeriodo>
+            {
+                new CategoriaPeriodo { Id = 1, QuantidadeDias = 7, Valor = 50.0m },
+                new CategoriaPeriodo { Id = 2, QuantidadeDias = 2, Valor = 20.0m }
+            }
+        };
+        return new ValidarCupom(
+            new FakeCupomRepository { Cupons = { cupom } },
+            new FakeJogoRepository { Jogos = { jogo } },
+            new FakeCategoriaRepository { Categorias = { categoria } },
+            new FakeLogger());
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ExtensaoPrazo_RetornaDataSemDesconto()
+    {
+        var data = DateTime.Now.Date.AddDays(20);
+        var cupom = new Cupom { Id = 1, Codigo = "PRAZO", Ativo = true, TipoDesconto = TipoDesconto.ExtensaoPrazo, DataDevolucao = data, Condicao = "<TOTAL_ORDER> < 30" };
+
+        var result = await CriarValidarCupomExtensao(cupom).ExecuteAsync(new ValidarCupomDTO
+        {
+            Codigo = "PRAZO",
+            IdCliente = 1,
+            Itens = { new ItemCupomValidacaoDTO { IdJogo = 10, IdPeriodo = 1 } }
+        });
+
+        // A condição é avaliada sobre o menor período (R$ 20), não sobre o escolhido (R$ 50)
+        Assert.True(result.Valido);
+        Assert.Equal(0m, result.ValorDescontoCalculado);
+        Assert.Equal(TipoDesconto.ExtensaoPrazo, result.TipoDesconto);
+        Assert.Equal(data, result.DataDevolucao);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ExtensaoPrazoComDataVencida_Falha()
+    {
+        var cupom = new Cupom { Id = 1, Codigo = "PRAZO", Ativo = true, TipoDesconto = TipoDesconto.ExtensaoPrazo, DataDevolucao = DateTime.Now.Date };
+
+        var result = await CriarValidarCupomExtensao(cupom).ExecuteAsync(new ValidarCupomDTO
+        {
+            Codigo = "PRAZO",
+            IdCliente = 1,
+            Itens = { new ItemCupomValidacaoDTO { IdJogo = 10, IdPeriodo = 1 } }
+        });
+
+        Assert.False(result.Valido);
+    }
 }

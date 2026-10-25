@@ -104,7 +104,13 @@ public class RenovarPedido(IPedidoRepository pedidoRepository,
         // Os jogos já estão com o cliente: não há forma de entrega nem taxa.
         novoPedido.DefinirMetodos(dto.MetodoPagamento, null);
         if (cupom is not null) {
-            novoPedido.AplicarCupom(cupom.IdCupom!.Value, cupom.ValorDescontoCalculado);
+            // Na extensão de prazo, a data do cupom substitui inclusive as datas informadas pelo admin.
+            AplicarCupomValidado(novoPedido, cupom, _categoriaPeriodoCache);
+            if (!novoPedido.IsValid) {
+                logger.LogWarning("Falha ao aplicar cupom na renovação do pedido {PedidoId}: {Errors}", idPedido, string.Join(", ", novoPedido.Notifications.Select(n => n.Message)));
+                AddNotifications((IList<UseCaseNotification>)novoPedido.Notifications.Select(n => UseCaseNotification.Create(UseCaseNotificationType.BadRequest, n.Message)).ToList());
+                return;
+            }
         }
 
         try {

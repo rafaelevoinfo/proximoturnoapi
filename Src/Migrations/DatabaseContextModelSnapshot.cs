@@ -558,6 +558,10 @@ namespace ProximoTurnoApi.Migrations
                         .HasColumnType("varchar(500)")
                         .HasColumnName("CONDICAO");
 
+                    b.Property<DateTime?>("DataDevolucao")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("DATA_DEVOLUCAO");
+
                     b.Property<DateTime?>("DataFim")
                         .HasColumnType("datetime(6)")
                         .HasColumnName("DATA_FIM");

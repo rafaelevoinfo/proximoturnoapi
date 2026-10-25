@@ -33,6 +33,25 @@ public class CadastroCupom(ICupomRepository _repository, ILogger<CadastroCupom> 
             codigo = dto.Codigo.Trim().ToUpperInvariant();
         }
 
+        if (dto.TipoDesconto == TipoDesconto.ExtensaoPrazo)
+        {
+            if (!dto.DataDevolucao.HasValue)
+            {
+                logger.LogWarning("Falha ao cadastrar cupom: Data de devolução não informada para cupom de extensão de prazo.");
+                AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest, "Informe a data de devolução do cupom de extensão de prazo."));
+            }
+            else if (dto.DataDevolucao.Value.Date <= DateTime.Now.Date)
+            {
+                logger.LogWarning("Falha ao cadastrar cupom: A data de devolução ({DataDevolucao}) deve ser superior à data atual.", dto.DataDevolucao);
+                AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest, "A data de devolução do cupom deve ser superior à data atual."));
+            }
+        }
+        else if (dto.ValorDesconto <= 0)
+        {
+            logger.LogWarning("Falha ao cadastrar cupom: O valor do desconto deve ser maior que zero.");
+            AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest, "O valor do desconto deve ser maior que zero."));
+        }
+
         if (dto.TipoDesconto == TipoDesconto.Percentual && dto.ValorDesconto > 100)
         {
             logger.LogWarning("Falha ao cadastrar cupom: Desconto percentual não pode ser maior que 100%.");
@@ -66,13 +85,15 @@ public class CadastroCupom(ICupomRepository _repository, ILogger<CadastroCupom> 
             return null;
         }
 
+        var extensaoPrazo = dto.TipoDesconto == TipoDesconto.ExtensaoPrazo;
         var cupom = new Cupom
         {
             Codigo = codigo,
             TipoDesconto = dto.TipoDesconto!.Value,
-            ValorDesconto = dto.ValorDesconto,
+            ValorDesconto = extensaoPrazo ? 0 : dto.ValorDesconto,
             DataInicio = dto.DataInicio,
             DataFim = dto.DataFim,
+            DataDevolucao = extensaoPrazo ? dto.DataDevolucao!.Value.Date : null,
             LimiteUsoGlobal = dto.LimiteUsoGlobal,
             LimiteUsoCliente = dto.LimiteUsoCliente,
             Condicao = dto.Condicao,

@@ -13,6 +13,7 @@ public class PedidoEntregaTests {
             return true;
         }
         public int GetQuantidadeDias(int idPeriodo, int defaultDias = 1) => qtdeDias;
+        public CategoriaPeriodoInfo? GetMenorPeriodo(int idCategoria) => new(10, qtdeDias, 0m, idCategoria, "cat");
         public Task RefreshAsync() => Task.CompletedTask;
     }
 

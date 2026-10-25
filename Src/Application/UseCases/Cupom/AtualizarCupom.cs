@@ -36,6 +36,25 @@ public class AtualizarCupom(ICupomRepository _repository, ILogger<AtualizarCupom
             AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest, "O código do cupom não pode ser vazio."));
         }
 
+        if (dto.TipoDesconto == TipoDesconto.ExtensaoPrazo)
+        {
+            if (!dto.DataDevolucao.HasValue)
+            {
+                logger.LogWarning("Falha ao atualizar cupom: Data de devolução não informada para cupom de extensão de prazo.");
+                AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest, "Informe a data de devolução do cupom de extensão de prazo."));
+            }
+            else if (dto.DataDevolucao.Value.Date <= DateTime.Now.Date && dto.DataDevolucao?.Date != cupom.DataDevolucao?.Date)
+            {
+                logger.LogWarning("Falha ao atualizar cupom: A data de devolução ({DataDevolucao}) deve ser superior à data atual.", dto.DataDevolucao);
+                AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest, "A data de devolução do cupom deve ser superior à data atual."));
+            }
+        }
+        else if (dto.ValorDesconto <= 0)
+        {
+            logger.LogWarning("Falha ao atualizar cupom: O valor do desconto deve ser maior que zero.");
+            AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest, "O valor do desconto deve ser maior que zero."));
+        }
+
         if (dto.TipoDesconto == TipoDesconto.Percentual && dto.ValorDesconto > 100)
         {
             logger.LogWarning("Falha ao atualizar cupom: Desconto percentual não pode ser maior que 100%.");
@@ -77,9 +96,11 @@ public class AtualizarCupom(ICupomRepository _repository, ILogger<AtualizarCupom
             cupom.Codigo = newCodigo;
         }
         cupom.TipoDesconto = dto.TipoDesconto!.Value;
-        cupom.ValorDesconto = dto.ValorDesconto;
+        var extensaoPrazo = cupom.TipoDesconto == TipoDesconto.ExtensaoPrazo;
+        cupom.ValorDesconto = extensaoPrazo ? 0 : dto.ValorDesconto;
         cupom.DataInicio = dto.DataInicio;
         cupom.DataFim = dto.DataFim;
+        cupom.DataDevolucao = extensaoPrazo ? dto.DataDevolucao!.Value.Date : null;
         cupom.LimiteUsoGlobal = dto.LimiteUsoGlobal;
         cupom.LimiteUsoCliente = dto.LimiteUsoCliente;
         cupom.Condicao = dto.Condicao;

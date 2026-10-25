@@ -81,7 +81,7 @@ public class CadastroPedido(IPedidoRepository pedidoRepository,
             }
 
             if (validacao.IdCupom.HasValue) {
-                pedido.AplicarCupom(validacao.IdCupom.Value, validacao.ValorDescontoCalculado);
+                AplicarCupomValidado(pedido, validacao, _categoriaPeriodoCache);
 
                 if (!pedido.IsValid) {
                     logger.LogWarning("Falha ao aplicar regras de negócio do cupom: {Errors}", string.Join(", ", pedido.Notifications.Select(n => n.Message)));

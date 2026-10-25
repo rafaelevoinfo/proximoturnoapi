@@ -14,6 +14,7 @@ public record CupomDTO
     public decimal ValorDesconto { get; set; }
     public DateTime? DataInicio { get; set; }
     public DateTime? DataFim { get; set; }
+    public DateTime? DataDevolucao { get; set; }
     public int? LimiteUsoGlobal { get; set; }
     public int? LimiteUsoCliente { get; set; }
     public string? Condicao { get; set; }
@@ -29,6 +30,7 @@ public record CupomDTO
             ValorDesconto = model.ValorDesconto,
             DataInicio = model.DataInicio,
             DataFim = model.DataFim,
+            DataDevolucao = model.DataDevolucao,
             LimiteUsoGlobal = model.LimiteUsoGlobal,
             LimiteUsoCliente = model.LimiteUsoCliente,
             Condicao = model.Condicao,
@@ -47,12 +49,14 @@ public record NovoCupomDTO
     [Required(ErrorMessage = "O tipo de desconto é obrigatório.")]
     public TipoDesconto? TipoDesconto { get; set; }
 
-    [Required]
-    [Range(0.01, double.MaxValue, ErrorMessage = "O valor do desconto deve ser maior que zero.")]
+    /// <summary>Ignorado no cupom de extensão de prazo.</summary>
     public decimal ValorDesconto { get; set; }
 
     public DateTime? DataInicio { get; set; }
     public DateTime? DataFim { get; set; }
+
+    /// <summary>Obrigatória no cupom de extensão de prazo.</summary>
+    public DateTime? DataDevolucao { get; set; }
 
     [Range(1, int.MaxValue, ErrorMessage = "O limite de uso global deve ser pelo menos 1.")]
     public int? LimiteUsoGlobal { get; set; }
@@ -97,4 +101,6 @@ public record ValidacaoCupomResultadoDTO
     public TipoDesconto? TipoDesconto { get; set; }
     public decimal? ValorDescontoOriginal { get; set; }
     public int? IdCupom { get; set; }
+    /// <summary>Preenchida no cupom de extensão de prazo.</summary>
+    public DateTime? DataDevolucao { get; set; }
 }

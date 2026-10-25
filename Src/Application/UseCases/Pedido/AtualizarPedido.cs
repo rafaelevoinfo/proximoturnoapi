@@ -94,7 +94,7 @@ public class AtualizarPedido(IPedidoRepository pedidoRepository,
 
             if (validacao.IdCupom.HasValue)
             {
-                pedido.AplicarCupom(validacao.IdCupom.Value, validacao.ValorDescontoCalculado);
+                AplicarCupomValidado(pedido, validacao, _categoriaPeriodoCache);
 
                 if (!pedido.IsValid)
                 {

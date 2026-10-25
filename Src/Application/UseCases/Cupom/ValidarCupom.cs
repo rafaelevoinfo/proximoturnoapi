@@ -66,6 +66,13 @@ public class ValidarCupom(
             }
         }
 
+        var extensaoPrazo = cupom.TipoDesconto == TipoDesconto.ExtensaoPrazo;
+        if (extensaoPrazo && (!cupom.DataDevolucao.HasValue || cupom.DataDevolucao.Value.Date <= now.Date))
+        {
+            logger.LogWarning("Validação falhou: Cupom de extensão de prazo '{Codigo}' sem data de devolução futura ({DataDevolucao}).", cupom.Codigo, cupom.DataDevolucao);
+            return new ValidacaoCupomResultadoDTO { Valido = false, Mensagem = "Cupom inválido." };
+        }
+
         var jogoIds = dto.Itens.Select(i => i.IdJogo).ToList();
         var periodoIds = dto.Itens.Select(i => i.IdPeriodo).ToList();
 
@@ -82,7 +89,11 @@ public class ValidarCupom(
         foreach (var item in dto.Itens)
         {
             var jogo = jogos.FirstOrDefault(j => j.Id == item.IdJogo);
-            var periodo = periodos.FirstOrDefault(p => p.Id == item.IdPeriodo);
+            // A extensão de prazo ignora o período escolhido e cobra o menor da categoria
+            var periodo = extensaoPrazo
+                ? categoriasLista.FirstOrDefault(c => c.Id == jogo?.IdCategoria)?.Periodos
+                    .OrderBy(p => p.QuantidadeDias).ThenBy(p => p.Valor).FirstOrDefault()
+                : periodos.FirstOrDefault(p => p.Id == item.IdPeriodo);
 
             if (jogo == null || periodo == null)
             {
@@ -123,7 +134,8 @@ public class ValidarCupom(
             ValorDescontoCalculado = valorDescontoCalculado,
             TipoDesconto = cupom.TipoDesconto,
             ValorDescontoOriginal = cupom.ValorDesconto,
-            IdCupom = cupom.Id
+            IdCupom = cupom.Id,
+            DataDevolucao = extensaoPrazo ? cupom.DataDevolucao : null
         };
     }
 }

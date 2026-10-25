@@ -141,10 +141,16 @@ public class Pedido : BaseModel {
         Status = StatusPedido.Entregue;
         DataHoraEntrega = DateTime.Now;
 
+        // A data do cupom de extensão de prazo só vale enquanto não passou; depois disso, conta o período.
+        var dataCupom = Cupom is { TipoDesconto: TipoDesconto.ExtensaoPrazo, DataDevolucao: DateTime data } && data.Date > DateTime.Now.Date
+            ? data
+            : (DateTime?)null;
+        var dataFixa = dataDevolucao ?? dataCupom;
+
         foreach (var item in _items) {
             item.Status = StatusPedido.Entregue;
-            item.DataDevolucao = dataDevolucao.HasValue
-                ? dataDevolucao.Value.Date.AddHours(23).AddMinutes(59).AddSeconds(59)
+            item.DataDevolucao = dataFixa.HasValue
+                ? FimDoDia(dataFixa.Value)
                 : CalcularDataDevolucao(cache.GetQuantidadeDias(item.IdPeriodo));
             item.JogoCopia.Status = StatusJogo.Alugado;
         }
@@ -292,6 +298,41 @@ public class Pedido : BaseModel {
         CalcularTotal();
         RegistrarAlteracao();
     }
+
+    /// <summary>
+    /// Cupom de extensão de prazo: não dá desconto, troca o período de cada item ativo pelo menor da
+    /// categoria (cobrando o valor dele) e fixa a devolução na data do cupom.
+    /// </summary>
+    public void AplicarCupomExtensaoPrazo(int idCupom, DateTime dataDevolucao, ICategoriaPeriodoCache cache) {
+        if (IdCupom != null) {
+            AddNotification("PEDIDO", "Já existe um cupom aplicado a este pedido.");
+            return;
+        }
+
+        var ativos = _items.Where(i => i.Status is StatusPedido.Pendente or StatusPedido.Entregue).ToList();
+        var menores = new List<(ItemPedido item, CategoriaPeriodoInfo periodo)>();
+        foreach (var item in ativos) {
+            int? idCategoria = item.JogoCopia?.Jogo?.IdCategoria;
+            if (idCategoria is null && cache.TryGetPeriodo(item.IdPeriodo, out var atual) && atual is not null) {
+                idCategoria = atual.IdCategoria;
+            }
+            var menor = idCategoria.HasValue ? cache.GetMenorPeriodo(idCategoria.Value) : null;
+            if (menor is null) {
+                AddNotification("PEDIDO", $"Não foi possível aplicar o cupom ao jogo {item.JogoCopia?.Jogo?.Nome ?? item.Id.ToString()}: categoria sem período cadastrado.");
+                return;
+            }
+            menores.Add((item, menor));
+        }
+
+        foreach (var (item, periodo) in menores) {
+            item.IdPeriodo = periodo.IdPeriodo;
+            item.Valor = periodo.Valor;
+            item.DataDevolucao = FimDoDia(dataDevolucao);
+        }
+        AplicarCupom(idCupom, 0);
+    }
+
+    private static DateTime FimDoDia(DateTime data) => data.Date.AddHours(23).AddMinutes(59).AddSeconds(59);
 
     public void RemoverCupom() {
         IdCupom = null;
