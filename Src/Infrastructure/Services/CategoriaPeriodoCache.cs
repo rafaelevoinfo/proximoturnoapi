@@ -14,6 +14,8 @@ public record CategoriaPeriodoInfo(
 public interface ICategoriaPeriodoCache {
     bool TryGetPeriodo(int idPeriodo, out CategoriaPeriodoInfo? info);
     int GetQuantidadeDias(int idPeriodo, int defaultDias = 1);
+    /// <summary>Período com menos dias da categoria (empate: o mais barato).</summary>
+    CategoriaPeriodoInfo? GetMenorPeriodo(int idCategoria);
     Task RefreshAsync();
 }
 
@@ -38,6 +40,13 @@ public class CategoriaPeriodoCache(
         logger.LogWarning("Período {IdPeriodo} não encontrado no cache; usando {Default} dia(s) como padrão.", idPeriodo, defaultDias);
         return defaultDias;
     }
+
+    public CategoriaPeriodoInfo? GetMenorPeriodo(int idCategoria) =>
+        _porPeriodo.Values
+            .Where(p => p.IdCategoria == idCategoria)
+            .OrderBy(p => p.QuantidadeDias)
+            .ThenBy(p => p.Valor)
+            .FirstOrDefault();
 
     public async Task RefreshAsync() {
         using var scope = scopeFactory.CreateScope();

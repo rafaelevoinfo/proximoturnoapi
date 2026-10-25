@@ -23,6 +23,10 @@ public class Cupom : BaseModel
     [Column("DATA_FIM")]
     public DateTime? DataFim { get; set; }
 
+    // Só para TipoDesconto.ExtensaoPrazo: data em que os jogos devem ser devolvidos
+    [Column("DATA_DEVOLUCAO")]
+    public DateTime? DataDevolucao { get; set; }
+
     [Column("LIMITE_USO_GLOBAL")]
     public int? LimiteUsoGlobal { get; set; }
 

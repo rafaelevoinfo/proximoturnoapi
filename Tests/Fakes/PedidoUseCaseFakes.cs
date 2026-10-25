@@ -124,6 +124,9 @@ public class FakeCategoriaPeriodoCache : ICategoriaPeriodoCache {
     public int GetQuantidadeDias(int idPeriodo, int defaultDias = 1) =>
         _periodos.TryGetValue(idPeriodo, out var info) ? info.QuantidadeDias : defaultDias;
 
+    public CategoriaPeriodoInfo? GetMenorPeriodo(int idCategoria) =>
+        _periodos.Values.Where(p => p.IdCategoria == idCategoria).OrderBy(p => p.QuantidadeDias).ThenBy(p => p.Valor).FirstOrDefault();
+
     public Task RefreshAsync() => Task.CompletedTask;
 }
 

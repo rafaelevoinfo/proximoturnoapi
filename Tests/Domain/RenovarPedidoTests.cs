@@ -337,6 +337,26 @@ public class RenovarPedidoTests {
     }
 
     [Fact]
+    public async Task ExecuteAsync_CupomExtensaoPrazo_DataDoAdminTemPrioridadeSobreADoCupom() {
+        var cache = Cache();
+        var c = Criar(cache);
+        c.Repo.Pedidos.Add(PedidoEntregueComDoisItens(cache));
+        var dataCupom = DateTime.Now.Date.AddDays(20);
+        var dataAdmin = DateTime.Now.Date.AddDays(3);
+        c.Cupom.Resultado = new ValidacaoCupomResultadoDTO { Valido = true, IdCupom = 7, TipoDesconto = TipoDesconto.ExtensaoPrazo, DataDevolucao = dataCupom };
+        var dto = Renovacao(new ItemPedidoRenovarDTO { Id = 1, IdPeriodo = 20, DataDevolucao = dataAdmin }, new ItemPedidoRenovarDTO { Id = 2, IdPeriodo = 20 }) with { CupomCodigo = "PRAZO" };
+
+        await c.UseCase.ExecuteAsync(SolicitantePedido.Administrador, 1, dto);
+
+        Assert.True(c.UseCase.IsValid);
+        var novo = NovoPedido(c.Repo);
+        Assert.Equal(FimDoDia(dataAdmin), novo.Items.Single(i => i.JogoCopia.IdJogo == 5).DataDevolucao);
+        Assert.Equal(FimDoDia(dataCupom), novo.Items.Single(i => i.JogoCopia.IdJogo == 6).DataDevolucao);
+        // O preço continua sendo o do menor período da categoria nos dois itens
+        Assert.All(novo.Items, i => Assert.Equal((10, 50m), (i.IdPeriodo, i.Valor)));
+    }
+
+    [Fact]
     public async Task ExecuteAsync_CupomInvalido_RejeitaComMensagemDoCupomENaoGrava() {
         var cache = Cache();
         var c = Criar(cache);
