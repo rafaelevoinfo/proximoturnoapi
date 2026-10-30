@@ -309,4 +309,5 @@ public class DatabaseContext(DbContextOptions<DatabaseContext> options) : Identi
     public DbSet<ChatConversa> ChatConversas { get; set; }
     public DbSet<ChatMensagem> ChatMensagens { get; set; }
     public DbSet<InscricaoPush> InscricoesPush { get; set; }
+    public DbSet<ConfiguracaoLoja> ConfiguracoesLoja { get; set; }
 }

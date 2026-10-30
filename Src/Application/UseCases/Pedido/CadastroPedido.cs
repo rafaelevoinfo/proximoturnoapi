@@ -17,15 +17,26 @@ public class CadastroPedido(IPedidoRepository pedidoRepository,
     ValidarCupom _validarCupom,
     IContratoQueue _contratoQueue,
     INotificationService _notificationService,
+    IConfiguracaoLojaRepository _configuracaoLojaRepository,
     IHostEnvironment hostEnvironment,
     ILogger<CadastroPedido> logger) : PedidoUseCaseBasico(pedidoRepository) {
+
+    public const string MensagemLojaFechada = "A loja está fechada no momento e não está recebendo novos pedidos.";
 
     public async Task<int> ExecuteAsync(ClaimsPrincipal userClaim, NovoPedidoDTO novoPedidoDto) {
         logger.LogInformation("Iniciando cadastro de novo pedido.");
         var user = await _userManager.GetUserAsync(userClaim);
         Cliente? cliente = null;
+        var admin = user != null && await _userManager.IsInRoleAsync(user, Roles.Admin);
 
-        if (user != null && await _userManager.IsInRoleAsync(user, Roles.Admin) && novoPedidoDto.IdCliente.HasValue) {
+        // Loja fechada barra os pedidos dos clientes; o admin continua podendo lançar pedidos.
+        if (!admin && (await _configuracaoLojaRepository.GetAsync())?.LojaFechada == true) {
+            logger.LogWarning("Pedido recusado: a loja está fechada (usuário {UserEmail}).", user?.Email ?? "desconhecido");
+            AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest, MensagemLojaFechada));
+            return 0;
+        }
+
+        if (admin && novoPedidoDto.IdCliente.HasValue) {
             cliente = await _clienteRepository.GetByIdAsync(novoPedidoDto.IdCliente.Value);
             if (cliente is null) {
                 logger.LogWarning("Falha ao cadastrar pedido: Cliente de ID {ClienteId} não encontrado.", novoPedidoDto.IdCliente.Value);
