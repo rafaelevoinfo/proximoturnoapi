@@ -64,6 +64,7 @@ builder.Services.AddScoped<IPedidoRepository, PedidoRepository>();
 builder.Services.AddScoped<ITagRepository, TagRepository>();
 builder.Services.AddScoped<IListaDesejosRepository, ListaDesejosRepository>();
 builder.Services.AddScoped<ICupomRepository, CupomRepository>();
+builder.Services.AddScoped<IConfiguracaoLojaRepository, ConfiguracaoLojaRepository>();
 builder.Services.AddScoped<IContratoRepository, ContratoRepository>();
 builder.Services.AddSingleton<IContratoQueue, ContratoQueue>();
 builder.Services.AddHostedService<ContratoQueueBackgroundService>();
@@ -250,6 +251,10 @@ builder.Services.AddScoped<AtualizarTag>();
 
 // Push
 builder.Services.AddScoped<RegistrarInscricaoPush>();
+
+// Loja
+builder.Services.AddScoped<ObterStatusLoja>();
+builder.Services.AddScoped<AtualizarStatusLoja>();
 
 // Cupom
 builder.Services.AddScoped<ValidarCupom>();

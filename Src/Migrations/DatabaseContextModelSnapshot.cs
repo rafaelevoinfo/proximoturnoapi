@@ -479,6 +479,31 @@ namespace ProximoTurnoApi.Migrations
                     b.ToTable("COMENTARIO", (string)null);
                 });
 
+            modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.ConfiguracaoLoja", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("ID");
+
+                    b.Property<DateTime>("DataHoraAlteracao")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("DATA_HORA_ALTERACAO");
+
+                    b.Property<bool>("LojaFechada")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("LOJA_FECHADA");
+
+                    b.Property<string>("MensagemLojaFechada")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)")
+                        .HasColumnName("MENSAGEM_LOJA_FECHADA");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("CONFIGURACAO_LOJA");
+                });
+
             modelBuilder.Entity("ProximoTurnoApi.Infrastructure.Models.ContratoAutentique", b =>
                 {
                     b.Property<int>("Id")

@@ -369,3 +369,19 @@ public static class PedidoTestFactory {
         return pedido;
     }
 }
+
+public class FakeConfiguracaoLojaRepository : IConfiguracaoLojaRepository {
+    public ConfiguracaoLoja? Configuracao { get; set; }
+    public int SaveCount { get; private set; }
+
+    public Task<ConfiguracaoLoja?> GetAsync() => Task.FromResult(Configuracao);
+
+    public Task SalvarAsync(ConfiguracaoLoja configuracao) {
+        if (configuracao.Id == 0) {
+            configuracao.Id = 1;
+        }
+        Configuracao = configuracao;
+        SaveCount++;
+        return Task.CompletedTask;
+    }
+}
