@@ -109,6 +109,24 @@ public class FakePedidoRepository : IPedidoRepository {
         }
         return Task.CompletedTask;
     }
+
+    public Task<List<Pedido>> ObterComAlertaAtrasoPendenteAsync(DateTime dia) =>
+        Task.FromResult(Pedidos
+            .Where(p => p.Items.Any(i => i.Status == StatusPedido.Entregue
+                                      && i.DataDevolucao < dia.Date
+                                      && (i.DataAlertaAtraso is null || i.DataAlertaAtraso.Value.Date < dia.Date)))
+            .ToList());
+
+    /// <summary>Ids dos itens marcados no resumo de atrasados, na ordem; também grava a data no item.</summary>
+    public List<int> AlertasAtrasoMarcados { get; } = [];
+
+    public Task MarcarAlertaAtrasoAsync(IReadOnlyCollection<int> idsItens, DateTime quando) {
+        AlertasAtrasoMarcados.AddRange(idsItens);
+        foreach (var item in Pedidos.SelectMany(p => p.Items).Where(i => idsItens.Contains(i.Id))) {
+            item.DataAlertaAtraso = quando;
+        }
+        return Task.CompletedTask;
+    }
 }
 
 public class FakeCategoriaPeriodoCache : ICategoriaPeriodoCache {
@@ -273,6 +291,18 @@ public class FakeNotificationService : INotificationService {
             throw new InvalidOperationException("falha simulada");
         }
         Lembretes.Add((cliente, itens.ToList()));
+        return Task.CompletedTask;
+    }
+
+    /// <summary>Cada resumo de atrasados enviado aos admins.</summary>
+    public List<List<PedidoAtrasado>> AlertasAtrasados { get; } = [];
+    public bool FalharAlertaAtrasados { get; set; }
+
+    public Task EnviarAlertaPedidosAtrasadosAsync(IReadOnlyList<PedidoAtrasado> atrasados) {
+        if (FalharAlertaAtrasados) {
+            throw new InvalidOperationException("falha simulada");
+        }
+        AlertasAtrasados.Add(atrasados.ToList());
         return Task.CompletedTask;
     }
 }

@@ -25,7 +25,13 @@ public interface INotificationService
 
     /// <summary>Lembra o cliente de devolver hoje os jogos destes itens.</summary>
     Task EnviarLembreteDevolucaoAsync(Cliente cliente, IReadOnlyList<ItemPedido> itens);
+
+    /// <summary>Resumo diário para os admins dos pedidos com jogos atrasados.</summary>
+    Task EnviarAlertaPedidosAtrasadosAsync(IReadOnlyList<PedidoAtrasado> atrasados);
 }
+
+/// <summary>Um pedido no resumo de atrasados: os itens vencidos e o maior atraso entre eles.</summary>
+public record PedidoAtrasado(Pedido Pedido, IReadOnlyList<ItemPedido> Itens, int DiasAtraso);
 
 public class NotificationService : INotificationService
 {
@@ -184,6 +190,63 @@ public class NotificationService : INotificationService
             Corpo: $"Olá, só passando pra lembrar da devolução {jogos} hoje, mas fica tranquilo: você tem até as 22:00, então ainda dá tempo para jogar mais algumas partidas 😊",
             Url: "/pedidos",
             Tag: $"devolucao-{DateTime.Today:yyyyMMdd}"));
+    }
+
+    public async Task EnviarAlertaPedidosAtrasadosAsync(IReadOnlyList<PedidoAtrasado> atrasados)
+    {
+        if (!_activeChannels.Contains(NotificationChannel.Push) || atrasados.Count == 0)
+        {
+            return;
+        }
+
+        _logger.LogInformation("Enviando aos admins o resumo de {Quantidade} pedido(s) atrasado(s).", atrasados.Count);
+        await _pushService.EnviarParaAdminsAsync(MontarMensagemAtrasados(atrasados));
+    }
+
+    /// <summary>Quantos pedidos o resumo lista antes de juntar o resto em "e mais N".</summary>
+    public const int MaximoPedidosNoResumo = 4;
+
+    public static MensagemPush MontarMensagemAtrasados(IReadOnlyList<PedidoAtrasado> atrasados)
+    {
+        var titulo = atrasados.Count == 1 ? "1 pedido atrasado" : $"{atrasados.Count} pedidos atrasados";
+
+        var linhas = atrasados
+            .OrderByDescending(a => a.DiasAtraso)
+            .ThenBy(a => a.Pedido.Id)
+            .Take(MaximoPedidosNoResumo)
+            .Select(a =>
+            {
+                var dias = a.DiasAtraso == 1 ? "1 dia" : $"{a.DiasAtraso} dias";
+                return $"{NomeCliente(a.Pedido.Cliente)} · #{a.Pedido.Id} · {NomesJogos(a.Itens)} · {dias}";
+            })
+            .ToList();
+        var restantes = atrasados.Count - linhas.Count;
+        if (restantes > 0)
+        {
+            linhas.Add(restantes == 1 ? "e mais 1 pedido" : $"e mais {restantes} pedidos");
+        }
+
+        // Tag fixa: o resumo de hoje substitui o de ontem no aparelho, em vez de empilhar.
+        return new MensagemPush(
+            Titulo: titulo,
+            Corpo: string.Join("\n", linhas),
+            Url: "/pedidos?atrasados=1",
+            Tag: "pedidos-atrasados");
+    }
+
+    private static string NomesJogos(IReadOnlyList<ItemPedido> itens)
+    {
+        var nomes = itens
+            .Select(i => i.JogoCopia?.Jogo?.Nome)
+            .Where(n => !string.IsNullOrWhiteSpace(n))
+            .Distinct()
+            .ToList();
+        return nomes.Count switch
+        {
+            0 => itens.Count == 1 ? "1 jogo" : $"{itens.Count} jogos",
+            1 => nomes[0]!,
+            _ => $"{string.Join(", ", nomes.Take(nomes.Count - 1))} e {nomes[^1]}"
+        };
     }
 
     private static string NomeCliente(Cliente? cliente) =>

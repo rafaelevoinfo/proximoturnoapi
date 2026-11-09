@@ -29,4 +29,11 @@ public class ItemPedido : BaseModel {
     /// </summary>
     [Column("DATA_LEMBRETE_DEVOLUCAO")]
     public DateTime? DataLembreteDevolucao { get; set; }
+
+    /// <summary>
+    /// Quando este item entrou no último resumo de pedidos atrasados enviado aos admins. Evita
+    /// repetir o resumo no mesmo dia se a API reiniciar; no dia seguinte o item volta a entrar.
+    /// </summary>
+    [Column("DATA_ALERTA_ATRASO")]
+    public DateTime? DataAlertaAtraso { get; set; }
 }

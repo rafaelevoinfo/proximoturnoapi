@@ -21,6 +21,14 @@ public interface IPedidoRepository : IBaseRepository {
     Task<List<Pedido>> ObterComLembreteDevolucaoPendenteAsync(DateTime dia);
 
     Task MarcarLembreteDevolucaoAsync(IReadOnlyCollection<int> idsItens, DateTime quando);
+
+    /// <summary>
+    /// Pedidos com algum item ainda com o cliente, vencido antes do dia, e que ainda não entrou
+    /// no resumo de atrasados desse dia. Os itens vêm todos: quem chama filtra os atrasados.
+    /// </summary>
+    Task<List<Pedido>> ObterComAlertaAtrasoPendenteAsync(DateTime dia);
+
+    Task MarcarAlertaAtrasoAsync(IReadOnlyCollection<int> idsItens, DateTime quando);
 }
 
 public class PedidoRepository(DatabaseContext dbContext) : BaseRepository(dbContext), IPedidoRepository {
@@ -129,5 +137,25 @@ public class PedidoRepository(DatabaseContext dbContext) : BaseRepository(dbCont
         await _dbContext.ItemPedidos
             .Where(i => idsItens.Contains(i.Id))
             .ExecuteUpdateAsync(s => s.SetProperty(i => i.DataLembreteDevolucao, quando));
+    }
+
+    public async Task<List<Pedido>> ObterComAlertaAtrasoPendenteAsync(DateTime dia) {
+        var inicio = dia.Date;
+        return await _dbContext.Pedidos
+            .AsNoTracking()
+            .Include(p => p.Cliente)
+            .Include(p => p.Items)!
+                .ThenInclude(i => i.JogoCopia)
+                    .ThenInclude(jc => jc.Jogo)
+            .Where(p => p.Items.Any(i => i.Status == StatusPedido.Entregue
+                                      && i.DataDevolucao < inicio
+                                      && (i.DataAlertaAtraso == null || i.DataAlertaAtraso < inicio)))
+            .ToListAsync();
+    }
+
+    public async Task MarcarAlertaAtrasoAsync(IReadOnlyCollection<int> idsItens, DateTime quando) {
+        await _dbContext.ItemPedidos
+            .Where(i => idsItens.Contains(i.Id))
+            .ExecuteUpdateAsync(s => s.SetProperty(i => i.DataAlertaAtraso, quando));
     }
 }
