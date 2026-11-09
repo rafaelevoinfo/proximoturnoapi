@@ -702,6 +702,10 @@ namespace ProximoTurnoApi.Migrations
                         .HasColumnType("int")
                         .HasColumnName("ID");
 
+                    b.Property<DateTime?>("DataAlertaAtraso")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("DATA_ALERTA_ATRASO");
+
                     b.Property<DateTime>("DataDevolucao")
                         .HasColumnType("datetime(6)")
                         .HasColumnName("DATA_DEVOLUCAO");
