@@ -7,6 +7,9 @@ public class FiltroJogoDTO {
     public string? Nome { get; set; }
     [FromQuery(Name = "tags")]
     public List<int>? Tags { get; set; }
+    /// <summary>Jogos de qualquer uma destas categorias. Vazio: não filtra.</summary>
+    [FromQuery(Name = "categorias")]
+    public List<int>? Categorias { get; set; }
     [FromQuery(Name = "idade_minima")]
     public short? IdadeMinima { get; set; }
     [FromQuery(Name = "qtde_jogadores")]

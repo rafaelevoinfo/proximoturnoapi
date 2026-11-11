@@ -49,6 +49,11 @@ public class JogoRepository : BaseRepository, IJogoRepository {
             parameters.Add(new MySqlParameter("@ID_CATEGORIA", idCategoria));
         }
 
+        if (filtro.Categorias is { Count: > 0 } categorias) {
+            // Ints vindos do model binding: seguros para entrar como literais, como nas tags.
+            where.Add($"j.ID_CATEGORIA IN ({string.Join(",", categorias)})");
+        }
+
         if (filtro.Tags != null && filtro.Tags.Count > 0) {
             // Para tags, usamos uma subquery ou join. Subquery é mais segura com FromSqlRaw.
             where.Add($"EXISTS (SELECT 1 FROM JOGO_TAG jt WHERE jt.ID_JOGO = j.ID AND jt.ID_TAG IN ({string.Join(",", filtro.Tags)}))");
