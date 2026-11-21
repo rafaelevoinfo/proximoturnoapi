@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using ProximoTurnoApi.Application.DTOs;
 using ProximoTurnoApi.Domain;
 using ProximoTurnoApi.Infrastructure.Models;
@@ -23,6 +24,7 @@ public class CadastroPedido(IPedidoRepository pedidoRepository,
     ILogger<CadastroPedido> logger) : PedidoUseCaseBasico(pedidoRepository) {
 
     public const string MensagemLojaFechada = "A loja está fechada no momento e não está recebendo novos pedidos.";
+    public const string MensagemCopiaConcorrente = "Um dos jogos acabou de ser alugado por outro cliente. Atualize o carrinho e tente de novo.";
 
     /// <param name="idCarrinho">
     /// Carrinho de onde vem o pedido: as reservas dele não barram o próprio pedido e são
@@ -114,7 +116,14 @@ public class CadastroPedido(IPedidoRepository pedidoRepository,
         }
 
         try {
-            await _pedidoRepository.SaveAsync(pedido);
+            try {
+                await _pedidoRepository.SaveAsync(pedido);
+            } catch (DbUpdateConcurrencyException ex) {
+                // Outro pedido mudou o status da cópia entre a leitura e o save: nada deste pedido foi gravado.
+                logger.LogWarning(ex, "Pedido recusado: cópia alterada por outra requisição ao salvar (cliente {ClienteId}).", cliente.Id);
+                AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest, MensagemCopiaConcorrente));
+                return 0;
+            }
             logger.LogInformation("Pedido {PedidoId} cadastrado com sucesso para o cliente {ClienteId}.", pedido.Id, cliente.Id);
 
             // As cópias agora estão Reservadas no banco; a reserva do carrinho contaria em dobro.

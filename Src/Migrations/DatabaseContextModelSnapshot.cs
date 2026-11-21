@@ -812,6 +812,7 @@ namespace ProximoTurnoApi.Migrations
                         .HasColumnName("ID_JOGO");
 
                     b.Property<short>("Status")
+                        .IsConcurrencyToken()
                         .HasColumnType("smallint")
                         .HasColumnName("STATUS");
 

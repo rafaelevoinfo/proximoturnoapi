@@ -26,7 +26,17 @@ public enum StatusJogo : short {
 public class JogoCopia : BaseModel {
     [Column("ID_JOGO")]
     public int IdJogo { get; set; }
+    /// <summary>
+    /// Token de concorrência: o EF grava com <c>WHERE ID = @id AND STATUS = @statusLido</c>. Se
+    /// outra requisição mudou o status no meio (dois pedidos para a última cópia), nenhuma linha
+    /// é atualizada e o SaveChanges lança <see cref="Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException"/>.
+    /// <para>
+    /// Só funciona com a cópia rastreada (AsTracking). Salvar com Update() uma cópia carregada
+    /// sem tracking faz o EF comparar com o status novo e falhar mesmo sem concorrência.
+    /// </para>
+    /// </summary>
     [Column("STATUS")]
+    [ConcurrencyCheck]
     public StatusJogo Status { get; set; }
 
     [ForeignKey(nameof(IdJogo))]

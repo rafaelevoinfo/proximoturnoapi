@@ -147,6 +147,26 @@ public class CadastroPedidoTests {
     }
 
     [Fact]
+    public async Task ExecuteAsync_CopiaAlteradaPorOutroPedidoAoSalvar_RecusaSemEnfileirar() {
+        var queue = new FakeContratoQueue();
+        var cliente = PedidoTestFactory.Cliente(id: 1, email: "cliente@teste.com");
+        var copia = PedidoTestFactory.Copia(idCopia: 1, idJogo: 5, idCategoria: 1);
+        var pedidoRepo = new FakePedidoRepository { FalhaAoSalvar = new Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException() };
+        var useCase = Criar(pedidoRepo,
+            new FakeJogoRepository { Copias = { copia }, Jogos = { copia.Jogo } },
+            new FakeClienteRepository { Clientes = { cliente } },
+            new FakeCategoriaPeriodoCache().Adicionar(10, 7, 50m, 1),
+            new FakeUserManager(new Usuario { Email = "cliente@teste.com" }, isAdmin: false),
+            queue, new FakeNotificationService());
+
+        var id = await useCase.ExecuteAsync(ClaimsVazio(), PedidoDoCliente());
+
+        Assert.Equal(0, id);
+        Assert.Equal(CadastroPedido.MensagemCopiaConcorrente, useCase.AggregateErrors());
+        Assert.Empty(queue.Enfileirados);
+    }
+
+    [Fact]
     public async Task ExecuteAsync_AdminIgnoraReservaDeCarrinho() {
         var reservas = new ReservasCarrinhoMemoria(TimeProvider.System);
         reservas.Reservar(Guid.NewGuid(), idJogo: 5, copiasDisponiveis: 1);
