@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using ProximoTurnoApi.Application.DTOs;
 using ProximoTurnoApi.Domain;
 using ProximoTurnoApi.Infrastructure.Models;
@@ -19,11 +20,17 @@ public class CadastroPedido(IPedidoRepository pedidoRepository,
     INotificationService _notificationService,
     IConfiguracaoLojaRepository _configuracaoLojaRepository,
     IHostEnvironment hostEnvironment,
+    IReservasCarrinho _reservasCarrinho,
     ILogger<CadastroPedido> logger) : PedidoUseCaseBasico(pedidoRepository) {
 
     public const string MensagemLojaFechada = "A loja está fechada no momento e não está recebendo novos pedidos.";
+    public const string MensagemCopiaConcorrente = "Um dos jogos acabou de ser alugado por outro cliente. Atualize o carrinho e tente de novo.";
 
-    public async Task<int> ExecuteAsync(ClaimsPrincipal userClaim, NovoPedidoDTO novoPedidoDto) {
+    /// <param name="idCarrinho">
+    /// Carrinho de onde vem o pedido: as reservas dele não barram o próprio pedido e são
+    /// liberadas quando o pedido é salvo. O admin não é barrado por reserva de carrinho.
+    /// </param>
+    public async Task<int> ExecuteAsync(ClaimsPrincipal userClaim, NovoPedidoDTO novoPedidoDto, Guid? idCarrinho = null) {
         logger.LogInformation("Iniciando cadastro de novo pedido.");
         var user = await _userManager.GetUserAsync(userClaim);
         Cliente? cliente = null;
@@ -52,9 +59,10 @@ public class CadastroPedido(IPedidoRepository pedidoRepository,
             }
         }
 
+        Func<int, int>? seguradasPorOutros = admin ? null : idJogo => _reservasCarrinho.SeguradasPorOutros(idJogo, idCarrinho);
         var pedido = new Pedido(cliente, novoPedidoDto.MetodoPagamento, novoPedidoDto.MetodoEntrega);
         foreach (var item in novoPedidoDto.Items) {
-            var resultValidacao = await ValidarAdicionarItem(item, _jogoRepository, _categoriaPeriodoCache);
+            var resultValidacao = await ValidarAdicionarItem(item, _jogoRepository, _categoriaPeriodoCache, seguradasPorOutros);
             if (!IsValid) {
                 logger.LogWarning("Falha na validação do item do pedido para o jogo ID {JogoId}.", item.IdJogo);
                 return 0;
@@ -108,8 +116,22 @@ public class CadastroPedido(IPedidoRepository pedidoRepository,
         }
 
         try {
-            await _pedidoRepository.SaveAsync(pedido);
+            try {
+                await _pedidoRepository.SaveAsync(pedido);
+            } catch (DbUpdateConcurrencyException ex) {
+                // Outro pedido mudou o status da cópia entre a leitura e o save: nada deste pedido foi gravado.
+                logger.LogWarning(ex, "Pedido recusado: cópia alterada por outra requisição ao salvar (cliente {ClienteId}).", cliente.Id);
+                AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest, MensagemCopiaConcorrente));
+                return 0;
+            }
             logger.LogInformation("Pedido {PedidoId} cadastrado com sucesso para o cliente {ClienteId}.", pedido.Id, cliente.Id);
+
+            // As cópias agora estão Reservadas no banco; a reserva do carrinho contaria em dobro.
+            if (idCarrinho is { } carrinho) {
+                foreach (var item in novoPedidoDto.Items) {
+                    _reservasCarrinho.Liberar(carrinho, item.IdJogo);
+                }
+            }
 
             if (!hostEnvironment.IsDevelopment()) {
                 try {

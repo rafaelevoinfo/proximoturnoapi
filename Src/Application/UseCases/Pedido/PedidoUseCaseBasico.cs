@@ -34,9 +34,21 @@ public class PedidoUseCaseBasico(IPedidoRepository pedidoRepository) : UseCaseBa
         }
     }
 
-    protected async Task<(JogoCopia copia, CategoriaPeriodoInfo periodo)?> ValidarAdicionarItem(NovoItemPedidoDTO item, IJogoRepository jogoRepository, ICategoriaPeriodoCache cache) {
+    /// <param name="seguradasPorOutros">
+    /// Cópias do jogo seguradas em carrinhos de outros clientes. Elas seguem Disponíveis no
+    /// banco, mas só podem ir para o pedido se sobrar cópia além delas. Null ignora os carrinhos.
+    /// </param>
+    protected async Task<(JogoCopia copia, CategoriaPeriodoInfo periodo)?> ValidarAdicionarItem(NovoItemPedidoDTO item, IJogoRepository jogoRepository, ICategoriaPeriodoCache cache, Func<int, int>? seguradasPorOutros = null) {
         var copias = await jogoRepository.GetAllCopiasByIdJogoAsync(item.IdJogo);
-        var copia = copias?.FirstOrDefault(c => c.Status == StatusJogo.Disponivel);
+        var disponiveis = copias?.Where(c => c.Status == StatusJogo.Disponivel).ToList() ?? [];
+        var copia = disponiveis.FirstOrDefault();
+
+        if (copia is not null && seguradasPorOutros is not null && seguradasPorOutros(item.IdJogo) >= disponiveis.Count) {
+            var jogoSegurado = await jogoRepository.GetResumoByIdAsync(item.IdJogo);
+            AddNotification(UseCaseNotification.Create(UseCaseNotificationType.BadRequest,
+                $"O jogo \"{jogoSegurado?.Nome ?? "desconhecido"}\" está reservado no carrinho de outro cliente. Tente de novo em alguns minutos."));
+            return null;
+        }
 
         if (copia is null) {
             var jogoNaoDisp = await jogoRepository.GetResumoByIdAsync(item.IdJogo);

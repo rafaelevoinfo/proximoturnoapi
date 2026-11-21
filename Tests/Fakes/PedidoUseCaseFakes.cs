@@ -62,7 +62,13 @@ public class FakePedidoRepository : IPedidoRepository {
         return Task.FromResult(query.ToList());
     }
 
+    /// <summary>Quando preenchida, o SaveAsync lança esta exceção sem gravar (simula o banco recusando).</summary>
+    public Exception? FalhaAoSalvar { get; set; }
+
     public Task SaveAsync(Pedido pedido, bool commit = true) {
+        if (FalhaAoSalvar is not null) {
+            throw FalhaAoSalvar;
+        }
         SaveCount++;
         if (pedido.Id == 0) {
             pedido.Id = _proximoId++;

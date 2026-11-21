@@ -3,6 +3,7 @@ using ProximoTurnoApi.Application.DTOs;
 using ProximoTurnoApi.Application.UseCases;
 using ProximoTurnoApi.Domain;
 using ProximoTurnoApi.Infrastructure.Models;
+using ProximoTurnoApi.Infrastructure.Services;
 using ProximoTurnoApi.Tests.Fakes;
 using Xunit;
 
@@ -17,10 +18,11 @@ public class CadastroPedidoTests {
         FakeUserManager userManager,
         FakeContratoQueue queue,
         FakeNotificationService notificacao,
-        FakeConfiguracaoLojaRepository? loja = null) {
+        FakeConfiguracaoLojaRepository? loja = null,
+        IReservasCarrinho? reservas = null) {
         // ValidarCupom não é exercitado (sem CupomCodigo), então dependências podem ser nulas.
         var validarCupom = new ValidarCupom(null!, null!, null!, new FakeLogger<ValidarCupom>());
-        return new CadastroPedido(pedidoRepo, jogoRepo, clienteRepo, cache, userManager, validarCupom, queue, notificacao, loja ?? new FakeConfiguracaoLojaRepository(), new FakeHostEnvironment(), new FakeLogger<CadastroPedido>());
+        return new CadastroPedido(pedidoRepo, jogoRepo, clienteRepo, cache, userManager, validarCupom, queue, notificacao, loja ?? new FakeConfiguracaoLojaRepository(), new FakeHostEnvironment(), reservas ?? new ReservasCarrinhoMemoria(TimeProvider.System), new FakeLogger<CadastroPedido>());
     }
 
     private static ClaimsPrincipal ClaimsVazio() => new(new ClaimsIdentity());
@@ -102,6 +104,78 @@ public class CadastroPedidoTests {
         Assert.Equal(0, id);
         Assert.False(useCase.IsValid);
         Assert.Equal(0, pedidoRepo.SaveCount);
+    }
+
+    private static (CadastroPedido useCase, FakePedidoRepository repo) CriarComReserva(IReservasCarrinho reservas, bool isAdmin = false) {
+        var cliente = PedidoTestFactory.Cliente(id: 1, email: "cliente@teste.com");
+        var copia = PedidoTestFactory.Copia(idCopia: 1, idJogo: 5, idCategoria: 1);
+        var pedidoRepo = new FakePedidoRepository();
+        var useCase = Criar(pedidoRepo,
+            new FakeJogoRepository { Copias = { copia }, Jogos = { copia.Jogo } },
+            new FakeClienteRepository { Clientes = { cliente } },
+            new FakeCategoriaPeriodoCache().Adicionar(10, 7, 50m, 1),
+            new FakeUserManager(new Usuario { Email = "cliente@teste.com" }, isAdmin),
+            new FakeContratoQueue(), new FakeNotificationService(), reservas: reservas);
+        return (useCase, pedidoRepo);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_UnicaCopiaNoCarrinhoDeOutro_RecusaPedido() {
+        var reservas = new ReservasCarrinhoMemoria(TimeProvider.System);
+        reservas.Reservar(Guid.NewGuid(), idJogo: 5, copiasDisponiveis: 1);
+        var (useCase, repo) = CriarComReserva(reservas);
+
+        var id = await useCase.ExecuteAsync(ClaimsVazio(), PedidoDoCliente(), Guid.NewGuid());
+
+        Assert.Equal(0, id);
+        Assert.Contains("reservado no carrinho de outro cliente", useCase.AggregateErrors());
+        Assert.Equal(0, repo.SaveCount);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_CopiaNoProprioCarrinho_CriaPedidoELiberaReserva() {
+        var reservas = new ReservasCarrinhoMemoria(TimeProvider.System);
+        var meuCarrinho = Guid.NewGuid();
+        reservas.Reservar(meuCarrinho, idJogo: 5, copiasDisponiveis: 1);
+        var (useCase, repo) = CriarComReserva(reservas);
+
+        var id = await useCase.ExecuteAsync(ClaimsVazio(), PedidoDoCliente(), meuCarrinho);
+
+        Assert.NotEqual(0, id);
+        Assert.Equal(1, repo.SaveCount);
+        Assert.Empty(reservas.DoCarrinho(meuCarrinho));
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_CopiaAlteradaPorOutroPedidoAoSalvar_RecusaSemEnfileirar() {
+        var queue = new FakeContratoQueue();
+        var cliente = PedidoTestFactory.Cliente(id: 1, email: "cliente@teste.com");
+        var copia = PedidoTestFactory.Copia(idCopia: 1, idJogo: 5, idCategoria: 1);
+        var pedidoRepo = new FakePedidoRepository { FalhaAoSalvar = new Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException() };
+        var useCase = Criar(pedidoRepo,
+            new FakeJogoRepository { Copias = { copia }, Jogos = { copia.Jogo } },
+            new FakeClienteRepository { Clientes = { cliente } },
+            new FakeCategoriaPeriodoCache().Adicionar(10, 7, 50m, 1),
+            new FakeUserManager(new Usuario { Email = "cliente@teste.com" }, isAdmin: false),
+            queue, new FakeNotificationService());
+
+        var id = await useCase.ExecuteAsync(ClaimsVazio(), PedidoDoCliente());
+
+        Assert.Equal(0, id);
+        Assert.Equal(CadastroPedido.MensagemCopiaConcorrente, useCase.AggregateErrors());
+        Assert.Empty(queue.Enfileirados);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_AdminIgnoraReservaDeCarrinho() {
+        var reservas = new ReservasCarrinhoMemoria(TimeProvider.System);
+        reservas.Reservar(Guid.NewGuid(), idJogo: 5, copiasDisponiveis: 1);
+        var (useCase, repo) = CriarComReserva(reservas, isAdmin: true);
+
+        var id = await useCase.ExecuteAsync(ClaimsVazio(), PedidoDoCliente());
+
+        Assert.NotEqual(0, id);
+        Assert.Equal(1, repo.SaveCount);
     }
 
     private static (CadastroPedido useCase, FakePedidoRepository repo) CriarComLojaFechada(bool isAdmin) {

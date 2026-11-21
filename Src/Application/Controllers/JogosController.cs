@@ -5,6 +5,7 @@ using ProximoTurnoApi.Application.UseCases;
 using ProximoTurnoApi.Application.UseCases.RAG;
 using ProximoTurnoApi.Infrastructure.Models;
 using ProximoTurnoApi.Infrastructure.Repositories;
+using ProximoTurnoApi.Infrastructure.Services;
 
 namespace ProximoTurnoApi.Application.Controllers;
 
@@ -18,7 +19,14 @@ public class JogosController(ILogger<JogosController> logger,
                              IIndexacaoManualRepository _indexacaoRepository,
                              IManualQueue _manualQueue,
                              ReindexarManuais _reindexarManuais,
-                             SituacaoManuais _situacaoManuais) : ControllerBasico(logger) {
+                             SituacaoManuais _situacaoManuais,
+                             IReservasCarrinho _reservasCarrinho) : ControllerBasico(logger) {
+
+    /// <summary>Card do catálogo público, descontando as cópias seguradas em outros carrinhos.</summary>
+    private List<JogoCardDTO> CardsPublicos(IEnumerable<Jogo> jogos) {
+        var idCarrinho = CarrinhoHeader.Ler(Request);
+        return jogos.Select(j => JogoCardDTO.FromModel(j).AplicarReservasCarrinho(_reservasCarrinho, idCarrinho)).ToList();
+    }
 
     /// <summary>
     /// Avisa a fila que os manuais deste jogo podem ter mudado de situação: desativar tira
@@ -45,7 +53,7 @@ public class JogosController(ILogger<JogosController> logger,
         _logger.LogInformation("Recuperando jogos.");
         return await EncapsulateRequestAsync(async () => {
             var jogos = await _repository.GetAllAsync(filtro);
-            return Ok(ApiResultDTO<List<JogoCardDTO>>.CreateSuccessResult(jogos.Select(JogoCardDTO.FromModel).ToList(), "Jogos recuperados com sucesso."));
+            return Ok(ApiResultDTO<List<JogoCardDTO>>.CreateSuccessResult(CardsPublicos(jogos), "Jogos recuperados com sucesso."));
         });
     }
 
@@ -80,7 +88,7 @@ public class JogosController(ILogger<JogosController> logger,
         _logger.LogInformation("Recuperando jogos mais alugados.");
         return await EncapsulateRequestAsync(async () => {
             var jogos = await _repository.GetMaisAlugadosAsync();
-            return Ok(ApiResultDTO<List<JogoCardDTO>>.CreateSuccessResult(jogos.Select(JogoCardDTO.FromModel).ToList(), "Jogos mais alugados recuperados com sucesso."));
+            return Ok(ApiResultDTO<List<JogoCardDTO>>.CreateSuccessResult(CardsPublicos(jogos), "Jogos mais alugados recuperados com sucesso."));
         });
     }
 
@@ -89,7 +97,7 @@ public class JogosController(ILogger<JogosController> logger,
         _logger.LogInformation("Recuperando novidades.");
         return await EncapsulateRequestAsync(async () => {
             var jogos = await _repository.GetNovidadesAsync();
-            return Ok(ApiResultDTO<List<JogoCardDTO>>.CreateSuccessResult(jogos.Select(JogoCardDTO.FromModel).ToList(), "Novidades recuperadas com sucesso."));
+            return Ok(ApiResultDTO<List<JogoCardDTO>>.CreateSuccessResult(CardsPublicos(jogos), "Novidades recuperadas com sucesso."));
         });
     }
 
@@ -100,6 +108,7 @@ public class JogosController(ILogger<JogosController> logger,
             if (jogo == null) {
                 return NotFound(ApiResultDTO<JogoPublicDTO>.CreateFailureResult($"Jogo de id {id} não encontrado."));
             }
+            jogo.AplicarReservasCarrinho(_reservasCarrinho, CarrinhoHeader.Ler(Request));
 
             return Ok(ApiResultDTO<JogoPublicDTO>.CreateSuccessResult(jogo, "Jogo recuperado com sucesso."));
         });

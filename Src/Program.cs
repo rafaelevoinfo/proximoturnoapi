@@ -203,6 +203,10 @@ builder.Services.AddScoped<GerenciarListaDesejos>();
 // Pedido
 builder.Services.AddScoped<BuscarPedidos>();
 builder.Services.AddScoped<CadastroPedido>();
+// Carrinho: reservas de 15 minutos em memória (uma instância da API)
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<IReservasCarrinho, ReservasCarrinhoMemoria>();
+builder.Services.AddScoped<ReservarJogoCarrinho>();
 builder.Services.AddScoped<AtualizarPedido>();
 builder.Services.AddScoped<EntregarPedido>();
 builder.Services.AddScoped<CancelarPedido>();
