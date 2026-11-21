@@ -39,6 +39,16 @@ public static class StatusDoJogo {
         return StatusJogo.Desativado;
     }
 
+    /// <summary>
+    /// Status mostrado no catálogo quando outros carrinhos seguram cópias do jogo. As cópias
+    /// seguradas seguem Disponíveis no banco; se todas as Disponíveis estão seguradas, o jogo
+    /// aparece Reservado, que é o próximo na prioridade.
+    /// </summary>
+    public static StatusJogo ComReservasDeCarrinho(StatusJogo status, int copiasDisponiveis, int seguradasPorOutros) =>
+        status == StatusJogo.Disponivel && seguradasPorOutros >= copiasDisponiveis
+            ? StatusJogo.Reservado
+            : status;
+
     /// <summary>A cópia como o admin a deixou no formulário do jogo. Id 0 é cópia nova.</summary>
     public readonly record struct CopiaDesejada(int Id, StatusJogo Status);
 

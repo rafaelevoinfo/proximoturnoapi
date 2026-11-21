@@ -1,5 +1,6 @@
 using ProximoTurnoApi.Domain;
 ﻿using ProximoTurnoApi.Infrastructure.Models;
+using ProximoTurnoApi.Infrastructure.Services;
 
 namespace ProximoTurnoApi.Application.DTOs;
 
@@ -42,5 +43,14 @@ public record JogoPublicDTO {
 
         result.Status = StatusDoJogo.Calcular(jogo.Copias) ?? result.Status;
         return result;
+    }
+
+    /// <summary>Desconta as cópias que outros carrinhos seguram: o visitante vê o que de fato pode alugar.</summary>
+    public void AplicarReservasCarrinho(IReservasCarrinho reservas, Guid? idCarrinho) {
+        var seguradas = reservas.SeguradasPorOutros(Id, idCarrinho);
+        if (seguradas > 0) {
+            var disponiveis = Copias?.Count(c => c.Status == StatusJogo.Disponivel) ?? 0;
+            Status = StatusDoJogo.ComReservasDeCarrinho(Status, disponiveis, seguradas);
+        }
     }
 }

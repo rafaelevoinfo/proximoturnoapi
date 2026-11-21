@@ -58,7 +58,7 @@ public class PedidosController(ILogger<PedidosController> logger,
     [HttpPost]
     public async Task<IActionResult> NovoPedido([FromBody] NovoPedidoDTO novoPedido) {
         return await EncapsulateRequestAsync(async () => {
-            var novoPedidoId = await _cadastroPedidoUseCase.ExecuteAsync(User, novoPedido);
+            var novoPedidoId = await _cadastroPedidoUseCase.ExecuteAsync(User, novoPedido, CarrinhoHeader.Ler(Request));
             if (novoPedidoId == 0) {
                 return BadRequest(ApiResultDTO<PedidoDTO>.CreateFailureResult(_cadastroPedidoUseCase.AggregateErrors()));
             }
