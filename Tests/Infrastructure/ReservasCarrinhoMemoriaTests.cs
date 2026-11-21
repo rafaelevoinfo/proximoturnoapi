@@ -36,6 +36,22 @@ public class ReservasCarrinhoMemoriaTests {
     }
 
     [Fact]
+    public async Task Reservar_MuitosCarrinhosAoMesmoTempo_SoTantosQuantoAsCopias() {
+        var reservas = new ReservasCarrinhoMemoria(new RelogioFixo());
+        using var largada = new ManualResetEventSlim();
+
+        var tentativas = Enumerable.Range(0, 200).Select(_ => Task.Run(() => {
+            largada.Wait();
+            return reservas.Reservar(Guid.NewGuid(), idJogo: 1, copiasDisponiveis: 2);
+        })).ToList();
+        largada.Set();
+        var resultados = await Task.WhenAll(tentativas);
+
+        Assert.Equal(2, resultados.Count(r => r is not null));
+        Assert.Equal(2, reservas.SeguradasPorOutros(1, null));
+    }
+
+    [Fact]
     public void Reserva_VenceEm15Minutos() {
         var relogio = new RelogioFixo();
         var reservas = new ReservasCarrinhoMemoria(relogio);
